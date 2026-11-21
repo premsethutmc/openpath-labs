@@ -74,3 +74,22 @@ test('no flow and cavitation fail the flow verdict with a reason', () => {
   const r = M.evaluate(c);
   assert.equal(r.operating.cavitating, true); assert.equal(r.flow.pass, false); assert.match(r.flow.reason, /cavitating/);
 });
+
+// Regression: a cavitating operating point used to give "motor passes, N % spare" from the same unreliable point.
+test('regression: cavitation makes the drive verdict "cannot assess", never a pass', () => {
+  const c = M.projectFromPreset('tank4'); M.setSystem(c, { sumpLevel: -5, temp: 80 });
+  const r = M.evaluate(c);
+  assert.equal(r.operating.cavitating, true);
+  assert.ok(r.operating.flow >= c.requiredFlow, 'the unreliable flow figure even looks sufficient here');
+  assert.equal(r.flow.pass, false); assert.match(r.flow.reason, /cavitating/);
+  assert.equal(r.drive.state, 'cannot-assess'); assert.equal(r.drive.pass, null); assert.equal(r.drive.margin, undefined);
+  assert.match(r.drive.reason, /cannot assess at this operating point/);
+  assert.equal(r.design, false);
+  // a genuine low-flow point is still assessed: the motor passes while the flow target is missed
+  const low = M.projectFromPreset('tank4'); M.setSystem(low, { tankHeight: 24 });
+  const l = M.evaluate(low);
+  assert.equal(l.operating.cavitating, false); assert.equal(l.drive.state, 'pass'); assert.ok(l.drive.margin > 0); assert.equal(l.flow.pass, false);
+  // saved cavitating runs reproduce with the same verdict
+  const run = M.saveRun(c, 'cavitating');
+  assert.ok(M.reproduce(M.deserialize(M.serialize(c)).runs[0]).ok); assert.equal(run.result.drive.state, 'cannot-assess');
+});

@@ -100,8 +100,12 @@ export function evaluate(proj) {
   Object.assign(flow, { delivered: Q, required: proj.requiredFlow });
 
   // Verdict 2 — drive: can this motor continuously supply the shaft power the pump takes at this speed?
+  // A cavitating operating point is not a reliable estimate of flow — nor of the shaft power the pump draws there,
+  // so the drive cannot be judged on it. (A genuine low-flow point is still assessed: the motor can pass while the
+  // design misses its flow target.)
   let drive;
-  if (rpm < motor.speed[0] || rpm > motor.speed[1]) drive = { state: 'not-applicable', pass: null, reason: `this motor's rating holds between ${motor.speed[0]} and ${motor.speed[1]} rpm, not at ${rpm} rpm` };
+  if (op.cavitating) drive = { state: 'cannot-assess', pass: null, reason: 'cannot assess at this operating point: the pump is cavitating, so its shaft power here is not reliable' };
+  else if (rpm < motor.speed[0] || rpm > motor.speed[1]) drive = { state: 'not-applicable', pass: null, reason: `this motor's rating holds between ${motor.speed[0]} and ${motor.speed[1]} rpm, not at ${rpm} rpm` };
   else {
     const margin = (motor.rated - required) / motor.rated;
     drive = { state: required <= motor.rated ? 'pass' : 'fail', pass: required <= motor.rated, margin,

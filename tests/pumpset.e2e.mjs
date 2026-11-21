@@ -56,6 +56,13 @@ for (const width of [360, 1280]) test(`Pump set ${width}px: drive check journey`
     assert.deepEqual(await verdicts(), ['No', 'Yes']);
     assert.match(await page.locator('#design').textContent(), /motor copes, but the flow falls short/);
 
+    // cavitation: the drive cannot be assessed (not a pass)
+    await set('tankH', 18); await set('sumpL', -5); await set('wT', 80);
+    assert.deepEqual(await verdicts(), ['No', 'Cannot assess']);
+    assert.equal(await page.locator('#r-margin').textContent(), 'n/a');
+    assert.match(await page.locator('#vd-why').textContent(), /cannot assess at this operating point/);
+    await set('sumpL', -2.5); await set('wT', 30);
+
     // a hand-configured project equals the preset
     await page.getByRole('button', { name: '+ New project' }).click();
     await tab('Pipework'); await set('tankH', 6); await set('sumpL', -4); await set('dD', 50); await set('dL', 60); await page.locator('#dMat').selectOption('pvc'); await set('dE', 3);

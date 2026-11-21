@@ -77,14 +77,14 @@ function paintModules(r) {
       ${row('Flow met?', word(a.result.flow.pass), word(b.result.flow.pass))}${row('Motor OK?', word(a.result.drive.pass), word(b.result.drive.pass))}</tbody></table>`; })() : '<p class="note">Tick two runs to compare them.</p>';
   $('m-runs').innerHTML = `<h2>Runs</h2><div class="row"><input id="runName" aria-label="Run name" placeholder="Name (optional)" class="grow"><button type="button" class="primary" id="saveRun">Save run</button></div>${msg('runs')}
     <ul class="runs">${R.map((x, i) => { const rep = M.reproduce(x); return `<li><label><input type="checkbox" data-cmp="${i}" ${sel.includes(i) ? 'checked' : ''}> <b>${esc(x.name)}</b></label>
-      <span>${f(x.result.operating.flow, 2)} L/s · ${f(x.result.operating.shaftPower / 1000, 3)} kW · flow ${x.result.flow.pass ? 'met' : 'short'} · motor ${x.result.drive.state === 'pass' ? 'OK' : x.result.drive.state === 'fail' ? 'overloaded' : 'n/a'}</span>
+      <span>${f(x.result.operating.flow, 2)} L/s · ${f(x.result.operating.shaftPower / 1000, 3)} kW · flow ${x.result.flow.pass ? 'met' : 'short'} · motor ${{ pass: 'OK', fail: 'overloaded', 'not-applicable': 'n/a', 'cannot-assess': 'cannot assess' }[x.result.drive.state]}</span>
       <em class="${rep.ok ? 'okmsg' : 'badmsg'}" data-reproduced="${rep.ok}">${rep.ok ? 'reproduced from its saved inputs' : `does not reproduce: ${esc(rep.diffs.join(', '))}`}</em></li>`; }).join('') || '<li class="note">No runs saved yet.</li>'}</ul>${cmp}`;
   $('saveRun').onclick = () => act('runs', () => { const x = M.saveRun(proj, $('runName').value); return `Saved “${x.name}”.`; });
   document.querySelectorAll('[data-cmp]').forEach(c => c.onchange = () => { const i = +c.dataset.cmp; ui.compare = c.checked ? [...sel.filter(x => x !== i), i].slice(-2) : sel.filter(x => x !== i); render(); });
 
   $('m-model').innerHTML = `<h2>What this check includes</h2>
     <p>Steady-state sizing check of a direct-coupled pump set. The pump side is Pump House's solver unchanged: pump curve from impeller geometry, Darcy–Weisbach pipe losses with Colebrook friction, fittings, NPSH. The operating point is where the pump curve meets the system curve.</p>
-    <p>Two separate verdicts: the flow verdict compares calculated flow with your required flow; the drive verdict compares the shaft power the pump takes at this speed with the motor's continuous shaft-output rating, valid only inside its speed band. Torque = shaft power ÷ (2π × rpm ÷ 60).</p>
+    <p>Two separate verdicts: the flow verdict compares calculated flow with your required flow; the drive verdict compares the shaft power the pump takes at this speed with the motor's continuous shaft-output rating, valid only inside its speed band. If the pump cavitates, that operating point is unreliable, so the drive verdict is "cannot assess" rather than a pass. Torque = shaft power ÷ (2π × rpm ÷ 60).</p>
     <p class="note">Not modelled: motor starting and acceleration, the speed an overloaded motor would settle at, voltage and frequency variation, motor efficiency and electrical input, service factor, transients and water hammer, wear. Motors are illustrative IEC-series ratings, not a manufacturer's data.</p>`;
 }
 
@@ -95,13 +95,13 @@ function render() {
   paintBar(); paintScheme(r);
   $('v-flow').className = `vcard ${r.flow.pass ? 'ok' : 'bad'}`; $('vf-word').textContent = r.flow.pass ? 'Yes' : 'No'; $('vf-why').textContent = r.flow.reason;
   $('v-drive').className = `vcard ${r.drive.state === 'pass' ? 'ok' : r.drive.state === 'fail' ? 'bad' : 'warn'}`;
-  $('vd-word').textContent = r.drive.state === 'pass' ? 'Yes' : r.drive.state === 'fail' ? 'No' : 'Not applicable'; $('vd-why').textContent = `${r.drive.motor}: ${r.drive.reason}`;
+  $('vd-word').textContent = { pass: 'Yes', fail: 'No', 'not-applicable': 'Not applicable', 'cannot-assess': 'Cannot assess' }[r.drive.state]; $('vd-why').textContent = `${r.drive.motor}: ${r.drive.reason}`;
   $('design').className = `design ${r.design ? 'ok' : 'bad'}`;
-  $('design').textContent = r.design ? 'Design works: the flow is met and the motor copes.' : !r.flow.pass && r.drive.pass ? 'Design does not work yet: the motor copes, but the flow falls short.' : r.flow.pass && r.drive.state === 'fail' ? 'Design does not work yet: the flow is met, but the motor is overloaded.' : 'Design does not work yet.';
+  $('design').textContent = r.design ? 'Design works: the flow is met and the motor copes.' : !r.flow.pass && r.drive.pass ? 'Design does not work yet: the motor copes, but the flow falls short.' : r.flow.pass && r.drive.state === 'fail' ? 'Design does not work yet: the flow is met, but the motor is overloaded.' : r.operating.cavitating ? 'Design does not work yet: the pump cavitates, so neither the flow nor the motor load can be relied on.' : 'Design does not work yet.';
   $('r-flow').textContent = `${f(r.operating.flow, 2)} L/s`; $('r-head').textContent = `${f(r.operating.head, 2)} m`;
   $('r-power').textContent = `${f(r.operating.shaftPower / 1000, 3)} kW`; $('r-torque').textContent = `${f(r.operating.torque, 2)} N·m`;
   $('r-rated').textContent = `${r.drive.rated / 1000} kW`;
-  $('r-margin').textContent = r.drive.state === 'not-applicable' ? 'n/a' : `${r.drive.margin >= 0 ? '+' : ''}${f(r.drive.margin * 100, 1)} %`;
+  $('r-margin').textContent = r.drive.pass === null ? 'n/a' : `${r.drive.margin >= 0 ? '+' : ''}${f(r.drive.margin * 100, 1)} %`;
   $('r-margin').className = r.drive.state === 'fail' ? 'warn' : '';
   paintModules(r);
 }
