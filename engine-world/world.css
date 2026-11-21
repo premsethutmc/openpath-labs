@@ -62,7 +62,7 @@ h3.sub{font:700 .72rem var(--mono);text-transform:uppercase;letter-spacing:.05em
 .numbers[aria-pressed=true]{background:var(--ink);color:#0b1117}
 .syll{display:inline-block;margin-left:auto;font:600 .64rem var(--mono);color:var(--acc)}
 .trybtn{margin-top:8px}
-body[data-mode=learn][data-details=off] .results li:not(.key):not(.verdict){display:none}
+body[data-mode=learn][data-details=off] .results li:not(.key):not(.verdict):not(.always){display:none}
 body[data-mode=learn][data-details=off] #vchart,body[data-mode=learn][data-details=off] .emis{display:none}
 body[data-mode=learn] .key{display:none}
 .eqs p{margin:8px 0;font-size:.88rem;line-height:1.55}.eqs b{font-family:var(--mono);font-weight:700;color:var(--ink)}
@@ -73,3 +73,6 @@ body[data-mode=learn] .key{display:none}
 #x-ab{overflow-x:auto}
 .whys{display:grid;gap:8px;margin-top:8px}.whys .why{text-align:left;padding:10px 12px;min-height:auto;line-height:1.45;font-weight:500}
 .whys .why[aria-pressed=true]{background:var(--ink);color:#0b1117}
+.chart.evidence{margin-top:8px}.cite{align-items:center}.citelabel{font:600 .76rem var(--mono);color:var(--muted);min-width:70px}
+.cite .guess{flex:1 1 22%;font-size:.8rem;min-height:40px}
+#x-exp .abt{display:block;overflow-x:auto;max-width:100%}

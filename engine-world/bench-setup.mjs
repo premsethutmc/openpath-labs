@@ -78,3 +78,32 @@ export function compare(A, B) {
   const d = k => ({ a: A[k], b: B[k], rel: (B[k] - A[k]) / Math.abs(A[k]) });
   return { ok: true, ve: d('ve'), imep: d('imep'), fmep: d('fmep'), bmep: d('bmep'), torque: d('torque'), power: d('power'), runnerBeforeIVC: d('runnerBeforeIVC'), Wavg: d('Wavg') };
 }
+
+// Evidence from the pressure trace on the runner side of the intake valve, across the whole intake event
+// (IVO → IVC, weighted by valve lift) and over its late part (from 520° to IVC, when the piston slows near BDC and
+// the valve is closing — where pressure decides whether air keeps flowing in or flows back out).
+export const LATE_FROM = 520;
+export function intakeEvidence(run) {
+  const t = run.trace, ivc = run.valves.ivc % 720;
+  let w = 0, whole = 0, wl = 0, late = 0;
+  for (let i = 0; i < 720; i++) {
+    const l = t.liftI[i]; if (l <= 0) continue;
+    w += l; whole += l * t.runner[i];
+    if (t.theta[i] >= LATE_FROM && t.theta[i] <= ivc) { wl += l; late += l * t.runner[i]; }
+  }
+  return { whole: whole / w, late: late / wl, ivo: run.valves.ivo % 720, ivc };
+}
+
+// What the learner's own runs support. The pressure evidence counts only when it clearly moves (≥ 0.02 bar) in the
+// same direction as filling, indicated work and torque at every compared speed; otherwise the honest answer is
+// "inconclusive". Friction can never explain an A/B difference here: FMEP is identical within each pair.
+export const CLEAR_BAR = 0.02e5;
+export function judge(pairs) {
+  const rows = pairs.map(({ A, B }) => {
+    const a = intakeEvidence(A), b = intakeEvidence(B), s = Math.sign;
+    const dLate = b.late - a.late, dWhole = b.whole - a.whole, dVE = B.ve - A.ve, dW = B.Wavg - A.Wavg, dT = B.torque - A.torque;
+    const clear = Math.abs(dLate) >= CLEAR_BAR && Math.abs(dT / A.torque) > 0.01;
+    return { rpm: A.rpm, a, b, dLate, dWhole, dVE, dW, dT, agree: clear && s(dLate) === s(dVE) && s(dVE) === s(dW) && s(dW) === s(dT), wholeAgrees: s(dWhole) === s(dVE) && Math.abs(dWhole) >= CLEAR_BAR };
+  });
+  return { rows, verdict: rows.every(r => r.agree) ? 'wave' : 'inconclusive' };
+}

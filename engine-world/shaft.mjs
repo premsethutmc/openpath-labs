@@ -1,7 +1,7 @@
 // "From cylinder work to shaft power" — a controlled experiment on Engine World's 1D test bench.
 // Every number shown comes from converged runs of the bench (cylinder 1's own p and V); the 3D cutaway is an
 // idealised teaching view moved to the same crank angle. Runner lengths are always shown as the solver uses them.
-import { BENCH_STOCK, BENCH_INPUTS, compare, solverRunner, setupForRunner } from './bench-setup.mjs';
+import { BENCH_STOCK, BENCH_INPUTS, compare, solverRunner, setupForRunner, intakeEvidence, judge, CLEAR_BAR, LATE_FROM } from './bench-setup.mjs';
 import { K12M, K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
 import { piston } from '../engines/motion/crank.mjs';
 
@@ -12,11 +12,12 @@ const cm = L => `${Math.round(L * 100)} cm`;
 const STROKE = a => (a < 180 ? 'Power (expansion)' : a < 360 ? 'Exhaust' : a < 540 ? 'Intake' : 'Compression');
 const FIRST = [2500, 4500, 6000], UNSEEN = [2000, 3000, 3500, 4000, 5000, 5500, 6500, 7000];
 const verdict = rel => (rel > 0.01 ? 'Up' : rel < -0.01 ? 'Down' : 'Within ±1 %');
-const STOCK_L = solverRunner(BENCH_STOCK);
+const STOCK_L = solverRunner(BENCH_STOCK), GUIDED_L = 0.24;
+const guided = () => document.body.dataset.mode === 'learn';
 
 // pairs[k] = { rpm, A, B, prediction, kind: 'first' | 'repeat' | 'unseen' }
 const X = { rpm: 4500, pairs: [], view: 0, angle: 0, playing: false, pv: 'linear', pth: 'full', busy: false, maxCycles: undefined,
-  runnerL: 0.24, prediction: null, nextRpm: null, why: null, unseenRpm: null };
+  runnerL: GUIDED_L, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {} };
 let worker = null, reqId = 0; const pending = new Map();
 function bench(setup, rpm) {
   worker ||= new Worker(new URL('./bench-worker.mjs', import.meta.url), { type: 'module' });
@@ -41,7 +42,7 @@ function readout() {
   if (!r) { el.innerHTML = ''; return; }
   const disp = piston(X.angle * Math.PI / 180, K12M.stroke / 2, K12M.rod).disp;
   const near = events(r).find(([, a]) => Math.abs(((X.angle - a + 360) % 720) - 360) < 1.5);
-  const row = (k, v, cls = '') => `<li class="${cls}"><span>${k}</span> <b>${v}</b></li>`;
+  const row = (k, v, cls = 'always') => `<li class="${cls}"><span>${k}</span> <b>${v}</b></li>`;   // 'key': always shown, also in Learn mode
   el.innerHTML = row('Crank angle (0° = firing TDC, cylinder 1)', `${X.angle.toFixed(0)}°`) + row('Stroke', STROKE(X.angle)) +
     row('Piston below top dead centre', `${(disp * 1000).toFixed(1)} mm`) + row(`Cylinder volume (Run A, ${r.rpm} rpm)`, `${(at(r, 'V') * 1e6).toFixed(1)} cm³`) +
     row('Cylinder pressure (Run A)', `${(at(r, 'p') / 1e5).toFixed(2)} bar`) +
@@ -127,7 +128,7 @@ function pairTable(p, c) {
     ${tr('Brake torque', f(c.torque.a) + ' N·m', f(c.torque.b) + ' N·m', sgn(c.torque.rel), '')}
     ${tr('Shaft power', f(c.power.a / 1000, 2) + ' kW', f(c.power.b / 1000, 2) + ' kW', sgn(c.power.rel), '')}
     ${tr('Cylinder p at IVC', f(p.A.trace.p[ivcIdx(p)] / 1e5, 2) + ' bar', f(p.B.trace.p[ivcIdx(p)] / 1e5, 2) + ' bar', '', 'bench')}
-    ${tr('Valve-side p near BDC', f(p.A.trace.runner[540] / 1e5, 2) + ' bar', f(p.B.trace.runner[540] / 1e5, 2) + ' bar', '', 'bench')}
+    ${(() => { const a = intakeEvidence(p.A), b = intakeEvidence(p.B); return tr('Valve-side p, whole intake event', f(a.whole / 1e5, 3) + ' bar', f(b.whole / 1e5, 3) + ' bar', '', 'bench') + tr(`Valve-side p, late intake (${LATE_FROM}°–IVC)`, f(a.late / 1e5, 3) + ' bar', f(b.late / 1e5, 3) + ' bar', '', 'bench'); })()}
     </tbody></table>`;
 }
 function resultBlock(p) {
@@ -140,27 +141,44 @@ function resultBlock(p) {
 }
 const predictRow = (key, disabled) => `<p class="think">Predict before you run: brake torque will go…</p><div class="row">${['Up', 'Down', 'Within ±1 %'].map(o => `<button type="button" class="guess" data-xp="${key}" data-v="${o}" aria-pressed="${X.prediction === o}" ${disabled ? 'disabled' : ''}>${o}</button>`).join('')}</div>`;
 const WHY = [
-  ['wave', 'The pressure wave reflects where the runner meets the plenum and returns after a time set by runner length and the speed of sound. Engine speed sets when the valve is open, so each length is tuned to a different speed: the shorter runner’s wave arrives in time at a higher speed.'],
-  ['friction', 'A shorter runner has less wall friction, and pipe friction only matters at high speed.'],
-  ['fmep', 'Engine friction is lower at the speed where the shorter runner wins.'],
+  ['wave', 'Wave timing: at every speed the late-intake pressure moved the same way as filling, indicated work and torque.'],
+  ['friction', 'Friction: the change in runner length changed the friction losses.'],
+  ['inconclusive', 'Inconclusive: the pressure trace does not line up clearly with filling and work at every speed.'],
 ];
+function evidenceChart(p) {
+  const a = intakeEvidence(p.A), x0 = 40, y0 = 104, w = 290, h = 84, lo0 = a.ivo - 20, hi0 = a.ivc + 20;
+  const idx = []; for (let i = Math.floor(lo0); i <= Math.ceil(hi0); i++) idx.push(i);
+  const vals = [p.A, p.B].flatMap(r => idx.map(i => r.trace.runner[i]));
+  const lo = Math.min(...vals) * 0.95, hi = Math.max(...vals) * 1.05;
+  const fx = i => x0 + (i - lo0) / (hi0 - lo0) * w, fy = v => y0 - (v - lo) / (hi - lo) * h;
+  let s = `<rect x="${fx(LATE_FROM)}" y="${y0 - h}" width="${fx(a.ivc) - fx(LATE_FROM)}" height="${h}" fill="#1b2832"/>`;
+  s += `<line class="ax" x1="${x0}" y1="${y0}" x2="${x0 + w}" y2="${y0}"/><line class="ax" x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - h}"/>`;
+  for (const t of [0.6, 0.8, 1, 1.2, 1.4, 1.6].filter(t => t * 1e5 > lo && t * 1e5 < hi)) s += `<text class="tick" x="${x0 - 3}" y="${fy(t * 1e5) + 3}" text-anchor="end">${t}</text>`;
+  for (const [ang, lab] of [[a.ivo, 'IVO'], [540, 'BDC'], [a.ivc, 'IVC']]) s += `<line x1="${fx(ang)}" x2="${fx(ang)}" y1="${y0}" y2="${y0 - h}" stroke="#2c3e4a" stroke-dasharray="2 2"/><text class="tick" x="${fx(ang)}" y="${y0 + 11}" text-anchor="middle">${lab}</text>`;
+  for (const [r, col] of [[p.A, '#4fc3f7'], [p.B, '#ff8a3d']]) s += `<polyline points="${idx.map(i => `${fx(i).toFixed(1)},${fy(r.trace.runner[i]).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6"/>`;
+  s += `<text class="tick" x="${x0 + 4}" y="${y0 - h + 9}">${p.rpm} rpm · valve-side p (bar) · <tspan fill="#4fc3f7">A ${cm(STOCK_L)}</tspan> <tspan fill="#ff8a3d">B ${cm(solverRunner(p.B.setup))}</tspan></text>`;
+  return `<svg class="chart evidence" viewBox="0 0 340 122" role="img" aria-label="Runner-side intake pressure across the intake event at ${p.rpm} rpm, Run A and Run B">${s}</svg>`;
+}
 
 function expHTML() {
   const first = X.pairs[0];
   if (!first?.A?.valid) return '';
   let h = '';
   // step 4: first A/B at the first speed
+  if (guided() && !first.B) X.runnerL = GUIDED_L;
   const Lchanged = Math.abs(X.runnerL - STOCK_L) > 0.005;
   if (!first.B) {
-    h += `<label class="range">Run B intake runner length <output id="x-runner-out">${cm(X.runnerL)} (Run A: ${cm(STOCK_L)})</output><input id="x-runner" type="range" min="20" max="70" step="1" value="${Math.round(X.runnerL * 100)}"></label>`;
+    h += guided()
+      ? `<p class="note"><b>Guided lesson:</b> Run B uses a ${cm(GUIDED_L)} runner (${cm(STOCK_L)} → ${cm(GUIDED_L)}). Any length can be tried in Explore mode.</p>`
+      : `<label class="range">Run B intake runner length <output id="x-runner-out">${cm(X.runnerL)} (Run A: ${cm(STOCK_L)})</output><input id="x-runner" type="range" min="20" max="70" step="1" value="${Math.round(X.runnerL * 100)}"></label>`;
     h += predictRow('first', X.busy || !Lchanged);
-    h += `<p class="note">${!Lchanged ? 'Move the runner length away from the stock 34 cm.' : !X.prediction ? 'Predict first: Run B unlocks after you commit.' : 'Ready: Run B keeps everything else exactly as Run A.'}</p>`;
+    h += `<p class="note">${!Lchanged ? `Move the runner length away from the stock ${cm(STOCK_L)}.` : !X.prediction ? 'Predict first: Run B unlocks after you commit.' : 'Ready: Run B keeps everything else exactly as Run A.'}</p>`;
     h += `<div class="row"><button type="button" class="primary" id="x-runB" ${X.busy || !Lchanged || !X.prediction ? 'disabled' : ''}>Run B</button></div>`;
     return h;
   }
   h += resultBlock(first);
   if (!compare(first.A, first.B).ok) return h + `<div class="row"><button type="button" id="x-reset">Try Run B again</button></div>`;
-  h += `<p><b>Why it changed.</b> Friction depends only on speed in this model, so it is identical and the torque change comes from indicated work, which follows the air trapped. The runner is a tuned pipe: when the intake valve opens, a pressure wave travels up the runner, reflects where the runner meets the plenum (a sudden widening) and comes back to the valve. Look at the valve-side pressure near bottom dead centre: a higher value means more air pushed in just before the valve closes. Switch the second chart to “Gas exchange” to see the two waves.</p>`;
+  h += `<p><b>What to look at.</b> Friction depends only on speed in this model, so it is identical within the pair and the torque change comes from indicated work, which follows the air trapped (volumetric efficiency). The runner is a tuned pipe: when the intake valve opens, a pressure wave travels up the runner, reflects where the runner meets the plenum (a sudden widening) and returns to the valve. Whether that helps depends on the pressure on the runner side of the valve across the whole intake event — especially late in it, when the piston slows and the valve is closing. One crank angle is not enough: compare the whole trace (switch the second chart to “Gas exchange”).</p>`;
   // step 5: the same comparison at another speed
   const used = new Set(X.pairs.map(p => p.rpm)), second = X.pairs.find(p => p.kind === 'repeat');
   h += `<h3 class="sub">5 · Same change, another speed</h3>`;
@@ -173,17 +191,27 @@ function expHTML() {
   }
   h += resultBlock(second);
   if (!compare(second.A, second.B).ok) return h + `<div class="row"><button type="button" id="x-redo">Try again</button></div>`;
-  // step 6: defend the explanation with the evidence
-  const c1 = compare(first.A, first.B), c2 = compare(second.A, second.B), reversed = Math.sign(c1.torque.rel) !== Math.sign(c2.torque.rel);
-  const verb = r => (r < 0 ? 'cost' : 'gained');
-  h += `<h3 class="sub">6 · Defend it</h3><p>${reversed ? `The same shorter runner <b>${verb(c1.torque.rel)} ${Math.abs(c1.torque.rel * 100).toFixed(1)} %</b> at ${first.rpm} rpm but <b>${verb(c2.torque.rel)} ${Math.abs(c2.torque.rel * 100).toFixed(1)} %</b> at ${second.rpm} rpm.` : `The effect changed from ${sgn(c1.torque.rel)} at ${first.rpm} rpm to ${sgn(c2.torque.rel)} at ${second.rpm} rpm.`} Which explanation does the evidence support?</p>
-    <div class="whys">${WHY.map(([k, t]) => `<button type="button" class="guess why" data-why="${k}" aria-pressed="${X.why === k}">${t}</button>`).join('')}</div>`;
+  // step 6: cite the evidence across the intake event, then conclude (inconclusive is allowed)
+  const pairs = [first, second], J = judge(pairs), c1 = compare(first.A, first.B), c2 = compare(second.A, second.B);
+  const LB = cm(solverRunner(first.B.setup)), word = r => (r < 0 ? 'lost' : 'gained');
+  h += `<h3 class="sub">6 · Defend it with the evidence</h3>
+    <p>Changing the runner from ${cm(STOCK_L)} to ${LB} ${word(c1.torque.rel)} ${Math.abs(c1.torque.rel * 100).toFixed(1)} % torque at ${first.rpm} rpm and ${word(c2.torque.rel)} ${Math.abs(c2.torque.rel * 100).toFixed(1)} % at ${second.rpm} rpm. Below: the pressure on the runner side of the intake valve across the intake event (shaded: late intake, ${LATE_FROM}° to valve closing).</p>
+    ${pairs.map(evidenceChart).join('')}
+    <p class="think">For each speed: did the late-intake pressure move the same way as volumetric efficiency and indicated work?</p>
+    ${J.rows.map(r => `<div class="row cite"><span class="citelabel">${r.rpm} rpm</span>${[['same', 'Same way'], ['opposite', 'Opposite'], ['unclear', 'No clear change']].map(([k, t]) => `<button type="button" class="guess" data-cite="${r.rpm}" data-v="${k}" aria-pressed="${X.cite[r.rpm] === k}">${t}</button>`).join('')}</div>`).join('')}`;
+  const truth = r => (Math.abs(r.dLate) < CLEAR_BAR ? 'unclear' : Math.sign(r.dLate) === Math.sign(r.dVE) && Math.sign(r.dVE) === Math.sign(r.dW) ? 'same' : 'opposite');
+  if (J.rows.some(r => !X.cite[r.rpm])) return h;
+  h += J.rows.map(r => { const ok = X.cite[r.rpm] === truth(r);
+    return `<p class="measured ${ok ? '' : 'badtext'}">${r.rpm} rpm — ${ok ? 'matches the data' : `the data say “${{ same: 'same way', opposite: 'opposite', unclear: 'no clear change' }[truth(r)]}”`}: late-intake pressure ${f(r.a.late / 1e5, 3)} → ${f(r.b.late / 1e5, 3)} bar, whole-event ${f(r.a.whole / 1e5, 3)} → ${f(r.b.whole / 1e5, 3)} bar, volumetric efficiency ${sgn(r.dVE / pairs.find(p => p.rpm === r.rpm).A.ve)}, work per cylinder ${sgn(r.dW / pairs.find(p => p.rpm === r.rpm).A.Wavg)}, FMEP unchanged.</p>`; }).join('');
+  h += `<p class="think">What do your runs support?</p><div class="whys">${WHY.map(([k, t]) => `<button type="button" class="guess why" data-why="${k}" aria-pressed="${X.why === k}">${t}</button>`).join('')}</div>`;
   if (!X.why) return h;
-  const ev = p => `${p.rpm} rpm: valve-side pressure near BDC ${f(p.A.trace.runner[540] / 1e5, 2)} bar (A) vs ${f(p.B.trace.runner[540] / 1e5, 2)} bar (B); FMEP ${f(p.A.fmep / 1e5, 2)} bar in both`;
-  const shorterWinsEverywhere = c1.torque.rel > 0 && c2.torque.rel > 0;
-  h += `<p class="result ${X.why === 'wave' ? 'right' : 'wrong'}">${X.why === 'wave' ? 'That is what the evidence shows.' : X.why === 'friction' ? (shorterWinsEverywhere ? 'Not the main effect: runner wall friction is small, and the valve-side pressure below shows the wave doing the work.' : 'The evidence does not support that: the shorter runner would then win at every speed, but it lost at one of yours.') : 'The evidence does not support that: in each pair both runs have identical modelled friction, so friction cannot explain the difference between A and B.'}</p>
-    <p class="measured">${ev(first)}.<br>${ev(second)}.</p>
-    <p>At each speed the torque change follows the valve-side pressure near bottom dead centre: wave timing, not friction. The wave’s round trip takes about the same time at every speed, but the time the valve stays open shrinks as speed rises, so a shorter runner lines its wave up with a faster engine.</p>`;
+  const bad = J.rows.find(r => !r.agree);
+  const fb = X.why === 'friction' ? ['wrong', 'Not supported: within each pair the modelled friction (FMEP) is identical, so friction cannot explain the difference between A and B.']
+    : J.verdict === 'wave' ? (X.why === 'wave' ? ['right', 'Supported: at both speeds the late-intake pressure clearly moved the same way as filling, indicated work and torque.'] : ['right', 'A defensible, cautious answer — but here the late-intake pressure clearly moved with filling, work and torque at both speeds, so the runs do support wave timing.'])
+    : (X.why === 'inconclusive' ? ['right', `Right to hold back: at ${bad.rpm} rpm the pressure trace does not clearly line up with filling and work. A next step would be the mass flow through the valve over the cycle (not shown in this lab) or a finer speed sweep.`] : ['wrong', `Not supported at every speed: at ${bad.rpm} rpm the late-intake pressure ${Math.abs(bad.dLate) < CLEAR_BAR ? 'barely changed' : 'moved the other way'} while filling ${bad.dVE > 0 ? 'rose' : 'fell'}. “Inconclusive” is the honest answer here.`]);
+  h += `<p class="result ${fb[0]}">${fb[1]}</p>`;
+  if (J.verdict === 'wave') h += `<p>In these runs, what matters is when the reflected wave reaches the valve relative to the end of the intake event. The round trip takes roughly the same time at every speed, but the intake event gets shorter in time as speed rises, so the same length helps at one speed and hurts at another.</p>`;
+  h += `<p class="note">Model predictions from one 1D model, not dyno evidence.</p>`;
   // step 7: an operating point the learner has not run
   const third = X.pairs.find(p => p.kind === 'unseen');
   h += `<h3 class="sub">7 · An operating point you have not run</h3>`;
@@ -236,14 +264,15 @@ function wire() {
   const b1 = $('x-runB'); if (b1) b1.onclick = () => runPair(X.pairs[0].rpm, 'first', X.prediction, { newA: false });
   document.querySelectorAll('[data-xnext]').forEach(b => b.onclick = () => { X.nextRpm = +b.dataset.xnext; paint(); });
   const b2 = $('x-runPair'); if (b2) b2.onclick = () => runPair(X.nextRpm, 'repeat', X.prediction);
+  document.querySelectorAll('[data-cite]').forEach(b => b.onclick = () => { X.cite = { ...X.cite, [b.dataset.cite]: b.dataset.v }; paint(); });
   document.querySelectorAll('[data-why]').forEach(b => b.onclick = () => { X.why = b.dataset.why; paint(); });
   document.querySelectorAll('[data-xunseen]').forEach(b => b.onclick = () => { X.unseenRpm = +b.dataset.xunseen; paint(); });
   const b3 = $('x-runUnseen'); if (b3) b3.onclick = () => runPair(X.unseenRpm, 'unseen', X.prediction);
-  const drop = kind => { X.pairs = X.pairs.filter(p => p.kind !== kind); X.view = 0; X.prediction = null; paint(); };
+  const drop = kind => { X.pairs = X.pairs.filter(p => p.kind !== kind); X.view = 0; X.prediction = null; if (kind === 'repeat') { X.cite = {}; X.why = null; } paint(); };
   const rs = $('x-reset'); if (rs) rs.onclick = () => { X.pairs[0].B = null; X.prediction = null; paint(); };
   const rd = $('x-redo'); if (rd) rd.onclick = () => drop('repeat');
   const ru = $('x-redoUnseen'); if (ru) ru.onclick = () => drop('unseen');
-  const rr = $('x-restart'); if (rr) rr.onclick = () => { Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null }); paint(); };
+  const rr = $('x-restart'); if (rr) rr.onclick = () => { Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, runnerL: GUIDED_L }); paint(); };
 }
 
 export function initShaft() {
@@ -255,6 +284,7 @@ export function initShaft() {
   $('x-play').onclick = () => { X.playing = !X.playing; paint(); };
   document.querySelectorAll('[data-xpv]').forEach(b => b.onclick = () => { X.pv = b.dataset.xpv; document.querySelectorAll('[data-xpv]').forEach(c => c.setAttribute('aria-checked', String(c === b))); drawPV(); });
   document.querySelectorAll('[data-xpth]').forEach(b => b.onclick = () => { X.pth = b.dataset.xpth; document.querySelectorAll('[data-xpth]').forEach(c => c.setAttribute('aria-checked', String(c === b))); drawPTheta(); });
+  new MutationObserver(() => paint()).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
   paint();
   window.__shaft = { X, setMaxCycles: n => { X.maxCycles = n; } };   // used by browser tests
   return {

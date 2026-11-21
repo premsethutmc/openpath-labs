@@ -53,3 +53,20 @@ test('A/B comparison is controlled: only the runner may differ, speed fixed; bas
   assert.equal(compare(A, runPoint({ ...BENCH_STOCK, cam: { ...BENCH_STOCK.cam, lift: 9 } }, 4500)).ok, false, 'cam change rejected');
   assert.equal(compare(A, runPoint(BENCH_STOCK, 3000)).ok, false, 'speed change rejected');
 });
+
+test('intake-event evidence: guided lesson and a longer runner are judged from the data, with "inconclusive" when mixed', async () => {
+  const { intakeEvidence, judge } = await import('./bench-setup.mjs');
+  const pair = (L, rpm) => ({ A: runPoint(BENCH_STOCK, rpm), B: runPoint(setupForRunner(L), rpm) });
+  const g45 = pair(0.24, 4500), g60 = pair(0.24, 6000), l60 = pair(0.50, 6000);
+  // guided lesson: late-intake pressure, filling, work and torque move together at both speeds
+  assert.equal(judge([g45, g60]).verdict, 'wave');
+  // a single crank angle is not decisive: 34 → 50 cm at 6000 rpm leaves pressure near BDC unchanged while torque falls
+  assert.ok(Math.abs(l60.B.trace.runner[540] - l60.A.trace.runner[540]) < 0.01e5);
+  assert.ok(l60.B.torque < 0.9 * l60.A.torque);
+  assert.ok(intakeEvidence(l60.B).late < intakeEvidence(l60.A).late - 0.02e5, 'late-intake pressure does move');
+  // the whole-event average alone would mislead at 6000 rpm with 24 cm (changes < 0.01 bar while filling rises)
+  assert.ok(Math.abs(judge([g60]).rows[0].dWhole) < 0.01e5 && g60.B.ve > g60.A.ve + 0.05);
+  // mixed evidence → inconclusive (constructed: flip one run's late pressure so it disagrees with filling)
+  const flipped = JSON.parse(JSON.stringify(g45)); flipped.B.trace.runner = flipped.A.trace.runner.map(p => p + 0.1e5);
+  assert.equal(judge([flipped, g60]).verdict, 'inconclusive');
+});
