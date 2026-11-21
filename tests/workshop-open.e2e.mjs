@@ -106,6 +106,33 @@ for (const width of [360, 1280]) test(`Open workshop ${width}px: two jobs, scrat
     assert.equal(sf[0], 'Safety factor'); assert.notEqual(sf[1], sf[2]);
     await pg.reload(); await pg.locator('body[data-ready="true"]').waitFor(); await tab(pg, 'Experiments');
     assert.equal(await pg.locator('[data-reproduced="true"]').count(), 2);
+
+    // Truss bridge: an editable copy keeps the scenario and member roles, so the learner's edit is what changes the result
+    await pg.getByRole('button', { name: 'Truss bridge', exact: true }).click();
+    await tab(pg, 'Scenario'); await pg.getByRole('radio', { name: /Festival crowd/ }).click();
+    const sf0 = await pg.locator('#s-sf').textContent();
+    await saveRun(pg, 'truss, crowd');
+    await pg.getByRole('button', { name: 'Edit this structure' }).click();
+    assert.equal(await pg.locator('#s-sf').textContent(), sf0, 'the copy solves exactly like the original');
+    await tab(pg, 'Scenario'); assert.equal(await pg.getByRole('radio', { name: /Festival crowd/ }).getAttribute('aria-checked'), 'true');
+    await saveRun(pg, 'copy, untouched');
+    await tab(pg, 'Experiments'); await pg.locator('[data-cmp="2"]').check(); await pg.locator('[data-cmp="3"]').check();
+    assert.equal(await pg.locator('.nb-cmp tr.chg').count(), 0, 'no output differs between the original and its copy');
+    const meta = (await pg.locator('.nb-changed').textContent()).split(', ');
+    assert.ok(meta.every(p => /^object\.(id|name|editable|copiedFrom|setting|gap|view\.|question)/.test(p)), `only the editing frame differs: ${meta}`);
+    // one intentional edit: delete the diagonal from (3 m, 3 m) to (6 m, 0) — member 12 of the preset
+    await pg.getByRole('radio', { name: 'Delete' }).click();
+    // (on a phone the crowd and the car are drawn over the diagonal, so the tap goes to the member's own hit area)
+    await pg.locator('#scene .hit[data-member="11"]').dispatchEvent('pointerdown', { bubbles: true, pointerId: 1 });
+    assert.notEqual(await pg.locator('#s-sf').textContent(), sf0, 'the edit changes the result');
+    await saveRun(pg, 'copy, one diagonal removed');
+    await tab(pg, 'Experiments'); await pg.locator('[data-cmp="2"]').uncheck(); await pg.locator('[data-cmp="4"]').check();
+    assert.match(await pg.locator('.nb-changed').textContent(), /object\.members/);
+    assert.equal(await pg.locator('.nb-cmp tbody tr').first().evaluate(r => r.classList.contains('chg')), true, 'safety factor differs');
+    // the untouched original is still there to compare and to load back
+    await pg.locator('.nb-load[data-run="R3"]').click();
+    assert.equal(await pg.locator('#s-sf').textContent(), sf0);
+    await tab(pg, 'Scenario'); assert.equal(await pg.getByRole('radio', { name: /Festival crowd/ }).getAttribute('aria-checked'), 'true');
     assert.deepEqual(pg.errors, []);
   } finally { await browser.close(); server.close(); }
 });

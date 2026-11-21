@@ -4,7 +4,7 @@ import { SCENARIOS, applyScenario } from '../core/scenarios.mjs';
 import { analyze, verdict, SAMPLES } from '../engines/solids/analyze.mjs';
 import { displacedPoint } from '../engines/solids/frame.mjs';
 import { PRESETS, LOAD_OBJECTS } from './presets.mjs';
-import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap } from './build.mjs';
+import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap, editableCopy, buildStructure } from './build.mjs';
 import { workbench } from '../core/workbench.mjs';
 import { notebook } from '../core/notebook.mjs';
 
@@ -28,7 +28,7 @@ const BUILD = {
 let tool = 'move', jointType = 'frame', pending = null, hover = null, nodeDrag = null, undoStack = [];
 const clone = o => JSON.parse(JSON.stringify(o));
 const design = () => ({ nodes: preset.nodes, members: preset.members, supports: preset.supports, loads: state.loads });
-function saveDesign() { if (preset.editable) store.set('labs.design', { ...clone(preset), loads: state.loads, section: state.section, material: state.material }); }
+function saveDesign() { if (preset.editable) store.set('labs.design', { ...clone(preset), loads: state.loads, section: state.section, material: state.material, scenario: state.scenario }); }
 function edit(fn) {
   const before = design(), after = fn(before);
   if (after === before) return;
@@ -51,17 +51,7 @@ function freshState(p) {
   return { material: p.material, section: p.section, scenario: 'normal', loads: p.loads.map(l => ({ ...l })), selected: null, forces: false, exaggerate: true };
 }
 
-export function buildStructure(p, s) {
-  const sc = SCENARIOS[s.scenario];
-  const members = p.members.map(m => {
-    const g = m.group === 'main' ? null : p.groups?.[m.group];
-    return { ...m, material: MATERIALS[g ? g.material : s.material], section: section(g ? g.section : p.sections[s.section]) };
-  });
-  const base = { nodes: p.nodes, members, supports: p.supports, deckWidth: p.deckWidth, sideHeight: p.sideHeight, selfWeight: true };
-  const extra = applyScenario(base, sc);
-  const memberLoads = s.loads.map(l => ({ member: l.member, at: l.at, px: 0, py: -LOAD_OBJECTS[l.obj].kg * 9.81 * sc.gravity }));
-  return { ...base, memberLoads: [...memberLoads, ...extra.memberLoads], temperatureChange: extra.temperatureChange, gravity: extra.gravity, temperature: sc.temperature };
-}
+export { buildStructure };
 
 const run = s => (preset.members.length ? analyze(buildStructure(preset, s)) : { ok: false, reason: 'empty', message: 'Nothing built yet — choose “Draw” and tap two points.' });
 
@@ -410,21 +400,12 @@ function paintBuildbar() {
   $('b-clear').onclick = () => edit(d => ({ nodes: [], members: [], supports: [], loads: [] }));
 }
 
-function editCopy() {
-  const src = preset, xs = src.nodes.map(n => n.x), ys = src.nodes.map(n => n.y);
-  const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys), pad = Math.max(w, h, 3000) * 0.12;
-  const copy = { ...clone(BUILD), ...clone(src), id: 'build', editable: true, name: `Your ${src.name.toLowerCase()}`,
-    question: 'Change anything: add, delete or move members, change supports. What makes it stronger, lighter, or collapse?',
-    view: { minX: Math.min(...xs) - pad, maxX: Math.max(...xs) + pad, minY: Math.min(...ys) - pad * 0.6, maxY: Math.max(...ys) + pad },
-    gap: src.setting === 'river' ? [Math.min(...xs), Math.max(...xs)] : BUILD.gap, setting: src.setting === 'river' ? 'gap' : 'site',
-    members: src.members.map(m => ({ ...m, tags: ['deck'] })), steps: BUILD.steps.slice(1), loads: state.loads, material: state.material, section: state.section };
-  openBuild(copy);
-}
+function editCopy() { openBuild(editableCopy(preset, state, BUILD)); }
 
 function openBuild(p) {
   preset = p; undoStack = []; tool = 'move'; pending = null;
   store.set('labs.preset', 'build');
-  state = { ...freshState(preset), loads: clone(p.loads || []), material: p.material, section: p.section };
+  state = { ...freshState(preset), loads: clone(p.loads || []), material: p.material, section: p.section, scenario: p.scenario || 'normal' };
   guide = { step: 0, revealed: false };
   $('title').textContent = preset.name; $('question').textContent = preset.question;
   document.querySelectorAll('#objects button').forEach(b => b.setAttribute('aria-current', String(b.dataset.preset === 'build')));
@@ -511,7 +492,7 @@ document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(
 new ResizeObserver(() => { if (preset) draw(); }).observe(svg);
 
 // ---------- experiments (shared project + evidence record, core/project.mjs) ----------
-const SETUP_KEYS = ['id', 'name', 'editable', 'setting', 'gap', 'view', 'deckWidth', 'sideHeight', 'hang', 'question', 'nodes', 'members', 'supports', 'groups', 'materials', 'sections', 'loadChoices'];
+const SETUP_KEYS = ['id', 'name', 'editable', 'copiedFrom', 'setting', 'gap', 'view', 'deckWidth', 'sideHeight', 'hang', 'question', 'nodes', 'members', 'supports', 'groups', 'materials', 'sections', 'loadChoices'];
 const getSetup = () => ({ object: Object.fromEntries(SETUP_KEYS.filter(k => preset[k] !== undefined).map(k => [k, clone(preset[k])])),
   state: { material: state.material, section: state.section, scenario: state.scenario, loads: clone(state.loads) } });
 export const SOLIDS_ADAPTER = {
@@ -529,7 +510,7 @@ export const SOLIDS_ADAPTER = {
   },
 };
 function applySetup(setup) {
-  if (setup.object.editable) openBuild({ ...clone(BUILD), ...setup.object, loads: setup.state.loads, material: setup.state.material, section: setup.state.section });
+  if (setup.object.editable) openBuild({ ...clone(BUILD), ...setup.object, loads: setup.state.loads, material: setup.state.material, section: setup.state.section, scenario: setup.state.scenario });
   else { setPreset(setup.object.id); state = { ...state, ...setup.state }; }
   update({ scenario: setup.state.scenario });
 }

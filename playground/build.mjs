@@ -1,6 +1,11 @@
 // Pure editing operations for learner-built structures. A design is { nodes, members, supports, loads }.
 // Coordinates in mm. All functions return a new design (never mutate).
 
+import { MATERIALS } from '../core/materials.mjs';
+import { section } from '../core/sections.mjs';
+import { SCENARIOS, applyScenario } from '../core/scenarios.mjs';
+import { LOAD_OBJECTS } from './presets.mjs';
+
 export const GRID = 500;
 export const snap = v => Math.round(v / GRID) * GRID + 0; // + 0 turns -0 into 0
 const SUPPORT_CYCLE = ['pin', 'roller', 'fixed', 'guide', null];
@@ -71,4 +76,32 @@ export function mass(d, resolve) {
     const a = d.nodes[m.i], b = d.nodes[m.j], { material, section } = resolve(m);
     return sum + material.density * 1e-9 * section.A * Math.hypot(b.x - a.x, b.y - a.y);
   }, 0);
+}
+
+// An editable copy of a preset that keeps every model input: members with their roles (deck, exposed, group),
+// supports, member groups, deck width, side height, loads, material, section and scenario. Only the editing frame
+// changes (name, view, drawing grid). The copy solves to the same result until the learner changes something.
+export function editableCopy(src, state, base) {
+  const xs = src.nodes.map(n => n.x), ys = src.nodes.map(n => n.y);
+  const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys), pad = Math.max(w, h, 3000) * 0.12;
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const { steps, ...model } = src;
+  return { ...clone(base), ...clone(model), id: 'build', editable: true, name: `Your ${src.name.toLowerCase()}`, copiedFrom: src.id,
+    question: 'Change anything: add, delete or move members, change supports. What makes it stronger, lighter, or collapse?',
+    view: { minX: Math.min(...xs) - pad, maxX: Math.max(...xs) + pad, minY: Math.min(...ys) - pad * 0.6, maxY: Math.max(...ys) + pad },
+    gap: src.setting === 'river' ? [Math.min(...xs), Math.max(...xs)] : base.gap, setting: src.setting === 'river' ? 'gap' : 'site',
+    steps: base.steps.slice(1), loads: clone(state.loads), material: state.material, section: state.section, scenario: state.scenario };
+}
+
+// The structure the solver sees: the design + the learner's material, section, loads and scenario.
+export function buildStructure(p, s) {
+  const sc = SCENARIOS[s.scenario];
+  const members = p.members.map(m => {
+    const g = m.group === 'main' ? null : p.groups?.[m.group];
+    return { ...m, material: MATERIALS[g ? g.material : s.material], section: section(g ? g.section : p.sections[s.section]) };
+  });
+  const base = { nodes: p.nodes, members, supports: p.supports, deckWidth: p.deckWidth, sideHeight: p.sideHeight, selfWeight: true };
+  const extra = applyScenario(base, sc);
+  const memberLoads = s.loads.map(l => ({ member: l.member, at: l.at, px: 0, py: -LOAD_OBJECTS[l.obj].kg * 9.81 * sc.gravity }));
+  return { ...base, memberLoads: [...memberLoads, ...extra.memberLoads], temperatureChange: extra.temperatureChange, gravity: extra.gravity, temperature: sc.temperature };
 }
