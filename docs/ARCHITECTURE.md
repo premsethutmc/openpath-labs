@@ -21,8 +21,8 @@ One dashboard, five engines, shared formats. Everything runs in the learner's br
 | Engine | Models | First disciplines | Status |
 |---|---|---|---|
 | **Solids** | Statics, stress, strain, bending, torsion, buckling, failure. 2D frame FEM first; 2D plane stress next. | Mechanical, civil, aerospace; later biomedical | **In build** |
-| **Motion** | Rigid bodies, joints, gears, cams, belts, friction, vibration | Mechanical, automobile, robotics | Planned |
-| **Thermo-fluids** | Property tables (water/steam, air, refrigerants, oils), cycles, pipe networks, pumps, lubrication | Mechanical, chemical, civil hydraulics | Planned |
+| **Motion** | Rigid bodies, joints, gears, cams, belts, friction, vibration | Mechanical, automobile, robotics | Started (crank kinematics) |
+| **Thermo-fluids** | Property tables (water/steam, air, refrigerants, oils), cycles, pipe networks, pumps, lubrication | Mechanical, chemical, civil hydraulics | **First models live** (oil, engine cycle, friction, bearings) |
 | **Circuits** | DC/AC circuits, motors, batteries, sensors, digital logic | Electrical, electronics, computer | Planned |
 | **Materials** | Material database; alloy rules (Fe–C, Al, Cu–Zn), heat treatment, temperature dependence, failure data | All | Seeded (`core/materials.mjs`) |
 
@@ -59,7 +59,8 @@ When a learner asks something outside an engine's model, the dashboard routes it
 
 ```
 docs/                 vision, architecture, learning design, curriculum, validation, roadmap
-core/                 shared formats: materials, sections, scenarios
+core/                 shared formats: materials, sections, scenarios; gl3d.mjs (dependency-free WebGL renderer)
+engine-world/         Engine World experience
 engines/solids/       Solids engine (frame FEM) + tests
 index.html            dashboard
 playground/           Force Playground experience

@@ -18,6 +18,8 @@ Start with the docs:
 - `index.html` — dashboard: engines, the ten-stage mechanical path, progress.
 - `playground/` — **Force Playground** (Solids engine): wall shelf, footbridge, truss bridge, jib crane, diving board, building column. Drag loads live; swap material and size; scenarios (crowd, snow, Arctic, desert, cyclone, Moon); live deformation and stress colours; tap any member for its equations with live numbers; safety factor and failure (yield, fracture, crushing, buckling). Learn mode adds guided steps with pause-and-think predictions computed by the engine.
 - **Build your own** (in the playground): draw members with rigid or pin joints, set supports, delete, drag joints, undo, see material used; or press “Edit this structure” on any object.
+- `engine-world/` — **Engine World**: a see-through 3D four-cylinder engine. Choose or blend an oil, age it in the desert, park the car from Chennai to Alaska, predict, turn the key, drive. Every number is labelled Reliable, Approximate or Assumption. See [docs/ENGINE_WORLD.md](docs/ENGINE_WORLD.md).
+- `engines/thermofluids/`, `engines/motion/` — oil, cycle, friction, cranking, bearing and crank models (tested).
 - `engines/solids/` — 2D frame/truss solver (direct stiffness), stresses, buckling, safety; validated against textbook cases.
 - `core/` — shared materials, sections, scenarios.
 
@@ -25,6 +27,6 @@ No build step. Serve the repository root with any static server:
 
 ```sh
 python3 -m http.server 4190      # then open http://127.0.0.1:4190/
-node --test engines/solids/*.test.mjs playground/*.test.mjs   # engine + build validation
+node --test engines/*/*.test.mjs playground/*.test.mjs   # engine + build validation
 node --test tests/               # browser tests (needs playwright + chromium)
 ```

@@ -38,6 +38,7 @@ h2{font:800 clamp(1.3rem,3vw,1.8rem)/1.15 Archivo,sans-serif;margin:24px 0 10px;
 .obj{display:grid;gap:2px;padding:10px 12px;min-height:44px;border-radius:12px;background:#f3f5f1;border:1px solid var(--line);color:var(--ink);text-decoration:none}
 .obj span{font-weight:700}.obj small{color:var(--muted);font-size:.8rem}
 .obj:hover{border-color:var(--ink)}
+.obj.feature{background:#14202b;color:#fff;border-color:#14202b}.obj.feature small{color:#c9d3db}
 .eng{margin:0;font-size:.78rem;color:var(--muted);font-weight:600}
 .soon p{color:var(--muted);max-width:65ch}
 footer{padding:20px max(5vw,16px) 30px;color:var(--muted);font-size:.82rem;max-width:1240px;margin:auto}

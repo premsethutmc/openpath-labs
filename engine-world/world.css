@@ -1,0 +1,70 @@
+/* VOICE: a test cell at night — dark around the engine, crisp numbers beside it.
+   IDEA: an engine dyno bay; the cutaway engine is the hero, the panels are the control desk.
+   PICTURE: a see-through four-cylinder engine, running, with its oil changing colour as it thickens.
+   COLOUR and TYPE: graphite bay, white desk, signal orange actions; oil amber; cold = ice blue, heat = ember. Archivo + Inter.
+   LAYOUT: phone: engine, gauges, then the five steps. Wide: engine sticky left, steps right. */
+:root{color-scheme:light;--bg:#f4f5f2;--ink:#14202b;--muted:#566370;--line:#d9ddd6;--act:#e0531f}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+button,select{font:inherit;font-weight:600;min-height:44px;border-radius:10px;border:1px solid #c5cbc4;background:#fff;color:var(--ink);padding:0 12px;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #1d58c8;outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+.bar{display:flex;align-items:center;gap:10px;padding:6px max(4vw,12px);background:var(--ink);color:#fff;min-height:52px}
+.back{color:#fff;text-decoration:none;font-weight:700;min-height:44px;display:flex;align-items:center}
+.crumb{font-size:.85rem;opacity:.8}
+main{display:grid;gap:14px;padding:12px max(4vw,12px) 40px;max-width:1240px;margin:auto}
+@media(min-width:920px){main{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}.stage{position:sticky;top:12px}}
+h1{font:800 clamp(1.7rem,4vw,2.5rem)/1.05 Archivo,sans-serif;margin:2px 0 4px}
+.titleblock p{margin:0 0 10px;color:var(--muted)}
+.viewport{position:relative;border-radius:18px;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#3a4652 0%,#1a222a 70%);height:clamp(300px,50vh,520px);transition:background .6s}
+body[data-climate=cold] .viewport{background:radial-gradient(ellipse at 50% 35%,#5f7f99 0%,#1c2b3a 72%)}
+body[data-climate=hot] .viewport{background:radial-gradient(ellipse at 50% 40%,#6b4a33 0%,#24190f 72%)}
+#gl{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.hud{position:absolute;left:10px;top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.state{background:#ffffffe6;color:var(--ink);font-weight:800;font-size:.82rem;padding:4px 10px;border-radius:20px}
+.state.running{background:#3fae6a;color:#fff}.state.cranking{background:#e6a522}.state.failed{background:#d7261e;color:#fff}
+#hud-speed{color:#e8eef3;font-size:.78rem;font-weight:600}
+.drag-hint{position:absolute;right:10px;bottom:6px;margin:0;color:#c9d3db;font-size:.72rem}
+.nogl{position:absolute;inset:auto 10px 30px;color:#fff;background:#0009;padding:8px;border-radius:8px;font-size:.85rem}
+.gauges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 6px}
+.gauges div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.gauges dt{font-size:.72rem;color:var(--muted)}.gauges dd{margin:0;font:700 1.02rem Archivo,sans-serif;white-space:nowrap}
+@media(max-width:560px){.gauges{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.key{font-size:.75rem;color:var(--muted);margin:4px 0 0;line-height:1.9}
+.conf{display:inline-block;font-size:.66rem;font-weight:800;padding:1px 7px;border-radius:10px;vertical-align:middle;white-space:nowrap}
+.conf.reliable{background:#dcefe2;color:#14532d}.conf.approximate{background:#fdf0d4;color:#7a4a00}.conf.assumption{background:#e6e3f7;color:#3b2f86}
+.side{display:grid;gap:12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+h2{display:flex;align-items:center;gap:8px;font:800 1.08rem Archivo,sans-serif;margin:0 0 10px}
+.n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font-size:.85rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:.88rem}
+.chips button[aria-checked=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.blend{display:grid;gap:6px;margin-top:10px}
+.blend label{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:600}
+.blend select{flex:1}
+.range{display:block;font-size:.9rem;font-weight:650;margin-top:10px}
+.range output{font-weight:800;margin-left:4px}
+.range input{display:block;width:100%;min-height:36px;accent-color:var(--act)}
+.range small{display:block;color:var(--muted);font-weight:400;margin-top:4px}
+#vchart,#pv{display:block;width:100%;height:auto;margin-top:10px;background:#fbfcfa;border:1px solid #e3e7e1;border-radius:10px}
+.tick{font:600 9px Inter,sans-serif;fill:#5b6a64}.tick.strong{fill:var(--ink);font-weight:800}.tick.gel{fill:#4f6b82}
+.oilline{stroke:#c47d12;stroke-width:2.6}.refline{stroke:#9aa5a0;stroke-width:1.6;stroke-dasharray:4 4}
+.mark{fill:var(--act);stroke:#fff;stroke-width:2}.mark-line{stroke:var(--act);stroke-width:2;stroke-dasharray:3 3}
+.pvline{stroke:var(--act);stroke-width:2.2;stroke-linejoin:round}
+.note{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.think{margin:0;font:800 .8rem Archivo,sans-serif;color:var(--act)}
+#predict p{margin:4px 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.guess{flex:1 1 40%}.guess[aria-pressed=true]{background:var(--ink);color:#fff}
+.primary{background:var(--act);border-color:var(--act);color:#fff;padding:0 22px;margin-top:8px}
+.results{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px}
+.results li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:6px 0;border-bottom:1px dashed #e1e5df;font-size:.9rem}
+.results li span:first-child{flex:1 1 55%;color:var(--muted)}
+.results li b{font-family:Archivo,sans-serif}
+.results li.good b{color:#14632f}.results li.bad b{color:#b42318}
+.results li.verdict{display:block;border:0;border-radius:10px;padding:10px;font-weight:700}
+.results li.verdict.good{background:#e3f3e8;color:#14532d}.results li.verdict.bad{background:#fde2df;color:#8d1510}
+.guessline{font-size:.9rem;color:var(--muted)}
+.about{font-size:.88rem;color:var(--muted)}.about summary{min-height:44px;align-content:center;font-weight:700;color:var(--ink);cursor:pointer}

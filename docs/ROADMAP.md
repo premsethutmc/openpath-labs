@@ -11,6 +11,12 @@
 - [ ] Tamil interface
 - [ ] Solids v2: 2D plane stress (holes, notches, stress concentrations), shear stress, torsion members
 
+### Engine World (first deep vertical)
+- [x] 3D see-through running engine (own WebGL renderer), drag to rotate, combustion glow, oil gallery filling, bearing colours
+- [x] Oil engine: ASTM D341 viscosity, SAE J300-anchored cold behaviour, pour point, blends, aged-oil assumption
+- [x] Cylinder model, friction, cranking, oil-pressure delay, Ocvirk bearing film, cooling and warm-up — each labelled Reliable / Approximate / Assumption
+- [ ] Fit the parts (assembly), coolant and antifreeze, live warm-up timeline
+
 ## Stage 2 — Proof people want it
 
 - Pilot with 2–3 Tamil Nadu engineering colleges; faculty interviews

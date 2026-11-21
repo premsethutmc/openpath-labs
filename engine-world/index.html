@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Engine World · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="./world.css">
+</head>
+<body data-climate="mild">
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Energy · Lubrication</span>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="titleblock">
+      <h1>Engine World</h1>
+      <p>Choose the oil, give it a history, park the car anywhere on Earth — then turn the key.</p>
+    </div>
+    <div class="viewport">
+      <canvas id="gl" aria-label="Cutaway of a running four-cylinder engine"></canvas>
+      <div class="hud">
+        <span id="hud-state" class="state">Engine off</span>
+        <span id="hud-speed"></span>
+      </div>
+      <p class="drag-hint">Drag to turn the engine</p>
+      <p class="nogl" id="nogl" hidden>3D view needs WebGL, which this browser has turned off. Every number below still works.</p>
+    </div>
+    <dl class="gauges">
+      <div><dt>Engine temperature</dt><dd id="g-temp">–</dd></div>
+      <div><dt>Oil thickness</dt><dd id="g-visc">–</dd></div>
+      <div><dt id="g-speed-label">Crank speed</dt><dd id="g-speed">–</dd></div>
+      <div><dt>Bearings</dt><dd id="g-bearing">–</dd></div>
+    </dl>
+    <p class="key"><span class="conf reliable">Reliable</span> textbook physics or industry standard · <span class="conf approximate">Approximate</span> right trend, ballpark numbers · <span class="conf assumption">Assumption</span> an input you can change</p>
+  </section>
+
+  <section class="side">
+    <div class="card step" id="s-oil">
+      <h2><span class="n">1</span> The oil</h2>
+      <div class="chips" id="oils" role="radiogroup" aria-label="Oil grade"></div>
+      <div id="blendbox" class="blend" hidden>
+        <label>Oil A <select id="blend-a"></select></label>
+        <label>Oil B <select id="blend-b"></select></label>
+        <label class="range">Share of A <output id="blend-out"></output><input id="blend-f" type="range" min="0" max="100" step="5" value="50"></label>
+      </div>
+      <svg id="vchart" viewBox="0 0 340 170" role="img" aria-labelledby="vchart-t"><title id="vchart-t">Oil thickness against temperature</title></svg>
+      <p class="note" id="oil-note"></p>
+    </div>
+
+    <div class="card step">
+      <h2><span class="n">2</span> Its history</h2>
+      <div class="chips" id="history" role="radiogroup" aria-label="Oil history">
+        <button type="button" role="radio" data-history="fresh" aria-checked="true">Fresh oil</button>
+        <button type="button" role="radio" data-history="desert" aria-checked="false">50,000 km in the desert, never changed</button>
+      </div>
+      <label class="range" id="age-box" hidden>How much thicker the old oil has become <output id="age-out"></output>
+        <input id="age" type="range" min="100" max="160" step="5" value="125">
+        <span class="conf assumption">Assumption</span> <small>Oxidation and soot thicken oil; studies report roughly 10–40 % after very long, hot use. Change it and see.</small>
+      </label>
+    </div>
+
+    <div class="card step">
+      <h2><span class="n">3</span> Where it is parked</h2>
+      <div class="chips" id="places" role="radiogroup" aria-label="Place"></div>
+      <label class="range">Parked for <output id="hours-out"></output><input id="hours" type="range" min="0" max="96" step="1" value="96"></label>
+      <p class="note" id="soak-note"></p>
+    </div>
+
+    <div class="card step key-step">
+      <h2><span class="n">4</span> Turn the key</h2>
+      <div id="predict"></div>
+      <div class="row"><button type="button" class="primary" id="key">Turn the key</button></div>
+      <ul class="results" id="start-results" aria-live="polite"></ul>
+    </div>
+
+    <div class="card step">
+      <h2><span class="n">5</span> Drive</h2>
+      <label class="range">Engine speed <output id="rpm-out"></output><input id="rpm" type="range" min="1000" max="6500" step="100" value="3000"></label>
+      <label class="range">Accelerator <output id="thr-out"></output><input id="thr" type="range" min="0" max="100" step="5" value="60"></label>
+      <label class="range">Oil temperature <output id="ot-out"></output><input id="ot" type="range" min="-35" max="140" step="1" value="95"></label>
+      <ul class="results" id="drive-results"></ul>
+      <svg id="pv" viewBox="0 0 340 190" role="img" aria-labelledby="pv-t"><title id="pv-t">Cylinder pressure against volume</title></svg>
+    </div>
+
+    <details class="card about">
+      <summary>What is modelled, and what is not</summary>
+      <p><b>Reliable:</b> piston and crank motion (exact geometry); oil thickness between 0 and 150 °C (ASTM D341 from each oil's 40 °C and 100 °C data); cooling of a parked engine (Newton's law); the ideal Otto cycle as a check on the cylinder model.</p>
+      <p><b>Approximate:</b> oil thickness below 0 °C (anchored to SAE J300 cold-cranking limits); cylinder pressure (single-zone model, Wiebe burn, fixed wall heat loss); friction (Chen–Flynn, scaled with oil viscosity); cranking speed (starter and cold-battery curves); time to oil pressure (pump and suction-pipe flow); bearing film (Ocvirk short-bearing solution, steady load).</p>
+      <p><b>Assumptions:</b> how much old oil thickens; reference engine values (1.2 L, 10.5:1, typical bearings and starter).</p>
+      <p><b>Not modelled:</b> fuel evaporation in extreme cold, combustion chemistry, detailed 3D oil flow, component lifetime. This is a teaching model of the principles, not an engine test.</p>
+    </details>
+  </section>
+</main>
+<script type="module" src="./world.mjs"></script>
+</body>
+</html>

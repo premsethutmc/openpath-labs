@@ -5,8 +5,8 @@ const lastPreset = (() => { try { return JSON.parse(localStorage.getItem('labs.p
 
 const ENGINES = [
   { name: 'Solids', does: 'forces, stress, bending, buckling, failure', status: 'live' },
-  { name: 'Motion', does: 'linkages, gears, cams, vibration', status: 'next' },
-  { name: 'Thermo-fluids', does: 'engines, heat, flow, lubrication', status: 'planned' },
+  { name: 'Motion', does: 'crank trains, linkages, gears, vibration', status: 'seeded' },
+  { name: 'Thermo-fluids', does: 'engines, oil, friction, heat', status: 'live' },
   { name: 'Circuits', does: 'current, motors, sensors, logic', status: 'planned' },
   { name: 'Materials', does: 'alloys, heat treatment, temperature', status: 'seeded' },
 ];
@@ -19,7 +19,7 @@ const STAGES = [
   { title: 'Making things', q: 'How are shapes made, and what does that do to strength?', engines: ['Solids', 'Materials'], status: 'planned', soon: 'Lathe, milling, welding, casting, 3D printing — then test what you made.' },
   { title: 'Machines', q: 'How is motion transformed?', engines: ['Motion'], status: 'next', soon: 'Linkages, cams, gear trains, steering — drag them and watch them move.' },
   { title: 'Dynamics', q: 'What happens when things move fast or shake?', engines: ['Motion', 'Solids'], status: 'planned', soon: 'Balancing, flywheels, governors, earthquakes.' },
-  { title: 'Energy', q: 'Where does the energy go, and how much is wasted?', engines: ['Thermo-fluids'], status: 'planned', soon: 'Run an engine, change its oil, park it in Alaska for four days and start it.' },
+  { title: 'Energy', q: 'Where does the energy go, and how much is wasted?', engines: ['Thermo-fluids', 'Motion'], status: 'live', links: [{ name: 'Engine World', href: './engine-world/index.html', sub: 'Choose the oil, park the car in Alaska, turn the key' }] },
   { title: 'Heat', q: 'How does heat move, and how do we control it?', engines: ['Thermo-fluids'], status: 'planned', soon: 'Fins, insulation, radiators, heat exchangers.' },
   { title: 'Design', q: 'How do I size real parts safely?', engines: ['All engines'], status: 'planned', soon: 'Bolts, gears, bearings, shafts, clutches, brakes.' },
   { title: 'Your project', q: 'Can I build a whole working machine?', engines: ['All engines'], status: 'planned', soon: 'A gearbox, an engine, a vehicle, a robot — yours.' },
@@ -28,7 +28,8 @@ const STAGES = [
 document.getElementById('engines').innerHTML = ENGINES.map(e => `<div class="engine ${e.status}"><b>${e.name}</b><span>${e.does}</span><em>${STATUS[e.status]}</em></div>`).join('');
 
 document.getElementById('stages').innerHTML = STAGES.map((s, i) => {
-  const objects = (s.objects || []).map(id => {
+  const links = (s.links || []).map(k => `<a class="obj feature" href="${k.href}"><span>${k.name}</span><small>${k.sub}</small></a>`).join('');
+  const objects = links + (s.objects || []).map(id => {
     const p = PRESETS.find(x => x.id === id), done = progress[id] || 0, total = p.steps.length;
     return `<a class="obj" href="./playground/index.html#${id}"><span>${p.name}</span><small>${done ? `${Math.min(done, total)}/${total} steps` : p.question}</small></a>`;
   }).join('');
