@@ -31,7 +31,9 @@ const S = {
 // ---------- test stand ----------
 function takeReading() {
   const st = stand(S.design, { mount: S.mount, loaded: S.loaded }), dd = st.at(S.dialX), ss = st.at(S.strainX);
+  if (S.loaded && standLocked()) return;   // unseen case: no loaded results before the prediction and design are locked
   const r = { name: `R${S.runs.length + 1} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
+    attempt: S.stage === 'transfer' || S.stage === 'finished' ? S.transfer.attempt : 0, afterLock: (S.stage === 'transfer' || S.stage === 'finished') && S.transfer.locked,
     dialX: S.dialX, strainX: S.strainX, deflection: dd.deflection, strain: ss.strain * 1e6, stress: ss.strain * MATERIALS[S.design.material].E, mass: st.mass };
   const sec = sectionOf(S.design);
   J.saveRun(r.name, {
@@ -48,6 +50,16 @@ function takeReading() {
   paintRuns(); mission(); document.body.dataset.runs = String(S.runs.length);
 }
 const runByName = n => S.runs.find(r => r.name === n);
+// In the unseen case the test stand stays unloaded until the prediction and design are locked.
+const standLocked = () => S.stage === 'transfer' && !S.transfer.locked;
+// Only readings taken after this attempt's lock can count in the unseen case.
+const attemptRuns = () => S.runs.filter(r => r.attempt === S.transfer.attempt && r.afterLock);
+function paintStand() {
+  const lockedOut = standLocked();
+  if (lockedOut && S.loaded) S.loaded = false;
+  $('load-on').disabled = lockedOut;
+  $('stand-note').textContent = lockedOut ? 'New case: lock your prediction and design in Mission before loading the support. Results under load stay hidden until then.' : 'A reading saves the gauge values with the current design, load and positions. Strain gauges read strain; stress = E · strain.';
+}
 const sameDesign = (r, d) => designKey(r.design) === designKey(d);
 const deflEvidence = (r, d, mount) => !!r && r.loaded && sameDesign(r, d) && r.mount === mount && r.dialX === mount;
 const stressEvidence = (r, d, mount) => !!r && r.loaded && sameDesign(r, d) && r.mount === mount && r.strainX === mount;
@@ -240,8 +252,8 @@ function transferHTML() {
       <div class="row"><button type="button" class="primary" id="tr-lock" ${T.predA && T.predY && check(S.design).ok ? '' : 'disabled'}>Lock prediction and design</button></div>`;
     return h + T.history.join('');
   }
-  const d = T.lockedDesign, dr = S.runs.find(r => deflEvidence(r, d, m)), sr = S.runs.find(r => stressEvidence(r, d, m));
-  h += `<p>Locked: <b>${designLabel(d)}</b>. Now check <b>both</b> limits on the test stand.</p><ul class="check"><li class="${dr ? 'done' : ''}">Deflection read where alignment is judged, under load</li><li class="${sr ? 'done' : ''}">Strain read where the stress peaks, under load</li></ul>`;
+  const d = T.lockedDesign, dr = attemptRuns().find(r => deflEvidence(r, d, m)), sr = attemptRuns().find(r => stressEvidence(r, d, m));
+  h += `<p>Locked: <b>${designLabel(d)}</b>. Now check <b>both</b> limits on the test stand. Only readings taken after this lock count.</p><ul class="check"><li class="${dr ? 'done' : ''}">Deflection read where alignment is judged, under load</li><li class="${sr ? 'done' : ''}">Strain read where the stress peaks, under load</li></ul>`;
   if (dr && sr && !T.result) {
     h += `<p>From your readings — alignment:</p><div class="opts">${opt('va', 'meets', `Within tolerance (${f(dr.deflection, 3)} mm)`, T.verdictA)}${opt('va', 'fails', `Outside tolerance (${f(dr.deflection, 3)} mm)`, T.verdictA)}</div>
       <p>From your readings — strength:</p><div class="opts">${opt('vy', 'meets', `Within the stress limit (${f(sr.stress, 1)} MPa)`, T.verdictY)}${opt('vy', 'fails', `Over the stress limit (${f(sr.stress, 1)} MPa)`, T.verdictY)}</div>
@@ -252,7 +264,8 @@ function transferHTML() {
 }
 function scoreTransfer() {
   const T = S.transfer, m = SPEC.transferMount, d = T.lockedDesign, v = verdict(d, m);
-  const dr = S.runs.find(r => deflEvidence(r, d, m)), sr = S.runs.find(r => stressEvidence(r, d, m));
+  const dr = attemptRuns().find(r => deflEvidence(r, d, m)), sr = attemptRuns().find(r => stressEvidence(r, d, m));
+  if (!dr || !sr) return;   // only readings taken after this attempt's lock are accepted
   const pa = J.score(`transfer${T.attempt}:alignment`, v.alignment ? 'meets' : 'fails'), py = J.score(`transfer${T.attempt}:yield`, v.yield ? 'meets' : 'fails');
   const readA = (dr.deflection <= SPEC.tolerance ? 'meets' : 'fails') === T.verdictA, readY = (sr.stress <= ALLOW(d.material) ? 'meets' : 'fails') === T.verdictY;
   const passed = v.all && readA && readY;
@@ -298,17 +311,17 @@ function wireMission() {
   on('[data-va]', b => { S.transfer.verdictA = b.dataset.va; mission(); });
   on('[data-vy]', b => { S.transfer.verdictY = b.dataset.vy; mission(); });
   const tg = $('tr-go'); if (tg) tg.onclick = scoreTransfer;
-  const rt = $('tr-retry'); if (rt) rt.onclick = () => { const T = S.transfer; T.history.push(`<p class="step">Attempt ${T.attempt}: ${designLabel(T.lockedDesign)}</p>${T.result.replace(/<div class="row">[\s\S]*$/, '')}`); Object.assign(T, { attempt: T.attempt + 1, predA: null, predY: null, locked: false, verdictA: null, verdictY: null, result: null }); refresh(); };
+  const rt = $('tr-retry'); if (rt) rt.onclick = () => { const T = S.transfer; T.history.push(`<p class="step">Attempt ${T.attempt}: ${designLabel(T.lockedDesign)}</p>${T.result.replace(/<div class="row">[\s\S]*$/, '')}`); Object.assign(T, { attempt: T.attempt + 1, predA: null, predY: null, locked: false, verdictA: null, verdictY: null, result: null }); S.loaded = false; refresh(); };
 }
 
-function refresh() { draw(); paintDesign(); paintRuns(); mission(); }
+function refresh() { paintStand(); draw(); paintDesign(); paintRuns(); mission(); }
 // ---------- test stand wiring ----------
 $('dial-x').innerHTML = GAUGE_POSITIONS.map(x => `<option value="${x}">${x} mm</option>`).join('');
 $('strain-x').innerHTML = $('dial-x').innerHTML;
 $('dial-x').value = S.dialX; $('strain-x').value = S.strainX;
 $('dial-x').onchange = e => { S.dialX = +e.target.value; draw(); };
 $('strain-x').onchange = e => { S.strainX = +e.target.value; draw(); };
-$('load-on').onclick = () => { S.loaded = true; draw(); };
+$('load-on').onclick = () => { if (standLocked()) return; S.loaded = true; draw(); };
 $('load-off').onclick = () => { S.loaded = false; draw(); };
 $('take').onclick = takeReading;
 $('cmp-a').onchange = paintCompare; $('cmp-b').onchange = paintCompare;

@@ -90,6 +90,15 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
       t = await mission.innerText();
       assert.match(t, /The machine moves to mid-span[\s\S]*2500 N at 300 mm/); assert.doesNotMatch(t, /^hints$/im, 'no hints section in the new case');
       await design('Structural steel', 'I-section', { b: 40, h: 70, tw: 3, tf: 3 });   // also meets every guided limit
+      // shortcut 1: load and read before locking — blocked, even if the button is forced
+      await tab('Test stand');
+      assert.ok(await page.getByRole('button', { name: 'Apply operating load' }).isDisabled(), 'no load before the lock');
+      assert.match(await page.locator('#stand-note').innerText(), /lock your prediction and design/);
+      await page.evaluate(() => { const b = document.getElementById('load-on'); b.disabled = false; b.click(); });
+      await page.locator('#dial-x').selectOption('300'); await page.locator('#strain-x').selectOption('300');
+      await page.getByRole('button', { name: 'Take a reading' }).click();
+      r = await last(); assert.equal(Math.abs(r.d).toFixed(3), '0.000', 'only an unloaded reading is possible before the lock');
+      assert.equal(await page.locator('#status').innerText(), 'UNLOADED');
       await tab('Mission');
       await mission.locator('[data-pa="meets"]').click(); await mission.locator('[data-py="meets"]').click();
       await mission.getByRole('button', { name: 'Lock prediction and design' }).click();
@@ -108,10 +117,25 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
       await mission.locator('[data-pa="meets"]').click(); await mission.locator('[data-py="meets"]').click();
       await mission.getByRole('button', { name: 'Lock prediction and design' }).click();
       await reading({ load: true, dial: 300, strain: 300 }); await tab('Mission');
+      await mission.locator('[data-va="fails"]').click(); await mission.locator('[data-vy="meets"]').click();   // misread on purpose
+      await mission.getByRole('button', { name: 'Submit' }).click();
+      await page.waitForFunction(() => document.body.dataset.transfer === 'not-passed-2');
+      // shortcut 2: re-lock the same design and reuse attempt 2's readings — not accepted
+      await mission.getByRole('button', { name: 'Redesign and lock again' }).click();
+      await tab('Test stand'); assert.ok(await page.getByRole('button', { name: 'Apply operating load' }).isDisabled(), 'load blocked again before the new lock');
+      await tab('Mission');
+      await mission.locator('[data-pa="meets"]').click(); await mission.locator('[data-py="meets"]').click();
+      await mission.getByRole('button', { name: 'Lock prediction and design' }).click();
+      t = await mission.innerText();
+      assert.equal(await mission.locator('.check li.done').count(), 0, 'readings from an earlier attempt do not count');
+      assert.equal(await mission.locator('[data-va]').count(), 0, 'no verdict without fresh readings');
+      assert.match(t, /Only readings taken after this lock count/);
+      await reading({ load: true, dial: 300, strain: 300 }); await tab('Mission');
+      assert.equal(await mission.locator('.check li.done').count(), 2);
       await mission.locator('[data-va="meets"]').click(); await mission.locator('[data-vy="meets"]').click();
       await mission.getByRole('button', { name: 'Submit' }).click();
       await page.waitForFunction(() => document.body.dataset.transfer === 'passed');
-      assert.match(await mission.innerText(), /Passed on design 2/);
+      assert.match(await mission.innerText(), /Passed on design 3/);
       assert.ok(await page.evaluate(() => innerWidth >= document.documentElement.scrollWidth), 'no sideways scroll');
       await page.screenshot({ path: `/tmp/mount-${vp.width}.png`, fullPage: vp.width < 600 });
       assert.deepEqual(errors, []);
