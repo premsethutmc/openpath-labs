@@ -14,7 +14,7 @@ h1{font:800 clamp(2rem,5vw,3.3rem)/1.05 Archivo,sans-serif;margin:0 0 12px;text-
 .lede{font-size:1.08rem;color:#33424f;max-width:52ch;margin:0 0 18px}
 .cta{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border-radius:12px;background:var(--act);color:#fff;font-weight:700;text-decoration:none}
 .hero-art{width:100%;height:auto;display:block}
-.art-label{font:700 13px Inter,sans-serif;fill:#8d1510}
+.art-label{font:700 12px Inter,sans-serif;fill:#13202c}
 main{max-width:1240px;margin:auto;padding:0 max(5vw,16px) 40px}
 h2{font:800 clamp(1.3rem,3vw,1.8rem)/1.15 Archivo,sans-serif;margin:24px 0 10px;text-wrap:balance}
 .engine-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}

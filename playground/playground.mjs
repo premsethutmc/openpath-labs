@@ -69,10 +69,12 @@ const kN = n => `${fmt(n / 1000, Math.abs(n) < 10000 ? 2 : 1)} kN`;
 const kNm = n => `${fmt(n / 1e6, Math.abs(n) < 1e7 ? 2 : 1)} kN·m`;
 const sci = n => { if (n === 0) return '0'; const e = Math.floor(Math.log10(Math.abs(n))); return e < 4 ? fmt(n, 0) : `${(n / 10 ** e).toFixed(2)}×10${String(e).split('').map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c] || '⁻').join('')}`; };
 const sfText = sf => (sf > 99 ? '99+' : sf.toFixed(sf < 10 ? 2 : 1));
+// How hard a part works: calm steel → amber → orange → red at the limit (one meaning, no rainbow).
+const RAMP = [[0, [111, 135, 150]], [0.45, [150, 160, 150]], [0.65, [217, 164, 65]], [0.85, [224, 83, 31]], [1, [179, 20, 27]]];
 function utilColour(u) {
   const x = Math.max(0, Math.min(1, u));
-  const hue = x < 0.5 ? 210 - (x / 0.5) * 80 : x < 0.8 ? 130 - ((x - 0.5) / 0.3) * 85 : 45 - ((x - 0.8) / 0.2) * 45;
-  return u >= 1 ? '#d7261e' : `hsl(${hue.toFixed(0)} 72% ${x > 0.6 ? 46 : 42}%)`;
+  for (let i = 1; i < RAMP.length; i++) if (x <= RAMP[i][0]) { const [a, ca] = RAMP[i - 1], [b, cb] = RAMP[i], f = (x - a) / (b - a); return `rgb(${ca.map((v, k) => Math.round(v + (cb[k] - v) * f)).join(' ')})`; }
+  return 'rgb(179 20 27)';
 }
 const memberRole = (k) => {
   const m = preset.members[k], a = preset.nodes[m.i], b = preset.nodes[m.j];
@@ -102,22 +104,34 @@ function layout() {
 }
 
 // ---------- drawing ----------
+// A river valley: far bank haze, water with ripples, earth banks with a grass edge, concrete abutments.
+function valley(a, b, top, slope, abut = true) {
+  const { W, H } = view, wy = H - 34, mid = (a + b) / 2;
+  return `<path d="M0 ${wy - 18} C${W * 0.25} ${wy - 34} ${W * 0.5} ${wy - 20} ${W * 0.7} ${wy - 30} S${W} ${wy - 22} ${W} ${wy - 26} V${H}H0Z" fill="#a9c2b9" opacity=".5"/>
+    <rect x="0" y="${wy}" width="${W}" height="34" fill="url(#water)"/>
+    <g stroke="#d6e8f2" stroke-opacity=".5" stroke-width="1.4" stroke-linecap="round"><path d="M${mid - 70} ${wy + 10}h36M${mid + 10} ${wy + 20}h50M${mid - 30} ${wy + 28}h24"/></g>
+    <path d="M0 ${top}H${a}L${a + slope} ${H}H0Z" fill="url(#earth)"/><path d="M${W} ${top}H${b}L${b - slope} ${H}H${W}Z" fill="url(#earth)"/>
+    <path d="M0 ${top + 1}H${a}M${W} ${top + 1}H${b}" stroke="#6f8f55" stroke-width="4"/>
+    ${abut ? `<path d="M${a - 26} ${top + 2}h26l-3 ${Math.min(60, H - top - 30)}h-20z" fill="url(#conc)"/><path d="M${b} ${top + 2}h26l-3 ${Math.min(60, H - top - 30)}h-20z" fill="url(#conc)"/>` : ''}`;
+}
 function background() {
   const { W, H, X, Y } = view, y0 = Y(0), x0 = X(0);
   const sky = `<rect width="${W}" height="${H}" fill="url(#sky)"/>`;
   const defs = `<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#cfe3ef"/><stop offset="1" stop-color="#eef3f1"/></linearGradient>
-    <linearGradient id="water" x2="0" y2="1"><stop stop-color="#5aa3c7"/><stop offset="1" stop-color="#2f6f99"/></linearGradient>
+    <linearGradient id="water" x2="0" y2="1"><stop stop-color="#5f93b0"/><stop offset="1" stop-color="#2c5d7c"/></linearGradient>
+    <linearGradient id="earth" x2="0" y2="1"><stop stop-color="#9c8a68"/><stop offset="1" stop-color="#6f604a"/></linearGradient>
+    <linearGradient id="conc" x2="1"><stop stop-color="#bfc2be"/><stop offset="1" stop-color="#999d9a"/></linearGradient>
     <pattern id="brick" width="28" height="14" patternUnits="userSpaceOnUse"><rect width="28" height="14" fill="#b4644a"/><path d="M0 .5H28M0 7.5H28M14 0v7M0 7v7M28 7v7" stroke="#e7cdb8" stroke-width="1"/></pattern>
     <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v8" stroke="#6d5a43" stroke-width="2"/></pattern></defs>`;
   let g = '';
   const xEnd = X(Math.max(...preset.nodes.map(n => n.x)));
   if (preset.setting === 'wall') g = `<rect x="0" y="0" width="${x0}" height="${H}" fill="url(#brick)"/><rect x="${x0 - 4}" y="0" width="4" height="${H}" fill="#7a3d2b"/>`;
-  if (preset.setting === 'river') g = `<path d="M0 ${y0 + 6}H${x0 + 6}L${x0 + 30} ${H}H0Z" fill="#8c7a5b"/><path d="M${W} ${y0 + 6}H${xEnd - 6}L${xEnd - 30} ${H}H${W}Z" fill="#8c7a5b"/><rect x="0" y="${H - 34}" width="${W}" height="34" fill="url(#water)" opacity=".9"/>`;
+  if (preset.setting === 'river') g = valley(x0 + 6, xEnd - 6, y0 + 6, 30);
   if (preset.setting === 'site') g = `<rect x="0" y="${y0 + 2}" width="${W}" height="${H - y0}" fill="#a8916b"/><rect x="0" y="${y0 + 2}" width="${W}" height="6" fill="#8a7553"/>`;
   if (preset.setting === 'pool') g = `<rect x="0" y="${y0 + 8}" width="${x0 + view.s * 1100}" height="${H - y0}" fill="#d9d4c7"/><rect x="${x0 + view.s * 1100}" y="${y0 + 60}" width="${W}" height="${H}" fill="url(#water)"/>`;
   if (preset.setting === 'gap') {
     const a = X(preset.gap[0]), b = X(preset.gap[1]);
-    g = `<path d="M0 ${y0}H${a}L${a + 14} ${H}H0Z" fill="#8c7a5b"/><path d="M${W} ${y0}H${b}L${b - 14} ${H}H${W}Z" fill="#8c7a5b"/><rect x="${a}" y="${H - 30}" width="${b - a}" height="30" fill="url(#water)"/>`;
+    g = valley(a, b, y0, 14, false);
   }
   if (preset.editable) {
     const v = preset.view; let dots = '';
@@ -149,7 +163,7 @@ function loadGlyph(l, k) {
   const hang = preset.hang, vertical = preset.id === 'column';
   const gy = hang ? y + 40 : y - (vertical ? 22 : 8);
   let shape;
-  if (o.glyph === 'person') shape = `<circle cx="0" cy="${-size * .82}" r="${size * .16}" fill="#2b3a44"/><path d="M${-size * .2} ${-size * .62}h${size * .4}l${size * .05} ${size * .38}h${-size * .12}l-.02 ${size * .24}h${-size * .16}l0 ${-size * .24}h${-size * .12}z" fill="#2b3a44"/>${l.obj === 'jump' ? `<path d="M${-size * .5} ${-size * .9}l6 6M${size * .5} ${-size * .9}l-6 6" stroke="#d7261e" stroke-width="2"/>` : ''}`;
+  if (o.glyph === 'person') { const k = size; shape = `<g fill="#2b3a44" stroke="#2b3a44" stroke-linecap="round"><circle cx="0" cy="${-k * .86}" r="${k * .11}" stroke="none"/><path d="M0 ${-k * .72}V${-k * .36}" stroke-width="${k * .14}"/><path d="M${-k * .02} ${-k * .38}L${-k * .1} -2M${k * .02} ${-k * .38}L${k * .1} -2" stroke-width="${k * .09}" fill="none"/><path d="M0 ${-k * .66}L${-k * .14} ${-k * .44}M0 ${-k * .66}L${k * .14} ${-k * .44}" stroke-width="${k * .07}" fill="none"/></g>${l.obj === 'jump' ? `<path d="M${-k * .5} ${-k * .9}l6 6M${k * .5} ${-k * .9}l-6 6" stroke="#d7261e" stroke-width="2"/>` : ''}`; }
   else if (o.glyph === 'car') shape = `<path d="M${-size * .7} -4v${-size * .22}l${size * .2} ${-size * .2}h${size * .7}l${size * .3} ${size * .2}h${size * .2}v${size * .22}z" fill="#c0442b"/><circle cx="${-size * .4}" cy="-3" r="${size * .1}" fill="#222"/><circle cx="${size * .4}" cy="-3" r="${size * .1}" fill="#222"/>`;
   else if (o.glyph === 'truck') shape = `<rect x="${-size * .8}" y="${-size * .62}" width="${size * 1.1}" height="${size * .52}" fill="#e0a12a"/><path d="M${size * .32} ${-size * .5}h${size * .25}l${size * .15} ${size * .2}v${size * .2}h${-size * .4}z" fill="#3c6e91"/><circle cx="${-size * .5}" cy="-3" r="${size * .11}" fill="#222"/><circle cx="${size * .48}" cy="-3" r="${size * .11}" fill="#222"/>`;
   else shape = `<rect x="${-size * .4}" y="${-size * .7}" width="${size * .8}" height="${size * .66}" rx="3" fill="#8a6b43" stroke="#5a4426"/>`;
