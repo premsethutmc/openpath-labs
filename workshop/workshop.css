@@ -42,3 +42,4 @@
 .band .mid{stroke:#e6eef3;stroke-width:1.5}.band .zero{stroke:#8fa3b0;stroke-dasharray:2 2}
 .guide-text code{font:500 .8rem var(--mono);white-space:normal}
 .truthtxt{color:#d9a441}
+.history{margin-top:16px;padding-top:8px;border-top:1px dashed var(--line)}.history em{color:var(--muted)}
