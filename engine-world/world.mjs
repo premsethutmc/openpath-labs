@@ -9,6 +9,7 @@ import { makeMissions, COURSE } from './missions.mjs';
 import { PARTS, emptyBuild, complete, fit, remove, has, option, isComplete, buildEffects } from './assembly.mjs';
 import { engineItems, SCENE_TARGET } from './scene.mjs';
 import { workbench } from '../core/workbench.mjs';
+import { initShaft } from './shaft.mjs';
 const CARD2MOD = { 'build-panel': 'build', 's-oil': 'start', 's-history': 'start', 's-park': 'start', 's-key': 'start', 's-drive': 'drive', 's-breathe': 'breathing', 's-burn': 'combustion' };
 const RUN_MODS = ['start', 'drive', 'breathing', 'combustion'];
 
@@ -293,14 +294,16 @@ function benchWorker() {
   bench = new Worker(new URL('./bench-worker.mjs', import.meta.url), { type: 'module' });
   bench.onmessage = ({ data }) => {
     if (data.kind === 'point') {
-      S.benchPoint = data; $('bench-status').textContent = `Done: ${data.rpm} rpm${data.converged ? '' : ' (not fully converged)'}.`;
+      if (!data.converged) { $('bench-status').textContent = `${data.rpm} rpm did not converge — result not shown.`; $('bench-results').innerHTML = ''; $('waves').setAttribute('hidden', ''); setBusy(false); return; }
+      S.benchPoint = data; $('bench-status').textContent = `Done: ${data.rpm} rpm.`;
       $('bench-results').innerHTML = li('Cylinder filling (test bench)', `${fmt(data.ve * 100)} %`, 'approximate') + li('Torque (test bench)', `${fmt(data.torque)} N·m`, 'approximate') + li('Power (test bench)', `${fmt(data.power, 1)} kW`, 'approximate');
       drawWaves(data); setBusy(false);
     } else if (data.kind === 'curvePoint') {
-      (S.benchCurve ||= []).push({ rpm: data.rpm, torque: data.torque, power: data.power });
-      $('bench-status').textContent = `Running the test bench… ${data.rpm} rpm done.`;
+      if (data.converged) (S.benchCurve ||= []).push({ rpm: data.rpm, torque: data.torque, power: data.power });
+      else S.benchSkipped = (S.benchSkipped || 0) + 1;
+      $('bench-status').textContent = `Running the test bench… ${data.rpm} rpm ${data.converged ? 'done' : 'did not converge (left out)'}.`;
       drawDyno(dynoCurve());
-    } else if (data.kind === 'curveDone') { $('bench-status').textContent = 'Full curve done (purple).'; setBusy(false); document.body.dataset.benchDone = 'true'; }
+    } else if (data.kind === 'curveDone') { $('bench-status').textContent = `Full curve done (purple)${S.benchSkipped ? ` — ${S.benchSkipped} speed(s) did not converge and are left out` : ''}.`; S.benchSkipped = 0; setBusy(false); document.body.dataset.benchDone = 'true'; }
   };
   return bench;
 }
@@ -488,6 +491,7 @@ $('numbers').onclick = () => { S.allNumbers = !S.allNumbers; $('numbers').setAtt
 
 // ---------- inputs ----------
 const WB = workbench('engine', { initial: 'mission' });
+const SHAFT = initShaft();
 document.addEventListener('module', ({ detail: id }) => {
   if (id === 'build') { if (S.tab !== 'build') { S.tab = 'build'; resetStart(); paint(); } return; }
   if (!RUN_MODS.includes(id)) return;
@@ -539,7 +543,9 @@ function frame(now) {
     S.gallery = Math.min(1, (now - S.fillStart) / 1000 / d);
     if (S.gallery >= 1) paintGauges();
   }
-  theta = (theta + revs * 360 * dt * (reduced ? 0.25 : 1)) % 720;
+  const xa = SHAFT.tick(dt, WB.current === 'shaft');
+  theta = xa ?? (theta + revs * 360 * dt * (reduced ? 0.25 : 1)) % 720;
+  if (xa !== null) label = 'crank angle from the experiment · idealised view';
   const q = S.start?.delay?.flow || 0;
   flowPhase = (flowPhase + dt * (S.phase === 'running' ? Math.min(1.2, q * 800) : 0)) % 1;
   if (!dragging && !reduced && S.phase === 'off' && S.tab === 'run') cam.yaw += dt * 0.12;

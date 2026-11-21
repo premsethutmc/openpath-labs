@@ -300,7 +300,7 @@ test('Engine World Learn mode: nine syllabus-linked missions with simulation-com
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
     const mission = page.locator('#mission');
-    const visibleCards = () => page.locator('.dock [data-open]:not([disabled]):not([hidden])').evaluateAll(els => els.map(e => e.dataset.open).filter(id => id !== 'about'));
+    const visibleCards = () => page.locator('.dock [data-open]:not([disabled]):not([hidden])').evaluateAll(els => els.map(e => e.dataset.open).filter(id => id !== 'about' && id !== 'shaft'));   // the Work → power experiment is always available
     assert.match(await mission.innerText(), /Mission 1 of 9[\s\S]*ME3451 Thermal Engineering · Unit IV · IC engine components/);
     assert.deepEqual(await visibleCards(), ['mission', 'build']);
     assert.equal(await page.locator('.side .module:not([hidden])').count(), 1, 'one module at a time');

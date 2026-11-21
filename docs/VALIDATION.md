@@ -97,3 +97,17 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 | Separation | none at 60 rpm, suction separates at 120 rpm (limit 72 rpm); air vessels prevent it | 2.5 m abs criterion | ✓ |
 
 **Assumptions:** simple harmonic piston motion (long connecting rod), rigid water columns, constant friction factor (taken at mean velocity), air vessels adjacent to the cylinder, slip as one coefficient of discharge.
+
+## Engine World — cylinder work to shaft power (1D bench post-processing)
+
+| Check | Result |
+|---|---|
+| Solver output after adding trace recording | unchanged at 2500, 4500 and 6000 rpm (reviewer ran main and branch side by side: identical); test tolerance 1e-9 relative for portability across Node versions |
+| ∮p dV of cylinder 1's trace vs solver's cylinder-1 work | within 0.012 % (2500, 4500, 6000 rpm) |
+| IMEP → BMEP → torque → power chain vs solver torque/power | identical to 1e-12 |
+| Unconverged run (maxCycles 2) | flagged invalid, carries no numbers or traces, refused by compare |
+
+**Worked A/B (full throttle), solver runner lengths 34 → 24 cm.** At 4500 rpm: volumetric efficiency 101.1 % → 83.2 %, IMEP 13.56 → 11.24 bar, FMEP 1.71 bar both (modelled), brake torque 113.0 → 90.8 N·m (−19.6 %). Cylinder pressure at intake-valve closing 1.76 → 1.40 bar; valve-side pressure near BDC 1.35 → 1.02 bar. At 6000 rpm the same change reverses: torque 95.7 → 110.2 N·m (+15.1 %), valve-side pressure near BDC 1.22 → 1.37 bar. Sweep 2000–7000 rpm: below 3500 rpm the sign alternates (multiple tuning orders); at every speed the sign of the torque change matches the change in valve-side pressure near BDC.
+**Caveat:** the runner effect is a model prediction; the K12M bench is fitted at one torque point and checked at one power point, which does not validate the full curve or runner sensitivity.
+
+**Evidence used for explanations.** Runner-side pressure averaged (lift-weighted) over the late intake event, 520° to IVC. Across 34 → 24 cm at 2500, 4500, 6000 and 7000 rpm and 34 → 50 cm at 4500 and 6000 rpm, its change has the same sign as the change in volumetric efficiency. Pressure at a single angle (BDC) does not: with 34 → 50 cm at 6000 rpm it is unchanged, 1.22 bar, while torque falls 14.7 %. The whole-event average does not either: with 34 → 24 cm at 6000 rpm it moves 0.862 → 0.861 bar while filling rises 11.4 points. This is an observation about this model at these points, not a general law, so the lab accepts "inconclusive" whenever the evidence is mixed.

@@ -223,7 +223,8 @@ export function simulate(rpm, opts = {}) {
   const cyc = cyls.map(() => ({ trapped: 0, fuel: 0, work: 0, pIVC: 1e5, VIVC: cylVolume(180, e), TIVC: 300, airIn: 0, airThisCycle: 0 }));
   let theta = 0, cycles = 0, last = null, history = [];
   const maxCycles = opts.maxCycles ?? 14;
-  const traces = { cyl: [], runner: [], theta: [] };
+  const traces = { cyl: [], runner: [], theta: [], V: [], liftI: [], liftE: [] };   // cylinder 1, last converged cycle
+  let lastWorks = null;
   const dxMin = Math.min(...pipes.map(p => p.dx));
   // per-cycle accumulators
   const done = () => last && history.length >= 3 && Math.abs(history.at(-1).ve - history.at(-2).ve) < 0.004 && Math.abs(history.at(-1).imep - history.at(-2).imep) / Math.abs(history.at(-1).imep) < 0.005;
@@ -297,7 +298,10 @@ export function simulate(rpm, opts = {}) {
       c.V = V2;
       c.m = Math.max(c.m, 1e-7);
       volState(c);
-      if (k === 0) { traces.theta.push(ph2); traces.cyl.push(c.p); const [, , pr] = prim(runners[0].U[runners[0].n - 2], 1.4); traces.runner.push(pr); }
+      if (k === 0) {
+        traces.theta.push(ph2); traces.cyl.push(c.p); traces.V.push(V2); const [, , pr] = prim(runners[0].U[runners[0].n - 2], 1.4); traces.runner.push(pr);
+        traces.liftI.push(valveLift(ph2 % 720, ivo, e.intake.duration, e.intake.lift)); traces.liftE.push(valveLift(ph2 % 720, evo, e.exhaust.duration, e.exhaust.lift));
+      }
     }
     for (const v of [plenum, coll, airbox, cat, muff]) { v.U += v.dU * dt; v.m += v.dm * dt; v.m = Math.max(v.m, 1e-7); volState(v); }
 
@@ -307,17 +311,19 @@ export function simulate(rpm, opts = {}) {
       cycles++;
       const air = cyc.reduce((a, s) => a + (s.airIn || 0), 0) / e.cylinders;
       const work = cyc.reduce((a, s) => a + s.work, 0) / e.cylinders;
+      lastWorks = cyc.map(s => s.work);
       cyc.forEach(s => { s.work = 0; });
       const ve = air / (amb.p / (R * amb.T) * Vd);
       last = { ve, imep: work / Vd, air };
       history.push(last);
-      if (!done()) { traces.cyl.length = 0; traces.runner.length = 0; traces.theta.length = 0; }
+      if (!done()) for (const key in traces) traces[key].length = 0;
     }
   }
   const fmep = frictionMEP(rpm, e);
   const bmep = last.imep - fmep;
   const torque = bmep * Vd * e.cylinders / (4 * Math.PI);
-  return { rpm, ve: last.ve, imep: last.imep, fmep, bmep, torque, power: torque * w, cycles, converged: done(), history, traces };
+  // works: net indicated work of each cylinder over the last full cycle (J); Vd: swept volume per cylinder (m³)
+  return { rpm, ve: last.ve, imep: last.imep, fmep, bmep, torque, power: torque * w, cycles, converged: done(), history, traces, works: lastWorks, Vd, cylinders: e.cylinders, valves: { ivo, ivc, evo, evc: evo + e.exhaust.duration } };
 }
 function bflMass(bfl, runner) { return bfl.get(runner.name + 'right')[0] * runner.A; } // + = into the runner from the cylinder
 
