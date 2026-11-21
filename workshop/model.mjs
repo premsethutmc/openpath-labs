@@ -180,9 +180,9 @@ export const OUTCOME_TEXT = {
   conforms: 'Meets drawing', nonconforming: 'Outside drawing',
 };
 
-// ---------- the workshop: parts, readings, attempts ----------
+// ---------- the workshop: parts and readings ----------
 const clone = v => JSON.parse(JSON.stringify(v));
-export function newWorkshop() { return { parts: [], readings: [], attempts: [], nextId: 1, current: null, fit: { shaftId: 'g20a', range: { ...FIT_RANGES[0] } } }; }
+export function newWorkshop() { return { parts: [], readings: [], nextId: 1, current: null, fit: { shaftId: 'g20a', range: { ...FIT_RANGES[0] } } }; }
 const partOf = (ws, id) => { const p = ws.parts.find(x => x.id === id); if (!p) throw new CutError('no such part'); return p; };
 
 export function addPartFromStock(ws, { material, D, L, name }) {
@@ -258,23 +258,36 @@ export function fitState(ws, id, { shaftId, range }) {
   return { state: 'result', rev, bore, shaft, ...fitCheck(bore, shaft, range) };
 }
 
-// Attempts: frozen snapshots of a decision and everything it was based on.
-export function saveAttempt(ws, id, name) {
-  const part = partOf(ws, id), f = fitState(ws, id, ws.fit);
-  const a = clone({ name: name || `Attempt ${ws.attempts.length + 1}`, partId: id, partName: part.name, rev: currentRev(part), material: part.material,
-    stock: part.stock, ops: part.ops, spec: part.spec, shaftId: ws.fit.shaftId, range: ws.fit.range,
-    bore: f.bore ?? null, shaft: f.shaft ?? null, outcome: f.state === 'result' ? f.outcome : f.state, clearance: f.clearance ?? null, lo: f.lo ?? null, hi: f.hi ?? null });
-  ws.attempts.push(a); return a;
+// ---------- shared experiment record (core/project.mjs) ----------
+// A project's setup is the whole workshop: parts, their operations and every reading taken. A saved run freezes it
+// with the evidence for the part on the bench. Reproducing a run re-takes every reading from its part, revision,
+// instrument and reading number, and re-cuts every operation — the same seeded model, so the numbers must match.
+const FIT_VALUE = { ok: 'pass', tight: 'fail', loose: 'fail', inconclusive: 'cannot-assess' };
+export function evaluateWorkshop(w) {
+  const part = w.parts.find(p => p.id === w.current);
+  if (!part) return { ok: false, reason: 'No part on the bench yet: start from stock or open a preset.' };
+  try {
+    for (const p of w.parts) revisions(p);
+    for (const r of w.readings) {
+      const again = r.partId ? measurePart(w.parts.find(p => p.id === r.partId), r.feature, r.instrument, r.n, r.rev) : measureShaft(r.shaftId, r.instrument, r.n);
+      if (again.reading !== r.reading) return { ok: false, reason: `a ${FEATURES[r.feature].toLowerCase()} reading (${r.reading} mm) no longer matches its part` };
+    }
+  } catch (e) { if (e instanceof CutError || e instanceof MeasureError) return { ok: false, reason: e.message }; throw e; }
+  const f = fitState(w, part.id, w.fit), rev = currentRev(part);
+  const shaft = SHAFTS.find(s => s.id === w.fit.shaftId);
+  const outputs = { revision: { label: 'Revision', value: rev, unit: '', source: 'input' }, mass: { label: 'Mass', value: mass(part) * 1000, unit: 'g', source: 'simulated' } };
+  const verdicts = {};
+  if (f.bore) {
+    outputs.bore = { label: `Bore reading (${INSTRUMENTS[f.bore.instrument].name})`, value: f.bore.reading, unit: 'mm', source: 'measured' };
+    outputs.boreError = { label: 'Bore reading ±', value: f.bore.maxError, unit: 'mm', source: 'table' };
+    const d = drawingCheck(f.bore, part.spec);
+    verdicts.drawing = { label: 'Bore meets the drawing?', value: d.outcome === 'conforms' ? 'pass' : d.outcome === 'nonconforming' ? 'fail' : 'cannot-assess', reason: `${d.lo}…${d.hi} mm against ${d.min}…${d.max} mm` };
+  }
+  if (f.shaft) outputs.shaft = { label: `${shaft.name} reading (${INSTRUMENTS[f.shaft.instrument].name})`, value: f.shaft.reading, unit: 'mm', source: 'measured' };
+  if (f.state === 'result') {
+    Object.assign(outputs, { clearance: { label: 'Clearance', value: f.clearance, unit: 'mm', source: 'measured' }, clearanceLo: { label: 'Clearance, lowest possible', value: f.lo, unit: 'mm', source: 'measured' }, clearanceHi: { label: 'Clearance, highest possible', value: f.hi, unit: 'mm', source: 'measured' } });
+    verdicts.fit = { label: `Fits ${shaft.name} (${w.fit.range.min} to ${w.fit.range.max} mm)?`, value: FIT_VALUE[f.outcome], reason: OUTCOME_TEXT[f.outcome] };
+  } else verdicts.fit = { label: `Fits ${shaft.name}?`, value: 'not-applicable', reason: { 'needs-bore': 'bore not measured on this revision', stale: `part recut since the last bore reading (r${f.staleRev})`, 'needs-shaft': 'shaft not measured' }[f.state] };
+  return { ok: true, outputs, verdicts };
 }
-const show = {
-  part: a => `${a.partName} (${a.partId}) r${a.rev}`, material: a => MATERIALS[a.material].name,
-  operations: a => a.ops.map(o => `${o.type} ${o.D ?? o.L}`).join(' · ') || 'none', drawing: a => `Ø${a.spec.target} ${a.spec.lower >= 0 ? '+' : ''}${a.spec.lower}/+${a.spec.upper}`,
-  'bore reading': a => a.bore ? `${a.bore.reading} ±${a.bore.maxError} (${INSTRUMENTS[a.bore.instrument].name})` : '—',
-  shaft: a => SHAFTS.find(s => s.id === a.shaftId)?.name ?? '—',
-  'shaft reading': a => a.shaft ? `${a.shaft.reading} ±${a.shaft.maxError} (${INSTRUMENTS[a.shaft.instrument].name})` : '—',
-  'fit range': a => `${a.range.min} to ${a.range.max}`, clearance: a => a.clearance === null ? '—' : `${a.clearance} (${a.lo} to ${a.hi})`,
-  outcome: a => OUTCOME_TEXT[a.outcome] ?? a.outcome,
-};
-export function compareAttempts(a, b) {
-  return Object.entries(show).map(([row, f]) => ({ row, a: f(a), b: f(b), changed: f(a) !== f(b) }));
-}
+export const ADAPTER = { domain: 'workshop-parts', title: 'Workshop', evaluate: evaluateWorkshop };

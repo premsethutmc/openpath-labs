@@ -7,7 +7,7 @@ OpenPath Labs is a workshop, not a set of fixed labs: the learner builds the set
 | Layer | Files | Shared across domains? |
 |---|---|---|
 | Project and evidence record: setup, saved runs (frozen setup + outputs with units and source + verdicts), reproduce, compare, fork, file export/import | `core/project.mjs` | Yes — no physics |
-| Experiments panel (projects, runs, compare, fork, export/import) | `core/notebook.mjs` | Yes — used by the fluid line bench and Force Playground |
+| Experiments panel (projects, runs, compare, fork, export/import) | `core/notebook.mjs` | Yes — used by the workshop lathe, the fluid line bench, the machine design bench and Force Playground |
 | Workbench layout (instrument, readings, one module open) | `core/workbench.mjs`, `core/workbench.css` | Yes |
 | Bench editor + adapter `{ domain, title, evaluate(setup) }` | `circuit/` (fluids), `machine/` (machine design), `playground/` (structures) | No — one per domain |
 | Physics | `engines/hydraulics/line.mjs` (uses `hydraulics.mjs`), `engines/machine/shaft.mjs` (uses `engines/solids/frame.mjs`), `engines/solids/` | No — specific to each domain |
@@ -35,3 +35,7 @@ The Experiments panel works the same way: save the current structure as a run, c
 - Results: reactions, bending moment and deflection along the shaft, von Mises (ductile) or maximum principal (brittle) stress, safety factor, slope at bearings; which check governs and where.
 - Generic question tools, no lesson code: **Explain** (what governs, the facts, and the computed one-step changes that help most), **What moves…** (sensitivity of any result to every input), **Sweep** (any input over a range against any result, with the best value).
 - Not modelled: fatigue and stress concentrations, loads in two planes, bearing stiffness and life, shear deflection, critical speed, axial loads.
+
+## Workshop lathe and fit bench (`workshop/`) on the shared record
+
+A project holds the whole workshop: parts, their operations and every reading. A saved run freezes it with the evidence for the part on the bench (bore and shaft readings, clearance band, fit and drawing verdicts; readings tagged *measured*). Reproducing a run re-cuts every operation and re-takes every reading from its part, revision, instrument and reading number; a changed reading is reported, never trusted.

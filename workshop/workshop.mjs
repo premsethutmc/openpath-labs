@@ -2,16 +2,18 @@
 // Guidance level changes text only — it never hides, locks or alters a control or a number.
 import { workbench } from '../core/workbench.mjs';
 import * as M from './model.mjs';
+import { notebook } from '../core/notebook.mjs';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KEY = 'workshop.v1';
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 
-let ws = store.get(KEY, null) || M.newWorkshop();
+let ws = store.get(KEY, null) || M.newWorkshop();   // a workshop saved before the shared record seeds the first project
 let ui = store.get('workshop.ui', { guide: 'hints', truth: false, feature: 'bore', instrument: 'caliper', shaftInst: 'caliper', op: 'bore', compare: [] });
 const msgs = {};
-const save = () => { store.set(KEY, ws); store.set('workshop.ui', ui); };
+const save = () => { nb?.sync(); store.set('workshop.ui', ui); };
+let nb = null;
 const part = () => ws.parts.find(p => p.id === ws.current) || null;
 const mm = (v, d = 3) => v === null || v === undefined ? '–' : (+v).toFixed(d);
 const signed = v => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(3)}`;
@@ -34,9 +36,11 @@ const act = (k, fn) => { try { const r = fn(); msgs[k] = r ? { ok: true, text: r
 function paintParts() {
   $('parts').innerHTML = ws.parts.map(p => `<button type="button" data-part="${p.id}" aria-current="${p.id === ws.current}">${esc(p.id)} · r${M.currentRev(p)}</button>`).join('')
     + `<button type="button" class="buildbtn" data-new="stock">+ New from stock</button>`
-    + M.PRESETS.map(p => `<button type="button" data-preset="${p.id}">Preset: ${esc(p.name)}</button>`).join('');
+    + M.PRESETS.map(p => `<button type="button" data-preset="${p.id}">Preset: ${esc(p.name)}</button>`).join('')
+    + (ws.parts.length ? `<button type="button" id="clearAll">${ui.armed ? 'Tap again to clear the bench' : 'Clear bench'}</button>` : '');
   $('parts').querySelectorAll('[data-part]').forEach(b => b.onclick = () => { ws.current = b.dataset.part; save(); render(); });
   $('parts').querySelector('[data-new]').onclick = () => act('lathe', () => { M.addPartFromStock(ws, { material: 'al6061', D: 65, L: 30 }); bench.open('lathe'); });
+  if ($('clearAll')) $('clearAll').onclick = () => { if (ui.armed) { ws = M.newWorkshop(); ui.armed = false; save(); render(); } else { ui.armed = true; render(); } };
   $('parts').querySelectorAll('[data-preset]').forEach(b => b.onclick = () => act('lathe', () => { M.addPartFromPreset(ws, b.dataset.preset); bench.open('lathe'); }));
 }
 
@@ -153,20 +157,6 @@ function paintFit() {
   $('rangeNow').onclick = () => act('fit', () => { const r = { min: +$('fMin').value, max: +$('fMax').value }; M.fitCheck({ reading: 0, maxError: 0 }, { reading: 0, maxError: 0 }, r); F.range = r; });
 }
 
-function paintAttempts() {
-  const p = part(), el = $('attempts'), A = ws.attempts;
-  const sel = ui.compare.filter(i => i < A.length);
-  const cmp = sel.length === 2 ? `<table class="tbl cmp"><thead><tr><th></th><th>${esc(A[sel[0]].name)}</th><th>${esc(A[sel[1]].name)}</th></tr></thead><tbody>${M.compareAttempts(A[sel[0]], A[sel[1]]).map(r => `<tr class="${r.changed ? 'chg' : ''}"><th>${r.row}</th><td>${esc(r.a)}</td><td>${esc(r.b)}</td></tr>`).join('')}</tbody></table>` : '<p class="note">Tick two attempts to compare them.</p>';
-  el.innerHTML = `<h2>Attempts</h2>
-    <div class="row"><input id="attName" aria-label="Attempt name" placeholder="Name (optional)" class="grow"><button type="button" id="saveAtt" ${p ? '' : 'disabled'}>Save attempt</button></div>${msg('attempts')}
-    <ul class="atts">${A.map((a, i) => `<li><label><input type="checkbox" data-cmp="${i}" ${sel.includes(i) ? 'checked' : ''}> <b>${esc(a.name)}</b> · ${esc(a.partId)} r${a.rev} · ${esc(M.OUTCOME_TEXT[a.outcome] ?? a.outcome)}</label></li>`).join('') || '<li class="note">No attempts saved.</li>'}</ul>
-    ${cmp}
-    <div class="row"><button type="button" id="resetAll">Clear workshop</button></div>`;
-  $('saveAtt').onclick = () => act('attempts', () => { const a = M.saveAttempt(ws, p.id, $('attName').value.trim()); return `Saved “${a.name}”.`; });
-  el.querySelectorAll('[data-cmp]').forEach(c => c.onchange = () => { const i = +c.dataset.cmp; ui.compare = c.checked ? [...sel.filter(x => x !== i), i].slice(-2) : sel.filter(x => x !== i); save(); render(); });
-  $('resetAll').onclick = () => { if (!ws.parts.length || $('resetAll').dataset.armed) { ws = M.newWorkshop(); ui.compare = []; save(); render(); } else { $('resetAll').dataset.armed = '1'; $('resetAll').textContent = 'Tap again to clear every part, reading and attempt'; } };
-}
-
 function paintModel() {
   $('model').innerHTML = `<h2>What this model includes</h2>
     <p>Simulated: the operations you choose, the geometry they leave, a repeatable simulated offset per operation, and instrument readings with stated resolution and maximum error. Fit and drawing checks use readings only. The same stock and operations always give the same part, in any material.</p>
@@ -199,9 +189,11 @@ function paintSummary() {
     : f.state === 'needs-shaft' ? `Bore measured. Measure ${shaft} on the Fit bench.` : `Revision ${rev}. Measure the bore when you are ready to check a fit.`;
 }
 
-function render() { paintParts(); paintDrawing(); paintLathe(); paintDrawingBench(); paintMeasure(); paintFit(); paintAttempts(); paintModel(); paintSummary(); }
+function render() { paintParts(); paintDrawing(); paintLathe(); paintDrawingBench(); paintMeasure(); paintFit(); paintModel(); paintSummary(); nb.render(); }
 
 document.querySelectorAll('[data-guide]').forEach(b => b.onclick = () => { ui.guide = b.dataset.guide; save(); render(); });
 const bench = workbench('workshop', { initial: 'lathe' });
+nb = notebook($('experiments'), { adapter: M.ADAPTER, getSetup: () => JSON.parse(JSON.stringify(ws)), applySetup: s => { ws = s; render(); } });
+ws = JSON.parse(JSON.stringify(nb.project().setup));
 render();
 document.body.dataset.ready = 'true';

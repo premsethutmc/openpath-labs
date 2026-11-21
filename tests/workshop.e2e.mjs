@@ -67,7 +67,8 @@ for (const width of [360, 1280]) test(`Workshop ${width}px: make, measure, recut
     // a different shaft
     await readShaft('Ø20 bright-drawn bar', 'Outside micrometer');
     assert.equal(await fitText(), 'Too loose');
-    await tab('Attempts'); await page.locator('#attName').fill('loose on bright bar'); await page.getByRole('button', { name: 'Save attempt' }).click();
+    await tab('Experiments'); await page.locator('.nb-name').fill('stock-built, bright bar'); await page.locator('.nb-save').click();
+    assert.match(await page.locator('#experiments .msg').textContent(), /Saved/);
     const stockReadings = await readings();
 
     // ---- the preset: same object, same results ----
@@ -80,16 +81,20 @@ for (const width of [360, 1280]) test(`Workshop ${width}px: make, measure, recut
     assert.deepEqual(await readings(), stockReadings, 'preset and stock-built parts give identical readings');
     await readShaft('Ø20 bright-drawn bar', 'Outside micrometer');
     assert.equal(await fitText(), 'Too loose');
-    await tab('Attempts'); await page.getByRole('button', { name: 'Save attempt' }).click();
+    await tab('Experiments'); await page.locator('.nb-name').fill('preset, bright bar'); await page.locator('.nb-save').click();
     await page.locator('[data-cmp="0"]').check(); await page.locator('[data-cmp="1"]').check();
-    const changed = await page.locator('.cmp tr.chg th').allTextContents();
-    // the shaft is one physical object: measuring it a second time gives the micrometer's next reading
-    assert.deepEqual(changed, ['part', 'drawing', 'shaft reading', 'clearance'], `unexpected differences: ${changed}`);
+    const changed = await page.locator('.nb-cmp tr.chg th').allTextContents();
+    // same bore reading on both parts; the shaft is one physical object, so measuring it again gives the
+    // micrometer's next reading, and the clearance follows it
+    assert.ok(!changed.some(t => /^Bore reading/.test(t)), `bore reading should match: ${changed}`);
+    assert.ok(changed.some(t => /bright-drawn bar reading/.test(t)) && changed.some(t => /^Clearance/.test(t)), `unexpected differences: ${changed}`);
+    assert.equal(await page.locator('[data-reproduced="true"]').count(), 2, 'both runs re-cut and re-measure to the same numbers');
 
     // ---- return later ----
     await page.reload(); await page.locator('body[data-ready="true"]').waitFor();
     assert.equal(await page.locator('#r-rev').textContent(), 'r6');
     assert.equal(await page.locator('#r-fit').textContent(), 'Too loose');
+    await tab('Experiments'); assert.equal(await page.locator('[data-reproduced="true"]').count(), 2, 'runs reproduce after reopening');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no sideways scroll');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }

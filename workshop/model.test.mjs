@@ -136,23 +136,6 @@ test('fit check: worst-case band and limits (ISO 286 18–30 mm values)', () => 
   assert.throws(() => M.fitCheck(r(20, 0), r(20, 0), { min: 0.04, max: 0.01 }), /min below max/);
 });
 
-test('attempts are frozen snapshots and compare row by row', () => {
-  const ws = fresh(), id = M.addPartFromPreset(ws, 'gear20');
-  ws.fit.shaftId = 'g20a'; M.takeShaftReading(ws, 'g20a', 'caliper');
-  M.cut(ws, id, { type: 'bore', D: 20.02 }); M.takeReading(ws, id, 'bore', 'caliper');
-  const a = M.saveAttempt(ws, id, 'calipers');
-  M.takeReading(ws, id, 'bore', 'boreGauge'); M.takeShaftReading(ws, 'g20a', 'micrometer');
-  const b = M.saveAttempt(ws, id, 'gauges');
-  assert.equal(a.outcome, 'inconclusive'); assert.equal(b.outcome, 'ok');
-  const rows = M.compareAttempts(a, b), changed = rows.filter(r => r.changed).map(r => r.row);
-  assert.deepEqual(changed, ['bore reading', 'shaft reading', 'clearance', 'outcome']);
-  M.cut(ws, id, { type: 'bore', D: 20.04 });
-  assert.equal(a.rev, 5, 'a saved attempt does not follow later cuts');
-});
-
-// Regression: the commanded size passed validation but the as-cut size (commanded + simulated offset) would have
-// shrunk a hole, grown an outside diameter or left a wall under the minimum. Each cut must be refused, with the
-// part, its revisions and its readings left exactly as they were.
 test('regression: a cut is judged on its as-cut geometry; impossible cuts change nothing', () => {
   const cases = [
     { what: 'boring would shrink the hole (preset gear blank, bore 19.95 again: 19.9461 → 19.9421)',
@@ -184,4 +167,28 @@ test('regression: a cut is judged on its as-cut geometry; impossible cuts change
     assert.ok((n.od - n.bore) / 2 >= M.MIN_WALL);
   }
   assert.ok(accepted >= 10 && refused >= 10, `sweep exercised both paths (${accepted} accepted, ${refused} refused)`);
+});
+
+test('shared experiment record: runs freeze parts and readings, and reproduce by re-cutting and re-measuring', async () => {
+  const P = await import('../core/project.mjs');
+  const ws = fresh(), id = M.addPartFromPreset(ws, 'gear20');
+  M.cut(ws, id, { type: 'bore', D: 20.02 }); M.takeReading(ws, id, 'bore', 'caliper'); M.takeShaftReading(ws, 'g20a', 'caliper');
+  const proj = P.createProject({ domain: 'workshop-parts', setup: ws });
+  const a = P.saveRun(proj, M.ADAPTER, 'calipers');
+  assert.equal(a.verdicts.fit.value, 'cannot-assess'); assert.equal(a.outputs.bore.source, 'measured');
+  M.takeReading(proj.setup, id, 'bore', 'boreGauge'); M.takeShaftReading(proj.setup, 'g20a', 'micrometer');
+  const b = P.saveRun(proj, M.ADAPTER, 'gauges');
+  assert.equal(b.verdicts.fit.value, 'pass');
+  const back = P.deserialize(P.serialize(proj), 'workshop-parts');
+  for (const r of back.runs) assert.ok(P.reproduceRun(r, M.ADAPTER).ok);
+  const c = P.compareRuns(a, b);
+  assert.ok(c.changed.every(d => d.path.startsWith('readings.')), 'only new readings changed');
+  assert.ok(c.outputs.find(o => o.key === 'clearance').changed);
+  // a tampered reading is caught instead of silently trusted
+  back.runs[0].setup.readings[0].reading += 0.01;
+  assert.match(M.evaluateWorkshop(back.runs[0].setup).reason, /no longer matches its part/);
+  assert.match(M.evaluateWorkshop(M.newWorkshop()).reason, /No part on the bench/);
+  // after a recut the fit is not applicable until the bore is measured again
+  M.cut(proj.setup, id, { type: 'bore', D: 20.04 });
+  assert.equal(M.evaluateWorkshop(proj.setup).verdicts.fit.value, 'not-applicable');
 });
