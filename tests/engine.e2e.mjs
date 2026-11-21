@@ -236,3 +236,32 @@ test('Engine World: spark, octane, mixture and turbo', async () => {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
 });
+
+test('Engine World: high-fidelity test bench (1D gas dynamics) in a worker', async () => {
+  const server = await serve();
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(60000);
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await page.goto(server.origin + '/engine-world/index.html');
+    await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
+    assert.match(await page.locator('#dyno').innerHTML(), /class="ref"/);
+    assert.match(await page.locator('#dyno').innerHTML(), /published/);
+    await page.locator('#rpm').fill('4500');
+    await page.getByRole('button', { name: 'Run the test bench at this speed' }).click();
+    await page.locator('#bench-status', { hasText: 'Done: 4500 rpm' }).waitFor();
+    const tq = +(await page.locator('#bench-results').innerText()).match(/Torque \(test bench\)\s+(\d+) N·m/)[1];
+    assert.ok(Math.abs(tq - 113) <= 1, `stock setup reproduces the calibrated 113 N·m (${tq})`);
+    assert.ok(await page.locator('#waves').isVisible());
+    assert.match(await page.locator('#waves-t').textContent(), /inlet runner pressure swings/);
+    await page.getByRole('button', { name: 'Run a full curve for my setup' }).click();
+    await page.waitForFunction(() => document.body.dataset.benchDone === 'true', null, { timeout: 120000 });
+    assert.match(await page.locator('#dyno').innerHTML(), /class="mine"/);
+    await page.locator('.bench').screenshot({ path: '/tmp/bench.png' });
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); server.close(); }
+});

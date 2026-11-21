@@ -3,6 +3,8 @@ import { OILS, viscosity, blend, ageOil } from '../engines/thermofluids/oil.mjs'
 import { ENGINE, operatingPoint, bearing, rodLoad, cranking, oilPressureDelay, soak, warmUp, startWear, oilPressure, coolantFreezePoint, warmUpSeries } from '../engines/thermofluids/engine.mjs';
 import { CAMS, SPRINGS, timing, volumetricEfficiency, machIndex, tunedRpm, floatRpm, valveClearance, idleQuality, intakeLift, exhaustLift } from '../engines/thermofluids/breathing.mjs';
 import { FUELS, INTERCOOLERS, turbo, sparkSweep, ecuTiming, emissionsTrend } from '../engines/thermofluids/combustion.mjs';
+import { BENCH_REFERENCE } from './bench-reference.mjs';
+import { K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
 import { PARTS, emptyBuild, complete, fit, remove, has, option, isComplete, buildEffects } from './assembly.mjs';
 import { engineItems, SCENE_TARGET } from './scene.mjs';
 
@@ -191,7 +193,7 @@ function dynoCurve() {
 }
 function drawDyno(cur) {
   const x0 = 34, y0 = 172, xw = 270, yh = 150, X = r => x0 + (r - 1000) / 6500 * xw;
-  const curves = [cur, S.prevDyno].filter(Boolean);
+  const curves = [cur, S.prevDyno, { pts: BENCH_REFERENCE }, S.benchCurve ? { pts: S.benchCurve } : null].filter(Boolean);
   const tMax = Math.max(140, ...curves.flatMap(c => c.pts.map(p => p.torque))), pMax = Math.max(80, ...curves.flatMap(c => c.pts.map(p => p.power)));
   const YT = t => y0 - Math.max(t, 0) / tMax * yh, YP = p => y0 - Math.max(p, 0) / pMax * yh;
   let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#9aa5a0" fill="none"/>`;
@@ -200,6 +202,12 @@ function drawDyno(cur) {
   const line = (c, key, Y, cls) => `<polyline class="${cls}" fill="none" points="${c.pts.map(p => `${X(p.rpm).toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ')}"/>`;
   if (S.prevDyno && S.prevDyno.name !== cur.name) s += line(S.prevDyno, 'torque', YT, 'tq prev') + line(S.prevDyno, 'power', YP, 'pw prev');
   s += line(cur, 'torque', YT, 'tq') + line(cur, 'power', YP, 'pw');
+  const ref = { pts: BENCH_REFERENCE };
+  s += line(ref, 'torque', YT, 'ref') + line(ref, 'power', YP, 'ref');
+  if (S.benchCurve?.length > 1) s += line({ pts: S.benchCurve }, 'torque', YT, 'mine') + line({ pts: S.benchCurve }, 'power', YP, 'mine');
+  const cross = (x, y, c) => `<path d="M${x - 5} ${y - 5}l10 10m0 -10l-10 10" stroke="${c}" stroke-width="2.4"/>`;
+  s += cross(X(K12M_PUBLISHED.torque.rpm), YT(K12M_PUBLISHED.torque.Nm), '#1d58c8') + cross(X(K12M_PUBLISHED.power.rpm), YP(K12M_PUBLISHED.power.kW), '#e0531f');
+  s += `<text x="${x0 + xw - 4}" y="${y0 - 8}" text-anchor="end" class="tick" fill="#2f8f4e">green: test-bench model (stock K12M)${S.benchCurve ? ' · purple: your setup' : ''} · ✕ published</text>`;
   const best = cur.pts.reduce((a, b) => (b.power > a.power ? b : a)), bestT = cur.pts.reduce((a, b) => (b.torque > a.torque ? b : a));
   s += `<text x="${x0 + 4}" y="12" class="dynolabel" fill="#1d58c8">torque N·m · peak ${fmt(bestT.torque)} at ${fmt(bestT.rpm)}</text><text x="${x0 + xw}" y="24" text-anchor="end" class="dynolabel" fill="#e0531f">power kW · peak ${fmt(best.power, 1)} at ${fmt(best.rpm)}</text>`;
   if (S.prevDyno && S.prevDyno.name !== cur.name) s += `<text x="${x0 + 4}" y="${y0 - 6}" class="tick">dashed: ${S.prevDyno.name}</text>`;
@@ -211,7 +219,7 @@ function paintBreathe() {
   $('cams').innerHTML = keys.map(k => `<button type="button" role="radio" data-cam="${k}" aria-checked="${S.camId === k}">${k === 'custom' ? 'Custom' : CAMS[k].name}</button>`).join('');
   $('cams').querySelectorAll('button').forEach(b => b.onclick = () => {
     if (b.dataset.cam === 'custom') return;
-    snapshot(S.camId === 'custom' ? 'Custom cam' : CAMS[S.camId].name + ' cam'); S.camId = b.dataset.cam; S.cam = { ...CAMS[S.camId] };
+    snapshot(S.camId === 'custom' ? 'Custom cam' : CAMS[S.camId].name + ' cam'); S.benchCurve = null; S.camId = b.dataset.cam; S.cam = { ...CAMS[S.camId] };
     $('dur').value = S.cam.duration; $('lift').value = S.cam.lift; $('lc').value = S.cam.centre; resetStart(); paint();
   });
   $('springs').innerHTML = Object.entries(SPRINGS).map(([k, v]) => `<button type="button" role="radio" data-spring="${k}" aria-checked="${S.spring === k}">${v.name}</button>`).join('');
@@ -273,6 +281,47 @@ function drawSpark() {
   s += `<circle cx="${X(cp.adv)}" cy="${Y(cp.torque)}" r="6" class="mark"/>`;
   $('spark').innerHTML = `<title id="spark-t">Torque against spark timing at ${S.rpm} rpm: best ${sw.mbt}°, knock from ${firstKnock ? firstKnock.adv + '°' : 'none'}</title>` + s;
 }
+// ---------- high-fidelity test bench (Web Worker) ----------
+let bench = null;
+function benchWorker() {
+  if (bench) return bench;
+  bench = new Worker(new URL('./bench-worker.mjs', import.meta.url), { type: 'module' });
+  bench.onmessage = ({ data }) => {
+    if (data.kind === 'point') {
+      S.benchPoint = data; $('bench-status').textContent = `Done: ${data.rpm} rpm${data.converged ? '' : ' (not fully converged)'}.`;
+      $('bench-results').innerHTML = li('Cylinder filling (test bench)', `${fmt(data.ve * 100)} %`, 'approximate') + li('Torque (test bench)', `${fmt(data.torque)} N·m`, 'approximate') + li('Power (test bench)', `${fmt(data.power, 1)} kW`, 'approximate');
+      drawWaves(data); setBusy(false);
+    } else if (data.kind === 'curvePoint') {
+      (S.benchCurve ||= []).push({ rpm: data.rpm, torque: data.torque, power: data.power });
+      $('bench-status').textContent = `Running the test bench… ${data.rpm} rpm done.`;
+      drawDyno(dynoCurve());
+    } else if (data.kind === 'curveDone') { $('bench-status').textContent = 'Full curve done (purple).'; setBusy(false); document.body.dataset.benchDone = 'true'; }
+  };
+  return bench;
+}
+function setBusy(b) { $('bench-point').disabled = b; $('bench-curve').disabled = b; }
+const benchSetup = () => ({ cam: { duration: S.cam.duration, lift: S.cam.lift, centre: S.cam.centre }, runner: S.runner });
+$('bench-point').onclick = () => { setBusy(true); $('bench-status').textContent = `Running the test bench at ${S.rpm} rpm — simulating pressure waves cycle by cycle…`; benchWorker().postMessage({ kind: 'point', rpm: S.rpm, setup: benchSetup() }); };
+$('bench-curve').onclick = () => { setBusy(true); S.benchCurve = []; document.body.dataset.benchDone = 'false'; $('bench-status').textContent = 'Running the test bench from 1000 to 7000 rpm…'; benchWorker().postMessage({ kind: 'curve', setup: benchSetup() }); };
+function drawWaves(d) {
+  const svg = $('waves'); svg.removeAttribute('hidden');
+  const x0 = 34, y0 = 176, xw = 270, yh = 156, X = th => x0 + ((th % 720) / 720) * xw;
+  const pmax = Math.max(...d.traces.cyl), Yc = p => y0 - Math.log10(Math.max(p, 1e4) / 1e4) / Math.log10(pmax / 1e4) * yh;
+  const rv = d.traces.runner, rmin = Math.min(...rv, 0.7e5), rmax = Math.max(...rv, 1.3e5), Yr = p => y0 - (p - rmin) / (rmax - rmin) * yh;
+  const t = timing(S.cam);
+  const band = (a, b, cls) => `<rect x="${X(a)}" y="${y0 - yh}" width="${(b - a) / 720 * xw}" height="${yh}" class="${cls}"/>`;
+  let s = band(t.ivo, Math.min(t.ivc, 720), 'openband') + band(t.evo, t.evc, 'exband');
+  s += `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#9aa5a0" fill="none"/>`;
+  for (const [th, lab] of [[0, 'TDC'], [180, 'BDC'], [360, 'TDC'], [540, 'BDC']]) s += `<text x="${X(th) + 2}" y="${y0 + 12}" class="tick">${lab}</text>`;
+  const order = d.traces.theta.map((th, i) => [th % 720, i]).sort((a, b) => a[0] - b[0]);
+  s += `<polyline class="cylp" fill="none" points="${order.map(([th, i]) => `${X(th).toFixed(1)},${Yc(d.traces.cyl[i]).toFixed(1)}`).join(' ')}"/>`;
+  s += `<polyline class="runp" fill="none" points="${order.map(([th, i]) => `${X(th).toFixed(1)},${Yr(rv[i]).toFixed(1)}`).join(' ')}"/>`;
+  s += `<path d="M${x0} ${Yr(1e5)}H${x0 + xw}" stroke="#1d58c8" stroke-dasharray="2 3" opacity=".6"/>`;
+  s += `<text x="${x0 + 4}" y="${y0 - yh + 11}" class="tick" fill="#e0531f">cylinder (log scale, peak ${fmt(pmax / 1e5)} bar)</text><text x="${x0 + 4}" y="${y0 - yh + 23}" class="tick" fill="#1d58c8">inlet runner at the valve: ${fmt(rmin / 1e5, 2)}–${fmt(rmax / 1e5, 2)} bar (dotted = 1 bar)</text>`;
+  s += `<text x="${X(t.ivo)}" y="${y0 - 4}" class="tick">inlet open</text><text x="${X(t.evo)}" y="${y0 - 4}" class="tick">exhaust open</text>`;
+  svg.innerHTML = `<title id="waves-t">Test bench at ${d.rpm} rpm: cylinder peak ${fmt(pmax / 1e5)} bar; inlet runner pressure swings ${fmt(rmin / 1e5, 2)}–${fmt(rmax / 1e5, 2)} bar</title>` + s;
+}
+
 function snapshot(name) { S.prevDyno = { ...dynoCurve(), name }; }
 
 function drawPV(op) {
@@ -375,9 +424,9 @@ $('tab-run').onclick = () => {
 };
 $('b-ready').onclick = () => { S.build = complete(); S.tab = 'run'; $('build-msg').className = 'msg'; resetStart(); paint(); };
 $('b-strip').onclick = () => { S.build = emptyBuild(); $('build-msg').className = 'msg'; $('build-msg').textContent = 'Stripped down to the bare block.'; resetStart(); paint(); };
-const customCam = () => { if (S.camId !== 'custom') S.prevDyno = dynoCurve(); S.camId = 'custom'; S.cam = { ...S.cam, duration: +$('dur').value, lift: +$('lift').value, centre: +$('lc').value }; resetStart(); paint(); };
+const customCam = () => { S.benchCurve = null; if (S.camId !== 'custom') S.prevDyno = dynoCurve(); S.camId = 'custom'; S.cam = { ...S.cam, duration: +$('dur').value, lift: +$('lift').value, centre: +$('lc').value }; resetStart(); paint(); };
 $('dur').oninput = customCam; $('lift').oninput = customCam; $('lc').oninput = customCam;
-$('runner').oninput = e => { if (!S.runnerDrag) S.prevDyno = { ...dynoCurve(), name: `runner ${fmt(S.runner * 100)} cm` }; S.runnerDrag = true; S.runner = +e.target.value / 100; paint(); };
+$('runner').oninput = e => { if (!S.runnerDrag) S.prevDyno = { ...dynoCurve(), name: `runner ${fmt(S.runner * 100)} cm` }; S.runnerDrag = true; S.benchCurve = null; S.runner = +e.target.value / 100; paint(); };
 $('runner').onchange = () => { S.runnerDrag = false; };
 const once = (key, label) => { if (S.dragKey !== key) { snapshot(label()); S.dragKey = key; } };
 $('cr').oninput = e => { once('cr', () => `${S.cr}:1 compression`); S.cr = +e.target.value; paint(); };

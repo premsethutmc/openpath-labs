@@ -29,3 +29,27 @@ Scenario loads follow published code values where they exist (e.g. pedestrian cr
 
 - Each result shows the model behind it ("linear elastic, small deflection").
 - When a design goes outside the model (e.g. huge deflection, yielding), the interface says so instead of showing a confident number.
+
+## Engine test bench (1D gas dynamics) — `engines/thermofluids/gasdyn.mjs`
+
+The same class of model professional engine tools use: compressible flow in every pipe (finite volume, MUSCL + HLL, Heun),
+wall friction and heat transfer, 0D cylinders (temperature-dependent cv, Wiebe heat release at best-torque phasing,
+Woschni heat transfer), valves as quasi-steady compressible orifices, open pipe ends with Riemann-flux boundaries,
+airbox, plenum, exhaust collector, catalyst and muffler volumes.
+
+| Check | Result (automated) |
+|---|---|
+| Sod shock tube vs exact Riemann solution | L1 density error < 1.2 % at 100 cells; halves with 4× refinement |
+| Closed pipe | mass and energy conserved to 1e-12 |
+| Quarter-wave pipe (closed–open) | rings at a/4L within 5 % |
+| Orifice | chokes at the critical pressure ratio |
+| **Real engine: Maruti Suzuki K12M** (published 113 N·m @ 4500 rpm, 85 PS = 62.5 kW @ 6000 rpm) | calibrated at the torque point (one constant, `conversion` = 0.923); **power predicted at 60.1 kW, −3.8 %** |
+
+**One calibration constant.** `conversion` (share of fuel energy released as useful heat beyond modelled wall loss) is the only
+value fitted, and only at the torque point. Everything else is geometry, textbook correlations, or a typical value listed in `K12M`.
+
+**Known gaps to world standard:**
+- Only two published data points exist for this engine; a full measured curve (e.g. EPA benchmarking packages for the Mazda 2.0 Skyactiv or Toyota 2.5) is needed for full-curve validation (±5 % target). The EPA packages are zip files this workspace cannot download.
+- Unpublished geometry (valve sizes, cam timing, rod length, pipe lengths) uses typical values; the real K12M also has intake VVT, not modelled, so mid-range torque dips (3000–3500 rpm) are likely deeper than the real engine's.
+- Constant γ within each pipe; single gas species; no fuel-film or evaporation; no knock-limited spark at full load (combustion phased for best torque); friction from a correlation, not components.
+- Valve flow uses a quasi-steady orifice with an anti-overshoot limit; professional codes use characteristic or junction-Riemann valve boundaries.

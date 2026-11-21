@@ -13,6 +13,11 @@ Goal: one deep, immersive experience that proves the vision. A learner chooses a
 6. **Valves and airflow** — Economy / Stock / Sport cams or a custom one (duration, lift, lobe centre), valve springs, intake runner length → valve events, overlap and idle quality, cylinder filling, runner resonance, valve-float speed, valve-to-piston gap, and a full-throttle dyno curve compared with the previous setup. Valves open and close in the 3D engine; a cam that reaches the pistons crashes on the first turn.
 7. **Spark, fuel and boost** — fuel octane (RON 91 / 95 / 100), compression ratio, spark timing (engine computer with knock sensor, or by hand), mixture λ, turbo boost and intercooler → spark chosen and how far it is held back from best torque, knock, intake air temperature, boost and turbo lag, fuel per kWh, emission trends; torque-vs-spark chart with the knock zone. Knocking cylinders flash white in 3D; a turbo appears and spins.
 
+## Two levels of model
+
+- **Fast model** (everything above, instant): single-zone cycle with correlations — for exploring.
+- **Test bench** (step 6, runs in a background thread): 1D gas dynamics of the real Maruti Suzuki K12M — pressure waves in every pipe, calibrated once and checked against published figures (see VALIDATION.md). The fast model's dyno chart shows the test-bench curve in green and the published figures as crosses; learners can run the test bench for their own cam and runner setup and see the pressure waves in the cylinder and inlet runner.
+
 ## Models and confidence
 
 | Quantity | Model | Confidence |

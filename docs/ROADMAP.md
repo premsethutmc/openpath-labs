@@ -17,6 +17,8 @@
 - [x] Fit the parts (assembly with order rules and consequential choices), coolant and antifreeze, fast-forward warm-up timeline
 - [x] Valves and airflow: cams, springs, runner tuning, valve float, valve-to-piston contact, dyno curve, animated valves
 - [x] Spark timing and knock, octane, compression ratio, mixture and emissions trends, turbo and intercooler
+- [x] High-fidelity test bench: 1D gas dynamics model of a real engine (K12M), physics-validated, ±4 % on published power
+- [ ] Full-curve validation against measured benchmark data (EPA packages); intake VVT; component friction; dynamically loaded bearings; turbo maps
 - [ ] Gearbox and vehicle (engine → wheels), fuel consumption on a drive cycle
 
 ## Stage 2 — Proof people want it

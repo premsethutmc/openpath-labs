@@ -96,3 +96,7 @@ h3.sub{font-size:.85rem;margin:12px 0 6px;color:var(--muted)}
 .emis i{display:block;height:9px;border-radius:5px;background:#e4e7e2;overflow:hidden}
 .emis i b{display:block;height:100%;background:#8a6d3b}
 .sublabel{margin:0;font-size:.8rem;color:var(--muted);font-weight:700}
+#waves{display:block;width:100%;height:auto;margin-top:10px;background:#fbfcfa;border:1px solid #e3e7e1;border-radius:10px}
+.bench{margin-top:14px;padding-top:6px;border-top:1px dashed #d9ddd6}
+.ref{stroke:#2f8f4e;stroke-width:2.2}.mine{stroke:#7a3fb8;stroke-width:2.2}
+.cylp{stroke:#e0531f;stroke-width:1.8}.runp{stroke:#1d58c8;stroke-width:1.8}.openband{fill:#dbe8f7}.exband{fill:#f6e1d6}

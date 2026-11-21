@@ -118,6 +118,14 @@
         <label class="range">Intake runner length <output id="run-out"></output><input id="runner" type="range" min="20" max="70" step="1" value="35"></label>
         <ul class="results" id="breathe-results"></ul>
         <svg id="dyno" viewBox="0 0 340 200" role="img" aria-labelledby="dyno-t"><title id="dyno-t">Full-throttle torque and power</title></svg>
+        <div class="bench">
+          <h3 class="sub">Test bench — high-fidelity model of a real engine</h3>
+          <p class="note">A one-dimensional gas-dynamics model (the method professional engine software uses) of the Maruti Suzuki K12M: pressure waves in every pipe, airbox, catalyst and muffler. Calibrated once at the published 113 N·m at 4500 rpm; it then predicts the published 62.5 kW at 6000 rpm within 4 % — green on the chart, crosses are the published figures.</p>
+          <div class="row"><button type="button" id="bench-point">Run the test bench at this speed</button><button type="button" id="bench-curve">Run a full curve for my setup</button></div>
+          <p id="bench-status" class="note" role="status" aria-live="polite"></p>
+          <ul class="results" id="bench-results"></ul>
+          <svg id="waves" viewBox="0 0 340 200" role="img" aria-labelledby="waves-t" hidden><title id="waves-t">Pressure in the cylinder and the intake runner over one cycle</title></svg>
+        </div>
       </div>
 
       <div class="card step" id="s-burn">
