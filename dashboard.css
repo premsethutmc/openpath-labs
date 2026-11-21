@@ -47,3 +47,9 @@ h2{font:800 clamp(1.3rem,3vw,1.8rem)/1.15 Archivo,sans-serif;margin:24px 0 10px;
 .eng{margin:0;font:500 .72rem var(--mono);color:var(--muted)}
 .soon p{color:var(--muted);max-width:65ch}
 footer{padding:20px max(5vw,16px) 30px;color:var(--muted);font-size:.82rem;max-width:1240px;margin:auto}
+
+.stage.planned,.stage.next{grid-template-columns:36px minmax(0,1fr);padding:10px 14px;align-items:center}
+.stage.planned .snum,.stage.next .snum{width:32px;height:32px;font-size:.85rem}
+.stage.planned .sq,.stage.planned .eng,.stage.next .eng{display:none}
+.stage.planned .soon-line,.stage.next .soon-line{margin:2px 0 0;font-size:.84rem}
+.stage.planned h3,.stage.next h3{font-size:1rem}

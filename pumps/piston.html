@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Piston Pump · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <style>#rig{display:block;width:100%;height:auto;max-height:62vh}</style>
+</head>
+<body data-mode="learn">
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">CE3391 · reciprocating pump</span>
+  <div class="mode" role="radiogroup" aria-label="Mode">
+    <button type="button" role="radio" data-mode="learn" aria-checked="true">Learn</button>
+    <button type="button" role="radio" data-mode="explore" aria-checked="false">Explore</button>
+  </div>
+</header>
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1>Piston Pump</h1><p>A crank drives a piston; valves open and shut; water columns in the pipes start and stop every stroke.</p></div>
+    <div class="instrument">
+      <svg id="rig" viewBox="0 0 420 300" role="img" aria-labelledby="rig-t"><title id="rig-t">Single-cylinder reciprocating pump with suction and delivery pipes</title></svg>
+      <span id="status" class="status ok">Running</span>
+    </div>
+    <dl class="readings">
+      <div><dt>Discharge</dt><dd id="g-q">–</dd></div>
+      <div><dt>Power</dt><dd id="g-p">–</dd></div>
+      <div><dt>Cylinder now</dt><dd id="g-h">–</dd></div>
+      <div><dt>Separation at</dt><dd id="g-n">–</dd></div>
+    </dl>
+  </section>
+  <section class="side">
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module mission" data-module="mission" data-title="Mission" id="mission" aria-live="polite"></section>
+    <section class="module" data-module="indicator" data-title="Indicator diagram">
+      <h2>Indicator diagram</h2>
+      <svg id="ind" class="chart" viewBox="0 0 360 240" role="img" aria-labelledby="ind-t"><title id="ind-t">Pressure head in the cylinder against piston position</title></svg>
+      <p class="note">Pressure in the cylinder through one revolution. The bottom line is the suction stroke, the top the delivery stroke. The tilt comes from accelerating the water columns; the bulge from pipe friction. The area is the work done per stroke.</p>
+      <p class="note" id="ind-note"></p>
+    </section>
+    <section class="module" data-module="pump" data-title="Pump">
+      <h2>The pump</h2>
+      <div class="chips" role="radiogroup" aria-label="Acting">
+        <button type="button" role="radio" data-acting="single">Single-acting</button>
+        <button type="button" role="radio" data-acting="double">Double-acting</button>
+      </div>
+      <label class="range">Crank speed <output id="rpm-out"></output><input id="rpm" type="range" min="10" max="160" step="2"></label>
+      <label class="range">Piston diameter <output id="D-out"></output><input id="D" type="range" min="50" max="200" step="5"></label>
+      <label class="range">Stroke <output id="st-out"></output><input id="st" type="range" min="100" max="400" step="10"></label>
+      <label class="range">Coefficient of discharge (valve leakage) <output id="cd-out"></output><input id="cd" type="range" min="0.85" max="1" step="0.01"></label>
+    </section>
+    <section class="module" data-module="pipes" data-title="Pipes &amp; vessels">
+      <h2>Pipes and air vessels</h2>
+      <label class="range">Suction pipe length <output id="ls-out"></output><input id="ls" type="range" min="1" max="15" step="0.5"></label>
+      <label class="range">Suction pipe diameter <output id="ds-out"></output><input id="ds" type="range" min="25" max="150" step="5"></label>
+      <label class="range">Delivery pipe length <output id="ld-out"></output><input id="ld" type="range" min="5" max="80" step="1"></label>
+      <label class="range">Delivery pipe diameter <output id="dd-out"></output><input id="dd" type="range" min="25" max="150" step="5"></label>
+      <p class="label">Air vessels (next to the cylinder)</p>
+      <div class="chips">
+        <button type="button" role="switch" id="vs" aria-checked="false">On suction</button>
+        <button type="button" role="switch" id="vd" aria-checked="false">On delivery</button>
+      </div>
+    </section>
+    <section class="module" data-module="site" data-title="Site">
+      <h2>The site</h2>
+      <label class="range">Suction lift <output id="hs-out"></output><input id="hs" type="range" min="0" max="8" step="0.5"></label>
+      <label class="range">Delivery height <output id="hd-out"></output><input id="hd" type="range" min="2" max="60" step="1"></label>
+      <label class="range">Altitude <output id="alt-out"></output><input id="alt" type="range" min="0" max="3500" step="50"></label>
+    </section>
+    <section class="module about" data-module="about" data-title="Model">
+      <h2>What is modelled, and what is not</h2>
+      <p><b>Model:</b> the textbook reciprocating-pump model — piston in simple harmonic motion (a long connecting rod), rigid water columns (acceleration head h<sub>a</sub> = (L/g)(A/a)ω²r cos θ), Darcy friction with the friction factor fixed at the mean velocity, air vessels next to the cylinder making the flow beyond them uniform. Separation when the absolute pressure falls below 2.5 m of water.</p>
+      <p><b>Checked:</b> the indicator-diagram area matches the power formula P = ρgQ(h<sub>s</sub> + h<sub>d</sub> + ⅔h<sub>fs</sub> + ⅔h<sub>fd</sub>); air vessels save 84.8 % (single-acting) and 39.2 % (double-acting) of friction work — the standard results.</p>
+      <p><b>Not modelled:</b> valve dynamics and leakage timing (slip is a single coefficient), the short pipe between cylinder and air vessel, compressibility, water hammer after separation.</p>
+    </section>
+  </section>
+</main>
+<script type="module" src="./piston.mjs"></script>
+</body>
+</html>

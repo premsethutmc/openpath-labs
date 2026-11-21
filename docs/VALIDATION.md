@@ -85,3 +85,15 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 **Reliable:** pipe losses, operating point for a given pump curve, affinity trends, series/parallel behaviour, NPSH available.
 **Approximate:** the pump itself is a physics-based model (Euler + slip + loss model) tuned to behave like a ~1.5 kW monoblock pump (shut-off 28 m, best efficiency ≈ 51 % at 4 L/s). NPSH required uses the Pfleiderer eye model — typical, not catalogue data. Fitting K values are typical (Crane TP-410), real fittings vary ±30 %.
 **Not modelled:** transients and water hammer, air entrainment, motor characteristics, gradual head loss under incipient cavitation.
+
+## Hydraulics — Piston Pump (reciprocating)
+
+| Check | Result | Reference | Verdict |
+|---|---|---|---|
+| Theoretical discharge | A·L·N/60 exactly; ×2 double-acting | textbook | ✓ |
+| Acceleration head | (L/g)(A/a)ω²r, maximum at stroke start | textbook | ✓ |
+| Indicator-diagram area vs power formula ρgQ(hs+hd+⅔hfs+⅔hfd) | within 0.2 % | textbook | ✓ |
+| Friction work saved by air vessel | 84.8 % single, 39.2 % double | textbook values 84.8 % / 39.2 % | ✓ |
+| Separation | none at 60 rpm, suction separates at 120 rpm (limit 72 rpm); air vessels prevent it | 2.5 m abs criterion | ✓ |
+
+**Assumptions:** simple harmonic piston motion (long connecting rod), rigid water columns, constant friction factor (taken at mean velocity), air vessels adjacent to the cylinder, slip as one coefficient of discharge.

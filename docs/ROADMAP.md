@@ -47,4 +47,5 @@
 ## Fluids
 - Done: Flow Tunnel (live LBM, 6 CE3391 missions, draw-your-own).
 - Done: Pump House (Unit II pipe flow, Unit IV centrifugal pumps).
-- Next: reciprocating pump with indicator diagram and air vessel (Unit IV); turbines — Pelton, Francis, Kaplan with velocity triangles (Unit V); pipe networks; finer tunnel grid / GPU.
+- Done: Piston Pump (reciprocating, indicator diagram, air vessels, separation).
+- Next: turbines — Pelton, Francis, Kaplan with velocity triangles (Unit V); pipe networks; finer tunnel grid / GPU.
