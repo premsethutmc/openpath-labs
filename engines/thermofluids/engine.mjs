@@ -27,33 +27,52 @@ export function cylinderVolume(theta, e = ENGINE) {
 
 // ---------------- closed-cycle model (compression → combustion → expansion) ----------------
 // First law for the cylinder gas: dp/dθ = −γ·p/V·dV/dθ + (γ−1)/V·dQ/dθ, with a Wiebe burn curve.
-// Wall heat loss is a fixed fraction of fuel energy (labelled simplification); γ constant (air-standard-like).
-// ve = volumetric efficiency (trapped air ÷ cylinder full at manifold conditions); evo = exhaust valve opening, ° after TDC.
-export function cycle({ rpm = 3000, manifold = 1.0, ignition = -15, burn = 50, gamma = 1.33, wallLoss = 0.22, instant = false, ve = 0.92, evo = 180 } = {}, e = ENGINE) {
-  const R = 287, T1 = 320, p1 = manifold * 1e5, LHV = 44e6, afr = 14.7, etaComb = 0.95;
+// Wall heat loss is a fixed fraction of fuel energy (labelled simplification).
+// Extras: mixture strength λ (heat release, burn speed, γ, charge cooling), intake temperature, exhaust back-pressure,
+// and end-gas knock by the Livengood–Wu integral with the Douaud–Eyzat auto-ignition delay (empirical; APPROXIMATE).
+// Calibration: lengthens the published delay so a 10.5:1 engine on RON 91 at 2000 rpm full load is knock-limited
+// near 15° before TDC (MBT ≈ 25°), as typical production engines are. ASSUMPTION (documented calibration).
+export const KNOCK_CAL = 2.4;
+const heatFactor = lambda => (lambda >= 1 ? 1 / lambda : 1 + 0.6 * (1 - lambda) - 2.5 * (1 - lambda) ** 2);
+export function cycle({ rpm = 3000, manifold = 1.0, ignition = -15, burn, gamma, wallLoss = 0.22, instant = false, ve = 0.92, evo = 180,
+  T1 = 320, lambda = 1, octane = null, pExhaust = 1.05e5 } = {}, e = ENGINE) {
+  const R = 287, p1 = manifold * 1e5, LHV = 44e6, afr = 14.7, etaComb = 0.95;
+  const g = gamma ?? Math.max(1.28, Math.min(1.38, 1.33 + 0.05 * (lambda - 1)));
+  const burnDeg = burn ?? 50 * (1 + 1.5 * (lambda - 1) ** 2 + (lambda < 0.88 ? (0.88 - lambda) * 0.5 : 0)) * (1 + 0.1 * (rpm - 3000) / 3000);
+  const misfire = lambda > 1.4 ? Math.max(0.3, 1 - (lambda - 1.4) * 2.5) : 1;          // very lean: flame struggles
+  const Tin = T1 - (lambda < 1 ? 25 * (1 - lambda) : 0);                                 // fuel evaporation cools a rich charge
   const deg = Math.PI / 180, V1 = cylinderVolume(-Math.PI, e);
-  const air = (p1 * V1) / (R * T1) * ve;                       // trapped air, kg
-  const Qin = (air / afr) * LHV * etaComb * (1 - wallLoss);
-  const wiebe = th => { if (instant) return th >= 0 ? 1 : 0; const x = (th - ignition) / burn; return x <= 0 ? 0 : 1 - Math.exp(-5 * x ** 3); };
-  let p = p1, work = 0, pmax = p1, thPmax = 0, pEvo = null;
+  const air = (p1 * V1) / (R * Tin) * ve;
+  const fuel = air / (afr * lambda);
+  const Qin = (air / afr) * LHV * etaComb * heatFactor(lambda) * misfire * (1 - wallLoss);
+  const wiebe = th => { if (instant) return th >= 0 ? 1 : 0; const x = (th - ignition) / burnDeg; return x <= 0 ? 0 : 1 - Math.exp(-5 * x ** 3); };
+  let p = p1, work = 0, pmax = p1, thPmax = 0, pEvo = null, I = 0, knockAngle = null, knockUnburned = 0;
   const trace = [];
-  const step = 0.25;
+  const step = 0.25, dt = step / (6 * rpm);
   for (let th = -180; th < 180; th += step) {
     const a = th * deg, b = (th + step) * deg, Va = cylinderVolume(a, e), Vb = cylinderVolume(b, e), dV = Vb - Va;
     const dQ = Qin * (wiebe(th + step) - wiebe(th));
     const Vm = (Va + Vb) / 2;
-    const dp = -gamma * p / Vm * dV + (gamma - 1) / Vm * dQ;
+    const dp = -g * p / Vm * dV + (g - 1) / Vm * dQ;
     let pNew = p + dp;
     if (th + step > evo) { if (pEvo === null) pEvo = p; pNew = pEvo + (1.05e5 - pEvo) * Math.min(1, (th + step - evo) / Math.max(180 - evo, 1)); } // blowdown
     work += ((p + pNew) / 2) * dV;
     p = pNew;
     if (p > pmax) { pmax = p; thPmax = th + step; }
+    if (octane && knockAngle === null && wiebe(th) < 0.98 && th < 90) {
+      const Tu = Tin * (p / p1) ** (0.35 / 1.35);                                           // unburned end gas, compressed
+      const tau = KNOCK_CAL * 17.68e-3 * (octane / 100) ** 3.402 * (p / 101325) ** -1.7 * Math.exp(3800 / Tu);
+      I += dt / tau;
+      if (I >= 1) { knockAngle = th; knockUnburned = 1 - wiebe(th); }
+    }
     if (Math.round(th * 4) % 8 === 0) trace.push({ theta: th, V: Va, p });
   }
   const imep = work / swept(e);
   const lateEvo = Math.max(0, Math.min(1, (evo - 130) / 30));      // exhaust opened late: cylinder not empty at high speed
-  const pmep = Math.max(0, 1.05e5 - p1) + 0.25e5 * (rpm / 6000) ** 2 * (1 + 1.5 * lateEvo);  // throttling + valve flow losses (approx.)
-  return { imep, pmep, pmax, thPmax, trace, work, Qfuel: (air / afr) * LHV, air, etaIndicated: work / ((air / afr) * LHV) };
+  const pmep = Math.max(0, pExhaust - p1) + 0.25e5 * (rpm / 6000) ** 2 * (1 + 1.5 * lateEvo);  // pumping + valve flow losses (approx.)
+  const knock = knockAngle !== null && knockUnburned > 0.05;
+  return { imep, pmep, pmax, thPmax, trace, work, Qfuel: fuel * LHV, fuel, air, Tin, etaIndicated: work / (fuel * LHV),
+    knock, knockAngle, knockIntensity: knock ? knockUnburned : 0, knockIntegral: I, burnDeg };
 }
 
 export const ottoEfficiency = (cr, gamma = 1.4) => 1 - cr ** (1 - gamma);
@@ -71,9 +90,11 @@ export function fmep(rpm, pmaxPa, muOil, e = ENGINE) {
 
 // ---------------- running engine at a steady operating point ----------------
 // compression and friction factors let assembly choices (ring gap, oil level) change the result.
-export function operatingPoint({ rpm, throttle, oil, oilTemp, compression = 1, friction = 1, ve, evo }, e = ENGINE) {
-  const manifold = 0.3 + 0.7 * throttle;
-  const c = cycle({ rpm, manifold, ...(ve !== undefined && { ve }), ...(evo !== undefined && { evo }) }, e);
+// Extra combustion inputs (ignition, lambda, octane, T1, pExhaust, boost, cr) pass straight to the cycle model.
+export function operatingPoint({ rpm, throttle, oil, oilTemp, compression = 1, friction = 1, ve, evo, boost = 0, cr, ...comb }, e = ENGINE) {
+  if (cr) e = { ...e, cr };
+  const manifold = (0.3 + 0.7 * throttle) * (1 + boost);
+  const c = cycle({ rpm, manifold, ...(ve !== undefined && { ve }), ...(evo !== undefined && { evo }), ...comb }, e);
   c.imep *= compression; c.work *= compression; c.etaIndicated *= compression;
   const v = viscosity(oil, oilTemp);
   const f = v.gelled ? Infinity : fmep(rpm, c.pmax, v.mu, e) * friction;
@@ -82,8 +103,9 @@ export function operatingPoint({ rpm, throttle, oil, oilTemp, compression = 1, f
   const torque = (bmep * Vd) / (4 * Math.PI);
   const power = torque * rpm * 2 * Math.PI / 60;
   const fuelPower = c.Qfuel * e.cylinders * rpm / 120;
+  const bsfc = power > 0 ? (c.fuel * e.cylinders * rpm / 120) * 3.6e9 / power : Infinity; // g/kWh
   const frictionPower = (f * Vd / (4 * Math.PI)) * rpm * 2 * Math.PI / 60;
-  return { ...c, rpm, throttle, manifold, fmep: f, bmep, torque, power, fuelPower, frictionPower, efficiency: power / fuelPower, oil: v };
+  return { ...c, rpm, throttle, manifold, fmep: f, bmep, torque, power, fuelPower, frictionPower, efficiency: power / fuelPower, bsfc, oil: v };
 }
 
 // ---------------- journal bearing (Ocvirk short-bearing solution of the Reynolds equation) ----------------

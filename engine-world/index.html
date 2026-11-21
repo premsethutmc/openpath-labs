@@ -119,6 +119,27 @@
         <ul class="results" id="breathe-results"></ul>
         <svg id="dyno" viewBox="0 0 340 200" role="img" aria-labelledby="dyno-t"><title id="dyno-t">Full-throttle torque and power</title></svg>
       </div>
+
+      <div class="card step" id="s-burn">
+        <h2><span class="n">7</span> Spark, fuel and boost</h2>
+        <p class="note">When the spark fires, what fuel burns and how much air is forced in decide power, economy — and knock, the uncontrolled explosion that breaks pistons.</p>
+        <h3 class="sub">Fuel</h3>
+        <div class="chips" id="fuels" role="radiogroup" aria-label="Fuel octane"></div>
+        <label class="range">Compression ratio <output id="cr-out"></output><input id="cr" type="range" min="8.5" max="13" step="0.5" value="10.5"></label>
+        <h3 class="sub">Spark timing</h3>
+        <div class="chips" id="ecu" role="radiogroup" aria-label="Spark control">
+          <button type="button" role="radio" data-ecu="on" aria-checked="true">Engine computer + knock sensor</button>
+          <button type="button" role="radio" data-ecu="off" aria-checked="false">Set it myself</button>
+        </div>
+        <label class="range" id="adv-box" hidden>Spark before top dead centre <output id="adv-out"></output><input id="adv" type="range" min="0" max="45" step="1" value="20"></label>
+        <label class="range">Mixture (λ) <output id="lam-out"></output><input id="lam" type="range" min="0.75" max="1.5" step="0.01" value="1"></label>
+        <h3 class="sub">Turbo</h3>
+        <label class="range">Boost <output id="boost-out"></output><input id="boost" type="range" min="0" max="1" step="0.05" value="0"></label>
+        <div class="chips" id="ic" role="radiogroup" aria-label="Intercooler"></div>
+        <ul class="results" id="burn-results"></ul>
+        <svg id="spark" viewBox="0 0 340 180" role="img" aria-labelledby="spark-t"><title id="spark-t">Torque against spark timing</title></svg>
+        <div class="emis" id="emis"></div>
+      </div>
     </div>
 
     <details class="card about">
@@ -127,6 +148,7 @@
       <p><b>Approximate:</b> oil thickness below 0 °C (anchored to SAE J300 cold-cranking limits); cylinder pressure (single-zone model, Wiebe burn, fixed wall heat loss); friction (Chen–Flynn, scaled with oil viscosity); cranking speed (starter and cold-battery curves); time to oil pressure (pump and suction-pipe flow); bearing film (Ocvirk short-bearing solution, steady load).</p>
       <p><b>Assembly choices:</b> bearing clearance changes oil pressure (side leakage ∝ clearance³) and the bearing film; ring gap and oil level change compression and drag by labelled amounts.</p>
       <p><b>Breathing:</b> valve timing and lift (geometry, reliable); air filling from intake-valve closing, Taylor's inlet Mach index and Helmholtz runner tuning (approximate, Heywood ch. 6); valve float from spring force against valve-train inertia (approximate, cam-ramp factor assumed); valve-to-piston gap from piston position and lift (reliable geometry, assumed pocket depth).</p>
+      <p><b>Spark, fuel and boost:</b> spark timing and mixture enter the cylinder model directly; knock uses the Livengood–Wu integral with the Douaud–Eyzat auto-ignition correlation, calibrated so a 10.5:1 engine on RON 91 at 2000 rpm is knock-limited near 15° (approximate); turbo outlet temperature from the isentropic relation with 72 % compressor efficiency (reliable), spool-up and back-pressure approximate; emissions are textbook trends, not measurements.</p>
       <p><b>Coolant:</b> freezing point of ethylene-glycol mixes from the standard table (reliable).</p>
       <p><b>Assumptions:</b> how much old oil thickens; reference engine values (1.2 L, 10.5:1, typical bearings and starter).</p>
       <p><b>Not modelled:</b> fuel evaporation in extreme cold, combustion chemistry, detailed 3D oil flow, component lifetime. This is a teaching model of the principles, not an engine test.</p>

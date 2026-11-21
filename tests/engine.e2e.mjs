@@ -183,3 +183,56 @@ test('Engine World: valves and airflow — cams, springs, runners, valve-to-pist
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
 });
+
+test('Engine World: spark, octane, mixture and turbo', async () => {
+  const server = await serve();
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(8000);
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await page.goto(server.origin + '/engine-world/index.html');
+    await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
+    await page.locator('#rpm').fill('2000'); await page.locator('#thr').fill('100');
+    const burn = () => page.locator('#burn-results').innerText();
+    const num = async (re, sel = '#drive-results') => +(await page.locator(sel).innerText()).match(re)[1].replace(/,/g, '');
+
+    assert.match(await burn(), /held back \d+° from best to stop knock/, 'regular fuel is knock-limited at low speed, full load');
+    const t91 = await num(/Torque\s+(\d+) N·m/);
+    await page.getByRole('radio', { name: 'Racing / 100 octane' }).click();
+    assert.ok(await num(/Torque\s+(\d+) N·m/) > t91, 'more octane lets the spark advance: more torque');
+    assert.match(await page.locator('#spark').innerHTML(), /best \d+°/);
+
+    // Set the spark yourself, far too early on regular fuel: knock
+    await page.getByRole('radio', { name: 'Regular (RON 91)' }).click();
+    await page.getByRole('radio', { name: 'Set it myself' }).click();
+    await page.locator('#adv').fill('40');
+    assert.match(await page.locator('#drive-results').innerText(), /Knocking!/);
+    assert.match(await page.locator('#spark').innerHTML(), /knockzone/);
+    await page.getByRole('radio', { name: 'Engine computer + knock sensor' }).click();
+
+    // Mixture: rich for power, lean for economy
+    await page.locator('#rpm').fill('3000');
+    await page.locator('#lam').fill('0.88'); const richP = await num(/Power\s+([\d.]+) kW/), richF = await num(/Fuel per kWh of work\s+(\d+) g/, '#burn-results');
+    await page.locator('#lam').fill('1.15'); const leanP = await num(/Power\s+([\d.]+) kW/), leanF = await num(/Fuel per kWh of work\s+(\d+) g/, '#burn-results');
+    assert.ok(richP > leanP && leanF < richF, `rich ${richP} kW ${richF} g, lean ${leanP} kW ${leanF} g`);
+    await page.locator('#lam').fill('1');
+    assert.match(await page.locator('#emis').innerText(), /three-way catalyst can clean up all three/);
+
+    // Turbo: more power, hot compressed air, intercooler cools it
+    await page.locator('#rpm').fill('5000');
+    const na = await num(/Power\s+([\d.]+) kW/);
+    await page.locator('#boost').fill('0.8');
+    assert.ok(await num(/Power\s+([\d.]+) kW/) > 1.25 * na);
+    const hotAir = await num(/Air entering the cylinders\s+(\d+) °C/, '#burn-results');
+    await page.getByRole('radio', { name: 'Intercooler: Large' }).click();
+    assert.ok(await num(/Air entering the cylinders\s+(\d+) °C/, '#burn-results') < hotAir);
+    await page.locator('#rpm').fill('1500');
+    assert.match(await burn(), /turbo still spooling up/);
+    await page.locator('#s-burn').screenshot({ path: '/tmp/burn.png' });
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); server.close(); }
+});

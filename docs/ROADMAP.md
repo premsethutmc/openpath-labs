@@ -16,7 +16,8 @@
 - [x] Cylinder model, friction, cranking, oil-pressure delay, Ocvirk bearing film, cooling and warm-up — each labelled Reliable / Approximate / Assumption
 - [x] Fit the parts (assembly with order rules and consequential choices), coolant and antifreeze, fast-forward warm-up timeline
 - [x] Valves and airflow: cams, springs, runner tuning, valve float, valve-to-piston contact, dyno curve, animated valves
-- [ ] Turbocharging, ignition timing and knock, fuel/air mixture
+- [x] Spark timing and knock, octane, compression ratio, mixture and emissions trends, turbo and intercooler
+- [ ] Gearbox and vehicle (engine → wheels), fuel consumption on a drive cycle
 
 ## Stage 2 — Proof people want it
 

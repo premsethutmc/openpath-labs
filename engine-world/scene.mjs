@@ -52,8 +52,9 @@ export function engineItems(theta, o) {
     const phase = ((theta - ENGINE.firing[i]) % 720 + 720) % 720;
     const top = yp + 4.1;
     if (o.running && phase < 70 && has('head')) {
-      const f = 1 - phase / 70;
-      add('cyl', cylY(x, (top + DECK) / 2, 0, bore / 2 - 0.15, Math.max(DECK - top, 0.2)), [1, 0.55 + 0.3 * f, 0.15, 0.25 + 0.45 * f], { glow: 1.2 * f });
+      const f = 1 - phase / 70, k = o.knock && phase > 8 && phase < 40;
+      add('cyl', cylY(x, (top + DECK) / 2, 0, bore / 2 - 0.15, Math.max(DECK - top, 0.2)), k ? [1, 1, 1, 0.85] : [1, 0.55 + 0.3 * f, 0.15, 0.25 + 0.45 * f], { glow: k ? 2 : 1.2 * f });
+      if (k) add('cyl', cylY(x, top + 0.3, 0, bore / 2 - 0.05, 0.4), [1, 0.15, 0.1, 0.9], { glow: 1.5 });
     }
     // cylinder liner (see-through) so the piston can be watched inside its bore
     add('cyl', cylY(x, (r + l - 2 + DECK) / 2 - 3, 0, bore / 2 + 0.25, DECK - (l - r) + 2), [0.75, 0.82, 0.9, 0.2]);
@@ -87,6 +88,12 @@ export function engineItems(theta, o) {
   if (fill > 0.01 && o.flow > 0 && has('oil')) for (let k = 0; k < 10; k++) {
     const u = ((k / 10 + (o.flowPhase || 0)) % 1) * fill;
     add('box', box(-L / 2 + u * L, galleryY, gz, 0.7, 0.35, 0.35), hex('#fff3c8'), { glow: 0.6 });
+  }
+  // turbocharger on the exhaust side: snail housing with a spinning wheel
+  if (o.turbo && has('head')) {
+    add('cyl', m4.chain(m4.translate(-6, DECK - 2, 11), m4.rotX(Math.PI / 2), m4.scale(4.2, 3.2, 4.2)), hex('#7c6a58'), { shine: 0.5 });
+    for (let k = 0; k < 6; k++) add('box', m4.chain(m4.translate(-6, DECK - 2, 12.8), m4.rotZ(th * 3 + k * Math.PI / 3), m4.scale(0.35, 3.4, 0.3)), hex('#c9cfd6'));
+    add('cyl', cylX(-1, DECK - 2, 8.5, 0.9, 10), hex('#7c6a58'));
   }
   // block, head and sump shells (see-through cutaway)
   const heat = o.heat || 0, frost = o.frost || 0;

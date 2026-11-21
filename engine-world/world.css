@@ -89,3 +89,10 @@ h3.sub{font-size:.85rem;margin:12px 0 6px;color:var(--muted)}
 #dyno{display:block;width:100%;height:auto;margin-top:10px;background:#fbfcfa;border:1px solid #e3e7e1;border-radius:10px}
 .tq{stroke:#1d58c8;stroke-width:2.4}.pw{stroke:var(--act);stroke-width:2.4}.prev{stroke-dasharray:4 4;stroke-width:1.6;opacity:.6}
 .dynolabel{font:700 10px Inter,sans-serif}
+#spark{display:block;width:100%;height:auto;margin-top:10px;background:#fbfcfa;border:1px solid #e3e7e1;border-radius:10px}
+.knockzone{fill:#fde2df}.sparkline{stroke:#14202b;stroke-width:2.2}
+.emis{display:grid;gap:6px;margin-top:10px;font-size:.85rem}
+.emis .ebar{display:grid;grid-template-columns:5.5em 1fr;align-items:center;gap:8px}
+.emis i{display:block;height:9px;border-radius:5px;background:#e4e7e2;overflow:hidden}
+.emis i b{display:block;height:100%;background:#8a6d3b}
+.sublabel{margin:0;font-size:.8rem;color:var(--muted);font-weight:700}
