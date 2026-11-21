@@ -9,8 +9,8 @@ OpenPath Labs is a workshop, not a set of fixed labs: the learner builds the set
 | Project and evidence record: setup, saved runs (frozen setup + outputs with units and source + verdicts), reproduce, compare, fork, file export/import | `core/project.mjs` | Yes — no physics |
 | Experiments panel (projects, runs, compare, fork, export/import) | `core/notebook.mjs` | Yes — used by the fluid line bench and Force Playground |
 | Workbench layout (instrument, readings, one module open) | `core/workbench.mjs`, `core/workbench.css` | Yes |
-| Bench editor + adapter `{ domain, title, evaluate(setup) }` | `circuit/` (fluids), `playground/` (solids) | No — one per domain |
-| Physics | `engines/hydraulics/line.mjs` (uses `hydraulics.mjs`), `engines/solids/` | No — specific to each domain |
+| Bench editor + adapter `{ domain, title, evaluate(setup) }` | `circuit/` (fluids), `machine/` (machine design), `playground/` (structures) | No — one per domain |
+| Physics | `engines/hydraulics/line.mjs` (uses `hydraulics.mjs`), `engines/machine/shaft.mjs` (uses `engines/solids/frame.mjs`), `engines/solids/` | No — specific to each domain |
 
 An adapter returns `{ ok:false, reason }` for a setup its model does not support; such a setup is explained on screen and cannot be saved as a run. There is no universal solver.
 
@@ -26,3 +26,12 @@ An adapter returns `{ ok:false, reason }` for a setup its model does not support
 ## Evidence tools on the solids bench (Force Playground)
 
 The Experiments panel works the same way: save the current structure as a run, change material, section, loads or the structure itself, save again, compare (which setup paths changed, safety factor, stress, movement, mass), fork, reopen and reproduce.
+
+## Machine design bench (`machine/`) — shafts first
+
+- Empty bench or preset (overhung pulley shaft, gearbox countershaft, three-bearing line shaft), one editor.
+- Shaft: material, stepped segments (length, diameter, bore), own weight on/off. Bearings: position (type or drag), optional load limit. Loads: forces anywhere, torques in and out (must balance).
+- Limits are the learner's: minimum safety factor, deflection, bearing slope, bearing load.
+- Results: reactions, bending moment and deflection along the shaft, von Mises (ductile) or maximum principal (brittle) stress, safety factor, slope at bearings; which check governs and where.
+- Generic question tools, no lesson code: **Explain** (what governs, the facts, and the computed one-step changes that help most), **What moves…** (sensitivity of any result to every input), **Sweep** (any input over a range against any result, with the best value).
+- Not modelled: fatigue and stress concentrations, loads in two planes, bearing stiffness and life, shear deflection, critical speed, axial loads.
