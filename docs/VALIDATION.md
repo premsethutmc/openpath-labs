@@ -69,3 +69,19 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 **What is reliable:** flow patterns, steady vs shedding regimes, shedding frequency, trends (streamlined vs blunt, continuity, Bernoulli, laminar profile).
 **Approximate:** force coefficients (±5 % steady, ~±15–20 % peak values on the coarse live grid).
 **Not modelled:** 3D effects, turbulence at everyday Reynolds numbers (10⁴–10⁶), compressibility. The tunnel caps the Reynolds number where the grid can no longer resolve the flow and says so ("max").
+
+## Hydraulics — Pump House (pipes and centrifugal pumps)
+
+| Check | Result | Reference | Verdict |
+|---|---|---|---|
+| Water density / viscosity / vapour pressure, 20–100 °C | within 0.1 % / 2 % / 1 % | IAPWS tables | ✓ |
+| Friction factor, Re 10⁵, ε/D 0.001 | 0.0222 | Moody chart 0.0222 | ✓ |
+| Smooth pipe, Re 10⁵ | within 3 % | Blasius 0.0178 | ✓ |
+| Fully rough, ε/D 0.01 | 0.038 | Moody 0.038 | ✓ |
+| Affinity law H ∝ N² | exact (hydraulic head) | similarity laws | ✓ |
+| Operating point energy balance | pump head = static + all losses (1e-6) | Bernoulli with losses | ✓ |
+| Atmospheric pressure, 2240 m | 77 kPa | standard atmosphere | ✓ |
+
+**Reliable:** pipe losses, operating point for a given pump curve, affinity trends, series/parallel behaviour, NPSH available.
+**Approximate:** the pump itself is a physics-based model (Euler + slip + loss model) tuned to behave like a ~1.5 kW monoblock pump (shut-off 28 m, best efficiency ≈ 51 % at 4 L/s). NPSH required uses the Pfleiderer eye model — typical, not catalogue data. Fitting K values are typical (Crane TP-410), real fittings vary ±30 %.
+**Not modelled:** transients and water hammer, air entrainment, motor characteristics, gradual head loss under incipient cavitation.

@@ -46,4 +46,5 @@
 
 ## Fluids
 - Done: Flow Tunnel (live LBM, 6 CE3391 missions, draw-your-own).
-- Next: pumps and pipe networks (Units IV–V: Darcy losses, Moody chart, centrifugal pump curves); finer grid / GPU for higher Re.
+- Done: Pump House (Unit II pipe flow, Unit IV centrifugal pumps).
+- Next: reciprocating pump with indicator diagram and air vessel (Unit IV); turbines — Pelton, Francis, Kaplan with velocity triangles (Unit V); pipe networks; finer tunnel grid / GPU.

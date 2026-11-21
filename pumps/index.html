@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pump House · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../fluids/tunnel.css">
+  <link rel="stylesheet" href="./pumps.css">
+</head>
+<body data-mode="learn">
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Pipes and pumps</span>
+  <div class="mode" role="radiogroup" aria-label="Mode">
+    <button type="button" role="radio" data-mode="learn" aria-checked="true">Learn</button>
+    <button type="button" role="radio" data-mode="explore" aria-checked="false">Explore</button>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="titleblock">
+      <h1>Pump House</h1>
+      <p>Fill the hostel’s overhead tank. Choose the pump, the pipes and the water — then find out why it works, or why it doesn’t.</p>
+    </div>
+    <div class="plant">
+      <svg id="plant" viewBox="0 0 360 330" role="img" aria-labelledby="plant-t"><title id="plant-t">Pump installation</title></svg>
+      <span id="status" class="state steady">Running</span>
+    </div>
+    <dl class="gauges g6">
+      <div><dt>Flow</dt><dd id="g-q">–</dd></div>
+      <div><dt>Pump head</dt><dd id="g-h">–</dd></div>
+      <div><dt>Motor power</dt><dd id="g-p">–</dd></div>
+      <div><dt>Efficiency</dt><dd id="g-e">–</dd></div>
+      <div><dt>NPSH available / needed</dt><dd id="g-n">–</dd></div>
+      <div><dt>Time to fill 10,000 L</dt><dd id="g-t">–</dd></div>
+    </dl>
+    <div class="tabs" role="tablist" aria-label="Chart">
+      <button type="button" role="tab" data-chart="curve" aria-selected="true">Pump and system curves</button>
+      <button type="button" role="tab" data-chart="energy" aria-selected="false">Energy along the pipe</button>
+      <button type="button" role="tab" data-chart="triangle" aria-selected="false">Inside the impeller</button>
+    </div>
+    <svg id="chart" viewBox="0 0 360 230" role="img" aria-labelledby="chart-t"><title id="chart-t">Chart</title></svg>
+    <p class="note" id="chart-note"></p>
+  </section>
+
+  <section class="side">
+    <div class="card mission" id="mission" aria-live="polite"></div>
+
+    <div class="card learn-hidden" id="c-scen">
+      <h2>Situations</h2>
+      <div class="chips" id="scenarios" role="radiogroup" aria-label="Situation"></div>
+    </div>
+
+    <div class="card learn-hidden" id="c-pump">
+      <h2>The pump</h2>
+      <label class="range">Speed <output id="rpm-out"></output><input id="rpm" type="range" min="800" max="3600" step="50"></label>
+      <label class="range">Impeller diameter <output id="d2-out"></output><input id="d2" type="range" min="100" max="160" step="2"></label>
+      <div class="chips" id="arr" role="radiogroup" aria-label="Pumps">
+        <button type="button" role="radio" data-arr="single">One pump</button>
+        <button type="button" role="radio" data-arr="parallel">Two in parallel</button>
+        <button type="button" role="radio" data-arr="series">Two in series</button>
+      </div>
+      <label class="range">Delivery valve open <output id="valve-out"></output><input id="valve" type="range" min="2" max="100" step="1"></label>
+    </div>
+
+    <div class="card learn-hidden" id="c-pipe">
+      <h2>The pipes</h2>
+      <p class="label">Delivery pipe diameter</p>
+      <div class="chips" id="dia" role="radiogroup" aria-label="Delivery pipe diameter"></div>
+      <label class="range">Delivery pipe length <output id="len-out"></output><input id="len" type="range" min="10" max="150" step="5"></label>
+      <label class="range sel">Pipe material <select id="mat"></select></label>
+    </div>
+
+    <div class="card learn-hidden" id="c-site">
+      <h2>The site and the water</h2>
+      <label class="range">Tank water level above the pump <output id="tank-out"></output><input id="tank" type="range" min="3" max="50" step="1"></label>
+      <label class="range">Sump water level (minus = below the pump) <output id="sump-out"></output><input id="sump" type="range" min="-9" max="3" step="0.5"></label>
+      <label class="range">Water temperature <output id="temp-out"></output><input id="temp" type="range" min="5" max="95" step="1"></label>
+      <label class="range">Altitude <output id="alt-out"></output><input id="alt" type="range" min="0" max="3500" step="50"></label>
+    </div>
+
+    <details class="card about">
+      <summary>What is modelled, and what is not</summary>
+      <p><b>Pipes:</b> Darcy–Weisbach with the Colebrook–White friction factor (Moody diagram); laminar 64/Re; Re 2000–4000 is blended and flagged as uncertain. Fitting losses use typical K values (foot valve 5, elbow 0.75, non-return valve 2, gate valve from Crane TP-410).</p>
+      <p><b>Pump:</b> a model pump built from its impeller geometry — Euler’s equation with Wiesner slip, friction and incidence losses, leakage, disk friction and bearing losses; NPSH required from the Pfleiderer eye model. It behaves like a typical 2 hp monoblock pump but is not a specific catalogue pump.</p>
+      <p><b>Water:</b> density, viscosity and vapour pressure from standard correlations (within 1–2 % of IAPWS tables).</p>
+      <p><b>Not modelled:</b> start-up transients and water hammer, air entrainment, pipe ageing beyond the roughness choice, motor characteristics. The cavitation flag is the NPSH criterion; real pumps lose head gradually as NPSH margin shrinks.</p>
+    </details>
+  </section>
+</main>
+<script type="module" src="./pumps.mjs"></script>
+</body>
+</html>

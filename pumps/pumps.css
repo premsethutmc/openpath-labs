@@ -1,0 +1,21 @@
+/* Pump House — shares the Flow Tunnel bench styling; adds the plant schematic and charts. */
+.plant{position:relative;background:linear-gradient(#dfeaf2,#eef3f6 70%);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+#plant{display:block;width:100%;height:auto;max-height:62vh}
+.plant .state{position:absolute;left:8px;top:8px}
+.state.bad{background:#c2410c;color:#fff}.state.idle{background:#6b7680;color:#fff}
+.gauges.g6{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:560px){.gauges.g6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gauges dd.warn{color:#c2410c}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+.tabs button{min-height:38px;font-size:.8rem;padding:0 10px}
+.tabs button[aria-selected=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+#chart{display:block;width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:12px}
+#chart text{font:600 9px Inter,sans-serif;fill:#3d4a55}
+#chart .ax{stroke:#9aa6ae;stroke-width:1}
+#chart .grid{stroke:#eceff1}
+.label{font-size:.9rem;font-weight:650;margin:10px 0 4px}
+.sel select{display:block;width:100%;min-height:44px;font:inherit;border:1px solid #c3ccd2;border-radius:10px;padding:0 8px;background:#fff;margin-top:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#impeller{transform-box:fill-box;transform-origin:center}
+@media(prefers-reduced-motion:reduce){#impeller{animation:none!important}}
+.bubble{fill:#fff;stroke:#7aa0c0;stroke-width:.6}
