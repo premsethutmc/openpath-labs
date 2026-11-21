@@ -4,6 +4,7 @@ Goal: one deep, immersive experience that proves the vision. A learner chooses a
 
 ## Learner path
 
+0. **Build the engine** — fit nine parts from a tray in a sensible order (wrong order is refused with the reason). Choices matter: bearing clearance (standard / tight / worn), ring gap (correct / too small / too large), oil fill (correct / low / overfilled). Taking off a part removes everything fitted on top of it.
 1. **The oil** — 0W-20, 5W-30, 10W-40, 20W-50, SAE 40, or a blend of two. Live viscosity–temperature chart.
 2. **Its history** — fresh, or 50,000 km in the desert never changed (thickening is a visible, adjustable *assumption*).
 3. **Where it is parked** — Chennai +38 °C to Alaska −35 °C, 0–4 days. Engine cools towards ambient.
@@ -27,6 +28,11 @@ Goal: one deep, immersive experience that proves the vision. A learner chooses a
 | Time to oil pressure | Gallery volume ÷ min(pump flow, Hagen–Poiseuille suction flow) | Approximate |
 | Bearing oil film | Ocvirk short-bearing solution of the Reynolds equation, steady load; regime by film/roughness ratio | Approximate |
 | Wear index | Dry seconds × contact regime | Assumption (trend only) |
+| Oil pressure | Pump flow through bearing side-leakage ∝ c³/μ, relief valve 4.5 bar; calibrated to ≈1.2 bar hot idle | Approximate |
+| Coolant freezing | Ethylene-glycol table by volume | Reliable |
+| Tight bearings when hot | Rule: < 12 µm clearance above 60 °C → metal contact, seizure risk | Assumption (rule of thumb) |
+| Ring gap, oil level | Compression −10 % (large gap), drag +5 % (small gap), +8 % (overfill) | Assumption |
+| Warm-up timeline | Lumped heat balance, 5 kW into the engine at idle, thermostat at 90 °C | Approximate |
 
 Reference engine: 1.2 L inline-four, bore 73 mm, stroke 71.6 mm, rod 128 mm, 10.5:1, firing order 1-3-4-2. Behaviour checked in tests: ≈62 kW at 6000 rpm, peak pressure 8–25° after TDC, efficiency 25–40 %, each oil grade cranks at its rated cold temperature, 20W-50 fails at −35 °C, 0W-20 starts.
 
@@ -36,7 +42,4 @@ Fuel evaporation in extreme cold, combustion chemistry, 3D oil flow, component l
 
 ## Next in this vertical
 
-- Fit the parts: assemble piston, rings, rod, crank, bearings and pump from a parts tray; wrong fits caught by rules.
-- Coolant and antifreeze mix (freezing, cracked block).
-- Warm-up as a live timeline instead of a summary number.
 - Valve train and intake/exhaust flow (1D), turbocharging.

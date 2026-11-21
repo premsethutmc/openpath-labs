@@ -67,11 +67,13 @@ export function fmep(rpm, pmaxPa, muOil, e = ENGINE) {
 }
 
 // ---------------- running engine at a steady operating point ----------------
-export function operatingPoint({ rpm, throttle, oil, oilTemp }, e = ENGINE) {
+// compression and friction factors let assembly choices (ring gap, oil level) change the result.
+export function operatingPoint({ rpm, throttle, oil, oilTemp, compression = 1, friction = 1 }, e = ENGINE) {
   const manifold = 0.3 + 0.7 * throttle;
   const c = cycle({ rpm, manifold }, e);
+  c.imep *= compression; c.work *= compression; c.etaIndicated *= compression;
   const v = viscosity(oil, oilTemp);
-  const f = v.gelled ? Infinity : fmep(rpm, c.pmax, v.mu, e);
+  const f = v.gelled ? Infinity : fmep(rpm, c.pmax, v.mu, e) * friction;
   const bmep = c.imep - c.pmep - f;
   const Vd = displacement(e);
   const torque = (bmep * Vd) / (4 * Math.PI);
@@ -150,3 +152,40 @@ export function warmUp(T0, Tamb, seconds, heatW = 5000, e = ENGINE) {
 
 // Relative wear index for one cold start (trend only): dry seconds × boundary contact. ASSUMPTION-level.
 export const startWear = (delay, regimeAfter) => Math.min(100, delay * 4 + (regimeAfter === 'boundary' ? 30 : regimeAfter === 'mixed' ? 10 : 0));
+
+// ---------------- oil pressure ----------------
+// Pump flow escapes through bearing clearances: side-leakage ∝ c³·p/μ (Reynolds), so p ≈ Q·μ / (K·c³), capped by the
+// relief valve. K is calibrated so a standard engine with hot 5W-30 shows ≈1.2 bar at 800 rpm idle. APPROXIMATE.
+const RELIEF = 4.5; // bar
+const K_LEAK = (() => { const Q = ENGINE.pumpPerRev * 800 / 60 * 0.9; return Q * 9.5 / (1.2 * (25e-6) ** 3); })();
+export function oilPressure({ oil, T, rpm, clearance = 25e-6 }, e = ENGINE) {
+  const v = viscosity(oil, T);
+  if (v.gelled) return { bar: 0, relief: false, low: true, oil: v };
+  const pump = e.pumpPerRev * rpm / 60 * 0.9, suction = (0.7e5 * Math.PI * 0.006 ** 4) / (8 * (v.mu / 1000) * 0.25);
+  const Q = Math.min(pump, suction);
+  const p = Q * v.mu / (K_LEAK * clearance ** 3);
+  return { bar: Math.min(p, RELIEF), relief: p >= RELIEF, low: p < 0.5, oil: v };
+}
+
+// ---------------- coolant ----------------
+// Freezing point of ethylene-glycol coolant by volume (standard table; above ~60 % it rises again). RELIABLE.
+const GLYCOL = [[0, 0], [10, -4], [20, -9], [30, -16], [40, -25], [50, -37], [60, -52], [70, -48]];
+export function coolantFreezePoint(pct) {
+  const p = Math.max(0, Math.min(70, pct));
+  for (let i = 1; i < GLYCOL.length; i++) if (p <= GLYCOL[i][0]) {
+    const [a, fa] = GLYCOL[i - 1], [b, fb] = GLYCOL[i];
+    return fa + (fb - fa) * (p - a) / (b - a);
+  }
+  return GLYCOL.at(-1)[1];
+}
+
+// Warm-up as a timeline (one point every 30 s) for charts. APPROXIMATE.
+export function warmUpSeries(T0, Tamb, minutes = 30, heatW = 5000, e = ENGINE) {
+  const out = [{ t: 0, T: T0 }];
+  let T = T0;
+  for (let s = 1; s <= minutes * 60; s++) {
+    if (T < 90) T += (heatW - 25 * (T - Tamb)) / e.heatCapacity; else T = 90;
+    if (s % 30 === 0) out.push({ t: s / 60, T });
+  }
+  return out;
+}

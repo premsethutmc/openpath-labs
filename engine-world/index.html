@@ -39,6 +39,20 @@
   </section>
 
   <section class="side">
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button type="button" role="tab" id="tab-build" aria-selected="true" aria-controls="build-panel">Build the engine</button>
+      <button type="button" role="tab" id="tab-run" aria-selected="false" aria-controls="run-panel">Run it</button>
+    </div>
+
+    <div class="card" id="build-panel" role="tabpanel">
+      <h2>Fit the parts</h2>
+      <p class="note" id="build-progress"></p>
+      <p id="build-msg" class="msg" role="status" aria-live="polite">Start anywhere. If a part cannot go on yet, you will be told why.</p>
+      <ol class="parts" id="parts"></ol>
+      <div class="row"><button type="button" id="b-ready">Skip: use a ready-built engine</button><button type="button" id="b-strip">Strip it down</button></div>
+    </div>
+
+    <div id="run-panel" role="tabpanel" hidden>
     <div class="card step" id="s-oil">
       <h2><span class="n">1</span> The oil</h2>
       <div class="chips" id="oils" role="radiogroup" aria-label="Oil grade"></div>
@@ -68,6 +82,8 @@
       <div class="chips" id="places" role="radiogroup" aria-label="Place"></div>
       <label class="range">Parked for <output id="hours-out"></output><input id="hours" type="range" min="0" max="96" step="1" value="96"></label>
       <p class="note" id="soak-note"></p>
+      <label class="range">Antifreeze in the coolant <output id="gly-out"></output><input id="gly" type="range" min="0" max="60" step="5" value="50"></label>
+      <p class="note" id="coolant-note"></p>
     </div>
 
     <div class="card step key-step">
@@ -75,6 +91,10 @@
       <div id="predict"></div>
       <div class="row"><button type="button" class="primary" id="key">Turn the key</button></div>
       <ul class="results" id="start-results" aria-live="polite"></ul>
+      <div id="warmbox" hidden>
+        <div class="row"><button type="button" id="warm-go">Fast-forward the warm-up</button></div>
+        <svg id="warm" viewBox="0 0 340 160" role="img" aria-labelledby="warm-t"><title id="warm-t">Engine temperature while idling</title></svg>
+      </div>
     </div>
 
     <div class="card step">
@@ -86,10 +106,14 @@
       <svg id="pv" viewBox="0 0 340 190" role="img" aria-labelledby="pv-t"><title id="pv-t">Cylinder pressure against volume</title></svg>
     </div>
 
+    </div>
+
     <details class="card about">
       <summary>What is modelled, and what is not</summary>
       <p><b>Reliable:</b> piston and crank motion (exact geometry); oil thickness between 0 and 150 °C (ASTM D341 from each oil's 40 °C and 100 °C data); cooling of a parked engine (Newton's law); the ideal Otto cycle as a check on the cylinder model.</p>
       <p><b>Approximate:</b> oil thickness below 0 °C (anchored to SAE J300 cold-cranking limits); cylinder pressure (single-zone model, Wiebe burn, fixed wall heat loss); friction (Chen–Flynn, scaled with oil viscosity); cranking speed (starter and cold-battery curves); time to oil pressure (pump and suction-pipe flow); bearing film (Ocvirk short-bearing solution, steady load).</p>
+      <p><b>Assembly choices:</b> bearing clearance changes oil pressure (side leakage ∝ clearance³) and the bearing film; ring gap and oil level change compression and drag by labelled amounts.</p>
+      <p><b>Coolant:</b> freezing point of ethylene-glycol mixes from the standard table (reliable).</p>
       <p><b>Assumptions:</b> how much old oil thickens; reference engine values (1.2 L, 10.5:1, typical bearings and starter).</p>
       <p><b>Not modelled:</b> fuel evaporation in extreme cold, combustion chemistry, detailed 3D oil flow, component lifetime. This is a teaching model of the principles, not an engine test.</p>
     </details>

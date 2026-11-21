@@ -16,6 +16,7 @@ for (const width of [380, 1280]) test(`Engine World ${width}px: oil, history, Al
     await page.locator('.obj.feature', { hasText: 'Engine World' }).click();
     await page.locator('body[data-ready="true"]').waitFor();
     assert.ok(await page.locator('#nogl').isHidden(), 'WebGL scene renders');
+    await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     assert.ok(await page.locator('#blendbox').isHidden());
     const turn = async () => { await page.locator('#key').click(); await page.waitForFunction(() => ['running', 'failed'].includes(document.body.dataset.phase)); };
     const reset = () => page.getByRole('button', { name: 'Reset and try again' }).click();
@@ -56,6 +57,14 @@ for (const width of [380, 1280]) test(`Engine World ${width}px: oil, history, Al
     const aged = +(await page.locator('#start-results').innerText()).match(/Cranking speed\s+(\d+) rpm/)[1];
     assert.ok(aged < fresh, `aged ${aged} < fresh ${fresh}`);
 
+    // Coolant with no antifreeze freezes in Alaska: do not start
+    await reset();
+    await page.locator('#gly').fill('0');
+    assert.match(await page.locator('#coolant-note').innerText(), /frozen solid/);
+    await turn();
+    assert.match(await page.locator('#start-results').innerText(), /coolant is frozen/);
+    await page.locator('#gly').fill('50'); // changing an input resets the start
+
     // Blend your own shows the blend controls
     await page.getByRole('radio', { name: 'Blend your own' }).click();
     assert.ok(await page.locator('#blendbox').isVisible());
@@ -69,6 +78,59 @@ for (const width of [380, 1280]) test(`Engine World ${width}px: oil, history, Al
     assert.equal(await page.locator('#pv polyline').count(), 1);
     assert.ok(await page.evaluate(() => innerWidth >= document.documentElement.scrollWidth), 'no sideways scroll');
     await page.screenshot({ path: `/tmp/engine-${width}.png` });
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); server.close(); }
+});
+
+test('Engine World: build the engine part by part, then feel the consequences', async () => {
+  const server = await serve();
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 420, height: 900 }, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(6000);
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await page.goto(server.origin + '/engine-world/index.html');
+    await page.locator('body[data-ready="true"]').waitFor();
+    const msg = () => page.locator('#build-msg').innerText();
+    const fitPart = name => page.locator('#parts li', { hasText: name }).getByRole('button', { name: 'Fit' }).click();
+
+    await fitPart('Crankshaft');
+    assert.match(await msg(), /main bearing shells first/);
+    await page.getByRole('tab', { name: 'Run it' }).click();
+    assert.match(await msg(), /Finish building first/);
+
+    await page.getByRole('radio', { name: 'Worn (60 µm)' }).click();
+    await fitPart('Main bearing shells');
+    assert.match(await msg(), /oil pressure falls/);
+    await fitPart('Crankshaft');
+    await fitPart('Piston rings');
+    await fitPart('Pistons and rods');
+    assert.match(await msg(), /rod bearing shells first/);
+    for (const p of ['Rod bearing shells', 'Pistons and rods', 'Oil pump', 'Oil sump', 'Cylinder head', 'Fill with oil']) await fitPart(p);
+    assert.match(await page.locator('#build-progress').innerText(), /9 of 9 fitted — ready to run/);
+
+    // Take off the crank: everything on it comes off too
+    await page.locator('#parts li', { hasText: 'Crankshaft' }).getByRole('button', { name: 'Take off' }).click();
+    assert.match(await page.locator('#build-progress').innerText(), /^2 of 9/);
+    for (const p of ['Crankshaft', 'Rod bearing shells', 'Pistons and rods', 'Oil pump', 'Oil sump', 'Cylinder head', 'Fill with oil']) await fitPart(p);
+
+    await page.getByRole('tab', { name: 'Run it' }).click();
+    await page.locator('#key').click();
+    await page.waitForFunction(() => document.body.dataset.phase === 'running');
+    assert.ok(await page.locator('#warmbox').isVisible());
+    // Hot oil + worn bearings = oil pressure warning
+    await page.locator('#ot').fill('110');
+    await page.locator('#rpm').fill('1000');
+    const drive = await page.locator('#drive-results').innerText();
+    assert.match(drive, /Oil pressure\s+[\d.]+ bar — warning light on/);
+    assert.match(drive, /Your build: Loose/);
+    // Fast-forward warm-up reaches 90 °C
+    await page.getByRole('button', { name: 'Fast-forward the warm-up' }).click();
+    await page.waitForFunction(() => document.getElementById('ot').value === '90');
+    assert.match(await page.locator('#warm').innerHTML(), /friction at idle/);
+    await page.screenshot({ path: '/tmp/assembly.png' });
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
 });
