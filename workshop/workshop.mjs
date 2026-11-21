@@ -189,11 +189,30 @@ function paintSummary() {
     : f.state === 'needs-shaft' ? `Bore measured. Measure ${shaft} on the Fit bench.` : `Revision ${rev}. Measure the bore when you are ready to check a fit.`;
 }
 
-function render() { paintParts(); paintDrawing(); paintLathe(); paintDrawingBench(); paintMeasure(); paintFit(); paintModel(); paintSummary(); nb.render(); }
+// Attempts saved before experiment records existed move onto the project as historical snapshots: shown exactly
+// as saved, never replayed and never presented as runs.
+function adoptLegacy(setup) {
+  if (!Array.isArray(setup.attempts)) return false;
+  const p = nb.project(), seen = new Set((p.history || []).map(a => JSON.stringify(a)));
+  p.history = [...(p.history || []), ...setup.attempts.filter(a => !seen.has(JSON.stringify(a)))];
+  delete setup.attempts;
+  return true;
+}
+function paintHistory() {
+  const h = nb.project().history || [];
+  if (!h.length) return;
+  const rd = r => r ? `${r.reading} ±${r.maxError} mm (${M.INSTRUMENTS[r.instrument]?.name ?? r.instrument})` : 'not measured';
+  $('experiments').insertAdjacentHTML('beforeend', `<section class="history" id="history"><h2>Earlier attempts</h2>
+    <p class="note">Saved before experiment records existed. Shown exactly as they were saved: they are not recomputed, not checked, and are not runs.</p>
+    <ul class="nb-runs">${h.map(a => `<li data-history><b>${esc(a.name)}</b><span>${esc(a.partId)} r${a.rev} · bore ${esc(rd(a.bore))} · shaft ${esc(rd(a.shaft))}${a.clearance !== null && a.clearance !== undefined ? ` · clearance ${a.lo} … ${a.hi} mm` : ''}</span><em>${esc(M.OUTCOME_TEXT[a.outcome] ?? a.outcome)} (as saved)</em></li>`).join('')}</ul></section>`);
+}
+
+function render() { paintParts(); paintDrawing(); paintLathe(); paintDrawingBench(); paintMeasure(); paintFit(); paintModel(); paintSummary(); nb.render(); paintHistory(); }
 
 document.querySelectorAll('[data-guide]').forEach(b => b.onclick = () => { ui.guide = b.dataset.guide; save(); render(); });
 const bench = workbench('workshop', { initial: 'lathe' });
-nb = notebook($('experiments'), { adapter: M.ADAPTER, getSetup: () => JSON.parse(JSON.stringify(ws)), applySetup: s => { ws = s; render(); } });
+nb = notebook($('experiments'), { adapter: M.ADAPTER, getSetup: () => JSON.parse(JSON.stringify(ws)), applySetup: s => { ws = s; if (adoptLegacy(ws)) nb.sync(); render(); } });
 ws = JSON.parse(JSON.stringify(nb.project().setup));
+if (adoptLegacy(ws)) nb.sync();
 render();
 document.body.dataset.ready = 'true';

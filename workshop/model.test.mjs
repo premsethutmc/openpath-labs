@@ -186,9 +186,24 @@ test('shared experiment record: runs freeze parts and readings, and reproduce by
   assert.ok(c.outputs.find(o => o.key === 'clearance').changed);
   // a tampered reading is caught instead of silently trusted
   back.runs[0].setup.readings[0].reading += 0.01;
-  assert.match(M.evaluateWorkshop(back.runs[0].setup).reason, /no longer matches its part/);
+  assert.match(M.evaluateWorkshop(back.runs[0].setup).reason, /does not match what its instrument gives: reading differs/);
   assert.match(M.evaluateWorkshop(M.newWorkshop()).reason, /No part on the bench/);
   // after a recut the fit is not applicable until the bore is measured again
   M.cut(proj.setup, id, { type: 'bore', D: 20.04 });
   assert.equal(M.evaluateWorkshop(proj.setup).verdicts.fit.value, 'not-applicable');
+});
+
+// Regression: the replay checked the value only. Zeroing the saved caliper's error turned "can't confirm" into a pass.
+test('regression: a saved reading is trusted only if its value, instrument, resolution and error all match', () => {
+  const ws = fresh(), id = M.addPartFromPreset(ws, 'gear20');
+  M.cut(ws, id, { type: 'bore', D: 20.02 }); M.takeReading(ws, id, 'bore', 'caliper'); M.takeShaftReading(ws, 'g20a', 'caliper');
+  assert.equal(M.evaluateWorkshop(ws).verdicts.fit.value, 'cannot-assess');
+  const tamper = (fn, re) => { const w = JSON.parse(JSON.stringify(ws)); fn(w); const e = M.evaluateWorkshop(w); assert.equal(e.ok, false, 'not trusted'); assert.match(e.reason, re); };
+  tamper(w => { w.readings[0].maxError = 0; w.readings[1].maxError = 0; }, /maxError differs/);
+  tamper(w => { w.readings[0].resolution = 0.001; }, /resolution differs/);
+  tamper(w => { w.readings[0].instrument = 'boreGauge'; }, /does not match/);
+  tamper(w => { w.readings[0].rev = 4; }, /does not match/);
+  tamper(w => { w.readings[1].n = 3; }, /does not match/);
+  tamper(w => { w.readings[0].partId = 'P9'; }, /not in this workshop/);
+  tamper(w => { w.readings[0].note = 'edited'; }, /note differs/);
 });

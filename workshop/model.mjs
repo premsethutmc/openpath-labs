@@ -268,9 +268,15 @@ export function evaluateWorkshop(w) {
   if (!part) return { ok: false, reason: 'No part on the bench yet: start from stock or open a preset.' };
   try {
     for (const p of w.parts) revisions(p);
+    // a reading is only trusted if all of it — value, instrument, its resolution and maximum error, the revision
+    // and reading number — is exactly what the simulated instrument gives for that part
     for (const r of w.readings) {
-      const again = r.partId ? measurePart(w.parts.find(p => p.id === r.partId), r.feature, r.instrument, r.n, r.rev) : measureShaft(r.shaftId, r.instrument, r.n);
-      if (again.reading !== r.reading) return { ok: false, reason: `a ${FEATURES[r.feature].toLowerCase()} reading (${r.reading} mm) no longer matches its part` };
+      const owner = r.partId ? w.parts.find(p => p.id === r.partId) : null;
+      if (r.partId && !owner) return { ok: false, reason: `a reading belongs to part ${r.partId}, which is not in this workshop` };
+      const again = r.partId ? { partId: r.partId, ...measurePart(owner, r.feature, r.instrument, r.n, r.rev) } : measureShaft(r.shaftId, r.instrument, r.n);
+      const keys = new Set([...Object.keys(again), ...Object.keys(r)]);
+      const bad = [...keys].filter(k => again[k] !== r[k]);
+      if (bad.length) return { ok: false, reason: `a ${FEATURES[r.feature]?.toLowerCase() ?? 'saved'} reading (${r.reading} mm) does not match what its instrument gives: ${bad.join(', ')} differ${bad.length === 1 ? 's' : ''}` };
     }
   } catch (e) { if (e instanceof CutError || e instanceof MeasureError) return { ok: false, reason: e.message }; throw e; }
   const f = fitState(w, part.id, w.fit), rev = currentRev(part);
