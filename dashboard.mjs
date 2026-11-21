@@ -30,7 +30,7 @@ document.getElementById('engines').innerHTML = ENGINES.map(e => `<div class="eng
 document.getElementById('stages').innerHTML = STAGES.map((s, i) => {
   const objects = (s.objects || []).map(id => {
     const p = PRESETS.find(x => x.id === id), done = progress[id] || 0, total = p.steps.length;
-    return `<a class="obj" href="./playground/#${id}"><span>${p.name}</span><small>${done ? `${Math.min(done, total)}/${total} steps` : p.question}</small></a>`;
+    return `<a class="obj" href="./playground/index.html#${id}"><span>${p.name}</span><small>${done ? `${Math.min(done, total)}/${total} steps` : p.question}</small></a>`;
   }).join('');
   return `<li class="stage ${s.status}">
     <div class="snum">${i + 1}</div>
@@ -44,7 +44,7 @@ document.getElementById('stages').innerHTML = STAGES.map((s, i) => {
 
 if (lastPreset && PRESETS.some(p => p.id === lastPreset)) {
   const c = document.getElementById('continue');
-  c.href = `./playground/#${lastPreset}`;
+  c.href = `./playground/index.html#${lastPreset}`;
   c.textContent = `Continue: ${PRESETS.find(p => p.id === lastPreset).name}`;
 }
 document.body.dataset.ready = 'true';
