@@ -8,7 +8,6 @@
 - [x] Dashboard: all labs across the mechanical path, with status
 - [x] Force Playground v1: real objects (shelf bracket, footbridge, truss bridge, crane, diving board), drag loads live, swap material and section, scenarios, live deformation, stress colours, live equations, safety meter, failure; guided path with pause-and-think
 - [x] Build your own: draw members (rigid or pin joints), supports, delete, move joints, undo, material used; edit any preset; designs saved in the browser
-- [ ] Tamil interface
 - [ ] Solids v2: 2D plane stress (holes, notches, stress concentrations), shear stress, torsion members
 
 ### Engine World (first deep vertical)
@@ -16,7 +15,7 @@
 - [x] Oil engine: ASTM D341 viscosity, SAE J300-anchored cold behaviour, pour point, blends, aged-oil assumption
 - [x] Cylinder model, friction, cranking, oil-pressure delay, Ocvirk bearing film, cooling and warm-up — each labelled Reliable / Approximate / Assumption
 - [x] Fit the parts (assembly with order rules and consequential choices), coolant and antifreeze, fast-forward warm-up timeline
-- [ ] Valve train and intake/exhaust flow, turbocharging; Tamil
+- [ ] Valve train and intake/exhaust flow, turbocharging
 
 ## Stage 2 — Proof people want it
 
@@ -36,3 +35,7 @@
 - Circuits engine; civil and electrical paths
 - Public API for the engines
 - Design Studio and capstone projects (gearbox, engine, vehicle)
+
+## Later
+
+- Multiple interface languages (platform-wide, all at once — not one language as a selling point)

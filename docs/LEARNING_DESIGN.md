@@ -32,4 +32,4 @@ Every number on screen can be expanded into its equation with live values, e.g. 
 
 ## Language and access
 
-English first; Tamil next (interface and guided text). Mobile first: one-handed use, 44 px touch targets, no sideways scrolling. Works offline once loaded.
+English only for now. Multiple languages are a later, platform-wide feature — not a priority or a differentiator. Mobile first: one-handed use, 44 px touch targets, no sideways scrolling. Works offline once loaded.
