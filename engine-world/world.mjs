@@ -5,6 +5,7 @@ import { CAMS, SPRINGS, timing, volumetricEfficiency, machIndex, tunedRpm, float
 import { FUELS, INTERCOOLERS, turbo, sparkSweep, ecuTiming, emissionsTrend } from '../engines/thermofluids/combustion.mjs';
 import { BENCH_REFERENCE } from './bench-reference.mjs';
 import { K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
+import { makeMissions, COURSE } from './missions.mjs';
 import { PARTS, emptyBuild, complete, fit, remove, has, option, isComplete, buildEffects } from './assembly.mjs';
 import { engineItems, SCENE_TARGET } from './scene.mjs';
 
@@ -43,7 +44,8 @@ const place = () => PLACES.find(p => p.id === S.place);
 const engineT = () => soak(90, place().T, S.hours);
 const fmt = (n, d = 0) => (Math.abs(n) >= 10000 ? Math.round(n).toLocaleString('en-IN') : n.toFixed(d));
 const conf = c => `<span class="conf ${c}">${{ reliable: 'Reliable', approximate: 'Approximate', assumption: 'Assumption' }[c]}</span>`;
-const li = (label, value, c, cls = '') => `<li class="${cls}"><span>${label}</span><b>${value}</b>${c ? conf(c) : ''}</li>`;
+const KEY = /^(Cranking speed|Time until oil|Torque|Power|Cylinder filling|Closest valve|Spark chosen|Your spark|Knock|Air entering|Fuel per kWh|Oil pressure)/;
+const li = (label, value, c, cls = '') => `<li class="${cls}${KEY.test(label) ? ' key' : ''}"><span>${label}</span><b>${value}</b>${c ? conf(c) : ''}</li>`;
 function oilColour(T, o) {
   const v = viscosity(o, T);
   if (v.gelled) return '#5b4a33';
@@ -377,6 +379,7 @@ function paintBuild() {
 
 function paint() {
   paintBuild();
+  paintMission();
   paintOilChips(); paintChart(); paintPlaces(); paintPredict();
   $('history').querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.history === S.history)));
   $('age-box').hidden = S.history !== 'desert';
@@ -415,6 +418,72 @@ $('key').onclick = () => {
     paint();
   }, reduced ? 50 : 2600);
 };
+
+// ---------- guided missions (Learn mode) ----------
+const UNITS = { 's-oil': 'Unit V', 's-history': 'Unit V', 's-park': 'Unit V', 's-key': 'Unit V', 's-drive': 'Unit IV–V', 's-breathe': 'Unit IV', 's-burn': 'Unit IV–V' };
+const INPUTS = { rpm: ['rpm', v => v], thr: ['thr', v => v * 100], hours: ['hours', v => v], gly: ['gly', v => v], lam: ['lam', v => v], adv: ['adv', v => v], boost: ['boost', v => v], ot: ['ot', v => v] };
+function set(key, v) {
+  if (key === 'boost') S.boostTarget = v; else S[key] = v;
+  const [id, f] = INPUTS[key]; $(id).value = f(v);
+}
+const withS = (patch, fn) => { const keep = {}; for (const k in patch) keep[k] = S[k]; Object.assign(S, patch); try { return fn(); } finally { Object.assign(S, keep); } };
+const opNow = () => { const { ecu, tb, ...cb } = comb(S.rpm, S.thr); return operatingPoint({ rpm: S.rpm, throttle: S.thr, oil: oil(), oilTemp: S.ot, compression: fx().compressionFactor, friction: fx().frictionFactor, ...breathe(S.rpm), ...cb }); };
+const model = {
+  fitFirst: id => fit(emptyBuild(), id).ok,
+  complete: () => isComplete(S.build),
+  work: ({ thr }) => withS({ thr }, () => opNow().work),
+  cam: id => { S.camId = id; S.cam = { ...CAMS[id] }; $('dur').value = S.cam.duration; $('lift').value = S.cam.lift; $('lc').value = S.cam.centre; S.benchCurve = null; },
+  torqueWithCam: (id, rpm) => withS({ cam: { ...CAMS[id] }, rpm, thr: 1 }, () => opNow().torque),
+  bsfc: ({ lam }) => withS({ lambda: lam }, () => opNow().bsfc),
+  fuel: ron => { S.octane = ron; }, ecu: on => { S.ecu = on; },
+  knocks: () => opNow().knock,
+  oil: k => { S.oilKey = k; S.history = 'fresh'; }, place: id => { S.place = id; },
+  starts: () => cranking({ oil: oil(), T: engineT() }).starts,
+  frozen: () => frozen(),
+  airTemp: ({ boost, ic }) => turbo({ target: boost, rpm: S.rpm, intercooler: ic || S.ic, ambientC: place().T }).T1 - 273.15,
+  published: () => BENCH_REFERENCE.find(p => p.rpm === 4500).torque,
+};
+const MISSIONS = makeMissions({ S, set, model });
+let mode = (() => { try { return localStorage.getItem('engine.mode') || 'learn'; } catch { return 'learn'; } })();
+const M = { i: 0, guess: null, answer: null };
+function startMission(i) {
+  M.i = Math.max(0, Math.min(MISSIONS.length - 1, i)); M.guess = null; M.answer = null;
+  const m = MISSIONS[M.i];
+  if (m.tab === 'build') S.tab = 'build';
+  else { if (!isComplete(S.build)) S.build = complete(); S.tab = 'run'; }
+  m.setup?.(); resetStart(); paint();
+  try { localStorage.setItem('engine.mission', String(M.i)); } catch {}
+}
+function paintMission() {
+  const el = $('mission'), m = MISSIONS[M.i];
+  document.body.dataset.mode = mode;
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
+  // visibility: in Learn mode only the cards this mission needs
+  const learn = mode === 'learn';
+  document.querySelector('.tabs').classList.toggle('learn-hidden', learn);
+  for (const id of ['build-panel', 's-oil', 's-history', 's-park', 's-key', 's-drive', 's-breathe', 's-burn']) $(id).classList.toggle('learn-hidden', learn && !m.show.includes(id));
+  for (const [id, u] of Object.entries(UNITS)) { const h = $(id).querySelector('h2'); if (!h.querySelector('.syll')) h.insertAdjacentHTML('beforeend', `<span class="syll" title="${COURSE}">${u}</span>`); }
+  if (!learn) return;
+  let h = `<div class="mhead"><span>Mission ${M.i + 1} of ${MISSIONS.length}</span><div class="dots">${MISSIONS.map((_, k) => `<i class="${k <= M.i ? 'on' : ''}"></i>`).join('')}</div></div>
+    <span class="unit">${COURSE} · ${m.unit}</span><h2>${m.title}</h2><p>${m.intro}</p>`;
+  if (!M.answer) {
+    h += `<p class="think">Pause and think</p><p>${m.predict.q}</p><div class="row">${m.predict.options.map(o => `<button type="button" class="guess" data-mguess="${o}">${o}</button>`).join('')}</div>`;
+  } else {
+    const right = M.guess === M.answer;
+    h += `<p class="result ${right ? 'right' : 'wrong'}">${right ? 'Right' : 'Not quite'} — the simulation says: ${M.answer}.</p><p>${m.explain}</p><p class="task">Now try it: ${m.task}</p>`;
+    const blocked = m.done && !m.done();
+    h += `<div class="row">${M.i > 0 ? '<button type="button" id="m-prev">Back</button>' : ''}${M.i < MISSIONS.length - 1 ? `<button type="button" class="primary" id="m-next" ${blocked ? 'disabled' : ''}>Next mission</button>` : '<button type="button" class="primary" id="m-explore">Explore everything</button>'}</div>`;
+    if (blocked) h += `<p class="note">Finish the task to continue.</p>`;
+  }
+  el.innerHTML = h;
+  el.querySelectorAll('[data-mguess]').forEach(b => b.onclick = () => { M.guess = b.dataset.mguess; M.answer = m.predict.answer(); m.after?.(); paint(); });
+  const nx = $('m-next'); if (nx) nx.onclick = () => startMission(M.i + 1);
+  const pv = $('m-prev'); if (pv) pv.onclick = () => startMission(M.i - 1);
+  const ex = $('m-explore'); if (ex) ex.onclick = () => setMode('explore');
+}
+function setMode(m) { mode = m; try { localStorage.setItem('engine.mode', m); } catch {} document.body.dataset.details = m === 'learn' ? (S.allNumbers ? 'on' : 'off') : 'on'; paint(); }
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+$('numbers').onclick = () => { S.allNumbers = !S.allNumbers; $('numbers').setAttribute('aria-pressed', String(S.allNumbers)); document.body.dataset.details = mode === 'learn' && !S.allNumbers ? 'off' : 'on'; };
 
 // ---------- inputs ----------
 $('tab-build').onclick = () => { S.tab = 'build'; resetStart(); paint(); };
@@ -488,7 +557,8 @@ function frame(now) {
   }
   requestAnimationFrame(frame);
 }
-paint();
+document.body.dataset.details = mode === 'learn' ? 'off' : 'on';
+if (mode === 'learn') { let i = 0; try { i = +(localStorage.getItem('engine.mission') || 0); } catch {} startMission(i); } else paint();
 requestAnimationFrame(frame);
 window.__engine = { state: S };
 document.body.dataset.ready = 'true';

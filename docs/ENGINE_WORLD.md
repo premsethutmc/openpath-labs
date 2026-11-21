@@ -2,7 +2,27 @@
 
 Goal: one deep, immersive experience that proves the vision. A learner chooses an oil, gives it a history, parks the car anywhere on Earth, turns the key, then drives — watching a see-through four-cylinder engine respond, with every number labelled by how far it can be trusted.
 
-## Learner path
+## Learn mode: nine missions (default)
+
+Each mission shows only the panels it needs, asks a *pause and think* question whose answer is computed by the simulation at that moment, explains the principle, then gives a short task. Key numbers only; “All numbers” reveals the rest. Explore mode shows everything.
+
+Missions are tagged to the Anna University R2021 syllabus **ME3451 Thermal Engineering**:
+
+| # | Mission | Syllabus |
+|---|---|---|
+| 1 | Put an engine together | Unit IV · IC engine components and their functions |
+| 2 | Read the p–V loop | Unit IV · Ideal and actual p-v diagrams |
+| 3 | Valve timing decides where the engine is strong | Unit IV · Valve timing diagrams |
+| 4 | Rich for power, lean for economy | Unit IV · Air–fuel ratio, lean and rich mixtures |
+| 5 | Knock — and how engines avoid it | Unit IV · Knocking phenomena and control |
+| 6 | A cold start in Alaska | Unit V · Lubrication systems |
+| 7 | Antifreeze | Unit V · Cooling systems |
+| 8 | Forcing more air in | Unit V · Supercharging and turbocharging |
+| 9 | The test bench | Unit V · Performance parameters and testing |
+
+Unit contents follow the published ME3451 syllabus (Unit IV: valve and port timing diagrams, p-v diagrams, air–fuel ratio, knocking; Unit V: performance parameters, lubrication and cooling systems, supercharging and turbocharging). Other universities' syllabi can be mapped the same way.
+
+## Learner path (Explore mode)
 
 0. **Build the engine** — fit nine parts from a tray in a sensible order (wrong order is refused with the reason). Choices matter: bearing clearance (standard / tight / worn), ring gap (correct / too small / too large), oil fill (correct / low / overfilled). Taking off a part removes everything fitted on top of it.
 1. **The oil** — 0W-20, 5W-30, 10W-40, 20W-50, SAE 40, or a blend of two. Live viscosity–temperature chart.

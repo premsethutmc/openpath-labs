@@ -15,6 +15,7 @@ for (const width of [380, 1280]) test(`Engine World ${width}px: oil, history, Al
     await page.goto(server.origin + '/index.html');
     await page.locator('.obj.feature', { hasText: 'Engine World' }).click();
     await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('radio', { name: 'Explore' }).click();
     assert.ok(await page.locator('#nogl').isHidden(), 'WebGL scene renders');
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     assert.ok(await page.locator('#blendbox').isHidden());
@@ -93,6 +94,7 @@ test('Engine World: build the engine part by part, then feel the consequences', 
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('radio', { name: 'Explore' }).click();
     const msg = () => page.locator('#build-msg').innerText();
     const fitPart = name => page.locator('#parts li', { hasText: name }).getByRole('button', { name: 'Fit' }).click();
 
@@ -146,6 +148,7 @@ test('Engine World: valves and airflow — cams, springs, runners, valve-to-pist
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('radio', { name: 'Explore' }).click();
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     const peak = async () => +(await page.locator('body').getAttribute('data-peak-power'));
     const torque = async () => +(await page.locator('#drive-results').innerText()).match(/Torque\s+(-?\d+) N·m/)[1];
@@ -195,6 +198,7 @@ test('Engine World: spark, octane, mixture and turbo', async () => {
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('radio', { name: 'Explore' }).click();
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     await page.locator('#rpm').fill('2000'); await page.locator('#thr').fill('100');
     const burn = () => page.locator('#burn-results').innerText();
@@ -248,6 +252,7 @@ test('Engine World: high-fidelity test bench (1D gas dynamics) in a worker', asy
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('radio', { name: 'Explore' }).click();
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     assert.match(await page.locator('#dyno').innerHTML(), /class="ref"/);
     assert.match(await page.locator('#dyno').innerHTML(), /published/);
@@ -262,6 +267,49 @@ test('Engine World: high-fidelity test bench (1D gas dynamics) in a worker', asy
     await page.waitForFunction(() => document.body.dataset.benchDone === 'true', null, { timeout: 120000 });
     assert.match(await page.locator('#dyno').innerHTML(), /class="mine"/);
     await page.locator('.bench').screenshot({ path: '/tmp/bench.png' });
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); server.close(); }
+});
+
+test('Engine World Learn mode: nine syllabus-linked missions with simulation-computed answers', async () => {
+  const server = await serve();
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 860 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(8000);
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await page.goto(server.origin + '/engine-world/index.html');
+    await page.locator('body[data-ready="true"]').waitFor();
+    const mission = page.locator('#mission');
+    const visibleCards = () => page.locator('.side > .card:visible, #run-panel > .card:visible').evaluateAll(els => els.map(e => e.id).filter(Boolean));
+    assert.match(await mission.innerText(), /Mission 1 of 9[\s\S]*ME3451 Thermal Engineering · Unit IV · IC engine components/);
+    assert.deepEqual(await visibleCards(), ['mission', 'build-panel']);
+    await mission.getByRole('button', { name: 'Main bearing shells' }).click();
+    assert.match(await mission.innerText(), /Right — the simulation says: Main bearing shells/);
+    assert.ok(await page.getByRole('button', { name: 'Next mission' }).isDisabled(), 'must finish the build first');
+    await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
+    const expected = { 2: 'Bigger', 3: 'Economy', 4: 'Lean', 5: 'Yes', 6: 'No', 7: 'Yes', 8: 'Hotter', 9: '113 N·m' };
+    for (let n = 2; n <= 9; n++) {
+      await page.getByRole('button', { name: 'Next mission' }).click();
+      assert.match(await mission.innerText(), new RegExp(`Mission ${n} of 9`));
+      const cards = await visibleCards();
+      assert.ok(cards.length >= 2 && cards.length <= 4, `mission ${n} shows only its cards: ${cards}`);
+      await mission.getByRole('button', { name: expected[n], exact: true }).click();
+      assert.match(await mission.innerText(), new RegExp(`Right — the simulation says: ${expected[n]}`), `mission ${n}`);
+    }
+    // simplified numbers: details hidden until "All numbers"
+    const hiddenRows = () => page.locator('#drive-results li:not(.key):not(.verdict)').evaluateAll(els => els.filter(e => getComputedStyle(e).display !== 'none').length);
+    await page.getByRole('radio', { name: 'Explore' }).click();
+    assert.ok(await page.locator('#s-oil').isVisible() && await page.locator('#s-burn').isVisible());
+    assert.ok(await hiddenRows() > 0);
+    await page.getByRole('radio', { name: 'Learn' }).click();
+    assert.equal(await hiddenRows(), 0);
+    await page.getByRole('button', { name: 'All numbers' }).click();
+    assert.match(await page.locator('#s-breathe h2').innerText(), /Unit IV/);
+    assert.ok(await page.evaluate(() => innerWidth >= document.documentElement.scrollWidth));
+    await page.screenshot({ path: '/tmp/mission.png' });
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
 });
