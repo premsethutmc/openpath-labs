@@ -111,3 +111,13 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 **Caveat:** the runner effect is a model prediction; the K12M bench is fitted at one torque point and checked at one power point, which does not validate the full curve or runner sensitivity.
 
 **Evidence used for explanations.** Runner-side pressure averaged (lift-weighted) over the late intake event, 520° to IVC. Across 34 → 24 cm at 2500, 4500, 6000 and 7000 rpm and 34 → 50 cm at 4500 and 6000 rpm, its change has the same sign as the change in volumetric efficiency. Pressure at a single angle (BDC) does not: with 34 → 50 cm at 6000 rpm it is unchanged, 1.22 bar, while torque falls 14.7 %. The whole-event average does not either: with 34 → 24 cm at 6000 rpm it moves 0.862 → 0.861 bar while filling rises 11.4 points. This is an observation about this model at these points, not a general law, so the lab accepts "inconclusive" whenever the evidence is mixed.
+
+## Engine World — signed airflow at the intake valve
+
+| Check | Result |
+|---|---|
+| ∫ signed intake-valve flow over the converged cycle vs the solver's own air count (cylinder 1) | equal to 1e-9 (2500, 4500, 6000 rpm) |
+| Exhaust mass out vs air + fuel in (λ = 1) | within 1 % |
+| Solver outputs after recording the flow | unchanged (baseline test) |
+
+Guided lesson (34 → 24 cm), cylinder 1 per cycle: at 4500 rpm forward 369.2 → 315.4 mg, pushed back 15.9 → 24.5 mg (mostly during valve overlap), net 353.4 → 291.0 mg; at 6000 rpm forward 325.1 → 366.4 mg, net 317.2 → 357.1 mg. In both cases the change is mainly in forward flow, not in backflow before the valve closes.

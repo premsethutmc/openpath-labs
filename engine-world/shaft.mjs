@@ -1,7 +1,7 @@
 // "From cylinder work to shaft power" — a controlled experiment on Engine World's 1D test bench.
 // Every number shown comes from converged runs of the bench (cylinder 1's own p and V); the 3D cutaway is an
 // idealised teaching view moved to the same crank angle. Runner lengths are always shown as the solver uses them.
-import { BENCH_STOCK, BENCH_INPUTS, compare, solverRunner, setupForRunner, intakeEvidence, judge, CLEAR_BAR, LATE_FROM } from './bench-setup.mjs';
+import { BENCH_STOCK, BENCH_INPUTS, compare, solverRunner, setupForRunner, intakeEvidence, judge, CLEAR_BAR, LATE_FROM, airShift } from './bench-setup.mjs';
 import { K12M, K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
 import { piston } from '../engines/motion/crank.mjs';
 
@@ -17,7 +17,7 @@ const guided = () => document.body.dataset.mode === 'learn';
 
 // pairs[k] = { rpm, A, B, prediction, kind: 'first' | 'repeat' | 'unseen' }
 const X = { rpm: 4500, pairs: [], view: 0, angle: 0, playing: false, pv: 'linear', pth: 'full', busy: false, maxCycles: undefined,
-  runnerL: GUIDED_L, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {} };
+  runnerL: GUIDED_L, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {} };
 let worker = null, reqId = 0; const pending = new Map();
 function bench(setup, rpm) {
   worker ||= new Worker(new URL('./bench-worker.mjs', import.meta.url), { type: 'module' });
@@ -47,6 +47,7 @@ function readout() {
     row('Piston below top dead centre', `${(disp * 1000).toFixed(1)} mm`) + row(`Cylinder volume (Run A, ${r.rpm} rpm)`, `${(at(r, 'V') * 1e6).toFixed(1)} cm³`) +
     row('Cylinder pressure (Run A)', `${(at(r, 'p') / 1e5).toFixed(2)} bar`) +
     row('Intake / exhaust valve lift', `${(at(r, 'liftI') * 1000).toFixed(1)} / ${(at(r, 'liftE') * 1000).toFixed(1)} mm`) +
+    row('Airflow at the intake valve', (m => (Math.abs(m) < 1e-4 ? 'none' : `${m > 0 ? '+' : '−'}${f(Math.abs(m) * 1000, 1)} g/s ${m > 0 ? 'into the cylinder' : 'back into the runner'}`))(at(r, 'mIn'))) +
     (near ? row('Valve event', `${near[0]} — ${near[2]}`, 'verdict good') : '');
   document.body.dataset.xAngle = X.angle.toFixed(0);
 }
@@ -101,6 +102,26 @@ function drawPTheta() {
   svg.innerHTML = `<title id="x-pth-t">Cylinder pressure against crank angle with valve events</title>` + s;
 }
 
+function drawFlow() {
+  const svg = $('x-flow'), x0 = 40, y0 = 80, w = 290, h = 62;
+  const all = runs(); if (!all.length) { svg.innerHTML = ''; return; }
+  const A = viewed().A, mx = Math.max(...all.flatMap(([r]) => r.trace.mIn.map(Math.abs))) * 1.1;
+  const lo = Math.max(0, Math.floor(A.valves.ivo % 720) - 30), hi = Math.min(719, Math.ceil(A.valves.ivc % 720) + 20), idx = [];
+  for (let i = lo; i <= hi; i++) idx.push(i);
+  const fx = a => x0 + (a - lo) / (hi - lo) * w, fy = m => y0 - m / mx * h;
+  let s = `<line class="ax" x1="${x0}" y1="${y0 - h}" x2="${x0}" y2="${y0 + h}"/><line x1="${x0}" x2="${x0 + w}" y1="${y0}" y2="${y0}" stroke="#6d8796"/>`;
+  s += `<text class="tick" x="${x0 + 3}" y="${y0 - h + 8}">into cylinder ↑ (g/s) · ${viewed().rpm} rpm</text><text class="tick" x="${x0 + 3}" y="${y0 + h - 2}">back into runner ↓</text>`;
+  for (const v of [-1, 1]) { const g = Math.round(v * mx * 1000 * 0.8 / 10) * 10; if (g) s += `<text class="tick" x="${x0 - 3}" y="${fy(g / 1000) + 3}" text-anchor="end">${g}</text><line class="grid" x1="${x0}" x2="${x0 + w}" y1="${fy(g / 1000)}" y2="${fy(g / 1000)}"/>`; }
+  for (const [n, a] of events(A).filter(([n]) => n.startsWith('I'))) s += `<line x1="${fx(a)}" x2="${fx(a)}" y1="${y0 - h}" y2="${y0 + h}" stroke="#2c3e4a" stroke-dasharray="2 2"/><text class="tick" x="${fx(a)}" y="${y0 + h + 10}" text-anchor="middle">${n}</text>`;
+  s += `<line x1="${fx(540)}" x2="${fx(540)}" y1="${y0 - h}" y2="${y0 + h}" stroke="#1b2832"/><text class="tick" x="${fx(540)}" y="${y0 + h + 10}" text-anchor="middle">BDC</text>`;
+  // shade A's backflow
+  s += `<path d="${idx.map(i => (A.trace.mIn[i] < 0 ? `M${fx(i).toFixed(1)} ${y0}V${fy(A.trace.mIn[i]).toFixed(1)}` : '')).join('')}" stroke="#ff5a4f" stroke-opacity=".45" stroke-width="1.6"/>`;
+  for (const [r, col, lab] of all) s += `<polyline class="xflow" data-run="${lab}" points="${idx.map(i => `${fx(i).toFixed(1)},${fy(r.trace.mIn[i]).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.5"/>`;
+  if (X.angle >= lo && X.angle <= hi) s += `<line x1="${fx(X.angle)}" x2="${fx(X.angle)}" y1="${y0 - h}" y2="${y0 + h}" stroke="#fff" stroke-width="1"/>`;
+  s += `<text class="tick" x="${x0 + w}" y="${y0 + h + 22}" text-anchor="end">crank angle ${lo}°–${hi}° (intake event)</text>`;
+  svg.innerHTML = `<title id="x-flow-t">Signed airflow through cylinder 1’s intake valve over one cycle</title>` + s;
+}
+
 function chainHTML(r) {
   const z = r.cylinders, VdC = r.Vd * 1e6;
   return `<div class="eqs">
@@ -115,6 +136,7 @@ function chainHTML(r) {
 }
 
 const ivcIdx = p => Math.floor(p.A.valves.ivc % 720);
+const mg = kg => `${f(kg * 1e6, 1)} mg`;
 function pairTable(p, c) {
   const tr = (k, a, b, d, u) => `<tr><th>${k}</th><td>${a}</td><td>${b}</td><td>${d}</td><td>${u}</td></tr>`;
   return `<table class="abt"><thead><tr><th>${p.rpm} rpm</th><th>Run A</th><th>Run B</th><th>Change</th><th></th></tr></thead><tbody>
@@ -128,6 +150,10 @@ function pairTable(p, c) {
     ${tr('Brake torque', f(c.torque.a) + ' N·m', f(c.torque.b) + ' N·m', sgn(c.torque.rel), '')}
     ${tr('Shaft power', f(c.power.a / 1000, 2) + ' kW', f(c.power.b / 1000, 2) + ' kW', sgn(c.power.rel), '')}
     ${tr('Cylinder p at IVC', f(p.A.trace.p[ivcIdx(p)] / 1e5, 2) + ' bar', f(p.B.trace.p[ivcIdx(p)] / 1e5, 2) + ' bar', '', 'bench')}
+    ${tr('Air in through the valve', mg(p.A.air.fwd), mg(p.B.air.fwd), sgn((p.B.air.fwd - p.A.air.fwd) / p.A.air.fwd), 'cyl 1')}
+    ${tr('Pushed back, before BDC', mg(p.A.air.backEarly), mg(p.B.air.backEarly), '', 'cyl 1')}
+    ${tr('Pushed back, after BDC', mg(p.A.air.backLate), mg(p.B.air.backLate), '', 'cyl 1')}
+    ${tr('Net air kept per cycle', mg(p.A.air.net), mg(p.B.air.net), sgn((p.B.air.net - p.A.air.net) / p.A.air.net), 'cyl 1')}
     ${(() => { const a = intakeEvidence(p.A), b = intakeEvidence(p.B); return tr('Valve-side p, whole intake event', f(a.whole / 1e5, 3) + ' bar', f(b.whole / 1e5, 3) + ' bar', '', 'bench') + tr(`Valve-side p, late intake (${LATE_FROM}°–IVC)`, f(a.late / 1e5, 3) + ' bar', f(b.late / 1e5, 3) + ' bar', '', 'bench'); })()}
     </tbody></table>`;
 }
@@ -211,6 +237,12 @@ function expHTML() {
     : (X.why === 'inconclusive' ? ['right', `Right to hold back: at ${bad.rpm} rpm the pressure trace does not clearly line up with filling and work. A next step would be the mass flow through the valve over the cycle (not shown in this lab) or a finer speed sweep.`] : ['wrong', `Not supported at every speed: at ${bad.rpm} rpm the late-intake pressure ${Math.abs(bad.dLate) < CLEAR_BAR ? 'barely changed' : 'moved the other way'} while filling ${bad.dVE > 0 ? 'rose' : 'fell'}. “Inconclusive” is the honest answer here.`]);
   h += `<p class="result ${fb[0]}">${fb[1]}</p>`;
   if (J.verdict === 'wave') h += `<p>The likely mechanism in these runs: what matters is when the reflected wave reaches the valve relative to the end of the intake event. The round trip takes roughly the same time at every speed, but the intake event gets shorter in time as speed rises, so the same length helps at one speed and hurts at another.</p>`;
+  // follow the air: where was it gained or lost?
+  h += `<h3 class="sub">Follow the air</h3><p>The airflow chart above shows when air goes in and when gas is pushed back into the runner. For each speed: where did Run B gain or lose its air compared with Run A?</p>`;
+  const shifts = pairs.map(p => ({ rpm: p.rpm, ...airShift(p.A, p.B), p }));
+  h += shifts.map(r => `<div class="row cite"><span class="citelabel">${r.rpm} rpm</span>${[['forward', 'Forward flow'], ['backflow', 'Pushed back'], ['both', 'Both']].map(([k, t]) => `<button type="button" class="guess" data-air="${r.rpm}" data-v="${k}" aria-pressed="${X.air[r.rpm] === k}">${t}</button>`).join('')}</div>`).join('');
+  if (shifts.every(r => X.air[r.rpm])) h += shifts.map(r => { const ok = X.air[r.rpm] === r.where, A = r.p.A.air, B = r.p.B.air;
+    return `<p class="measured ${ok ? '' : 'badtext'}">${r.rpm} rpm — ${ok ? 'matches the data' : `the data point to “${{ forward: 'forward flow', backflow: 'pushed back', both: 'both' }[r.where]}”`}: forward ${mg(A.fwd)} → ${mg(B.fwd)}, pushed back ${mg(A.backEarly + A.backLate)} → ${mg(B.backEarly + B.backLate)} (after BDC ${mg(A.backLate)} → ${mg(B.backLate)}), net kept ${mg(A.net)} → ${mg(B.net)}.</p>`; }).join('');
   h += `<p class="note">Model predictions from one 1D model, not dyno evidence.</p>`;
   // step 7: an operating point the learner has not run
   const third = X.pairs.find(p => p.kind === 'unseen');
@@ -244,12 +276,12 @@ function paint() {
     : !last.A.valid || !compare(last.A, last.B).ok ? `${last.kind}-invalid` : last.kind;
   document.body.dataset.xWhy = X.why || '';
   $('x-after-a').hidden = !haveA;
-  if (!haveA) { readout(); drawPV(); drawPTheta(); return; }
+  if (!haveA) { readout(); drawPV(); drawPTheta(); drawFlow(); return; }
   if (!viewed()?.A?.valid) X.view = 0;
   $('x-view').innerHTML = X.pairs.length > 1 ? X.pairs.filter(p => p.A.valid).map(p => `<button type="button" role="radio" data-xview="${X.pairs.indexOf(p)}" aria-checked="${X.pairs.indexOf(p) === X.view}">${p.rpm} rpm</button>`).join('') : '';
   $('x-view').querySelectorAll('[data-xview]').forEach(b => b.onclick = () => { X.view = +b.dataset.xview; paint(); });
   $('x-scrub').value = X.angle; $('x-play').textContent = X.playing ? 'Pause' : 'Play';
-  readout(); drawPV(); drawPTheta();
+  readout(); drawPV(); drawPTheta(); drawFlow();
   $('x-chain').innerHTML = chainHTML(viewed().A);
   $('x-exp').innerHTML = expHTML();
   wire();
@@ -266,13 +298,14 @@ function wire() {
   const b2 = $('x-runPair'); if (b2) b2.onclick = () => runPair(X.nextRpm, 'repeat', X.prediction);
   document.querySelectorAll('[data-cite]').forEach(b => b.onclick = () => { X.cite = { ...X.cite, [b.dataset.cite]: b.dataset.v }; paint(); });
   document.querySelectorAll('[data-why]').forEach(b => b.onclick = () => { X.why = b.dataset.why; paint(); });
+  document.querySelectorAll('[data-air]').forEach(b => b.onclick = () => { X.air = { ...X.air, [b.dataset.air]: b.dataset.v }; paint(); });
   document.querySelectorAll('[data-xunseen]').forEach(b => b.onclick = () => { X.unseenRpm = +b.dataset.xunseen; paint(); });
   const b3 = $('x-runUnseen'); if (b3) b3.onclick = () => runPair(X.unseenRpm, 'unseen', X.prediction);
-  const drop = kind => { X.pairs = X.pairs.filter(p => p.kind !== kind); X.view = 0; X.prediction = null; if (kind === 'repeat') { X.cite = {}; X.why = null; } paint(); };
+  const drop = kind => { X.pairs = X.pairs.filter(p => p.kind !== kind); X.view = 0; X.prediction = null; if (kind === 'repeat') { X.cite = {}; X.why = null; X.air = {}; } paint(); };
   const rs = $('x-reset'); if (rs) rs.onclick = () => { X.pairs[0].B = null; X.prediction = null; paint(); };
   const rd = $('x-redo'); if (rd) rd.onclick = () => drop('repeat');
   const ru = $('x-redoUnseen'); if (ru) ru.onclick = () => drop('unseen');
-  const rr = $('x-restart'); if (rr) rr.onclick = () => { Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, runnerL: GUIDED_L }); paint(); };
+  const rr = $('x-restart'); if (rr) rr.onclick = () => { Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {}, runnerL: GUIDED_L }); paint(); };
 }
 
 export function initShaft() {
@@ -280,7 +313,7 @@ export function initShaft() {
   $('x-caveat').textContent = `Validation: the bench’s one fitted constant was set at the published ${K12M_PUBLISHED.torque.Nm} N·m at ${K12M_PUBLISHED.torque.rpm} rpm; the published ${K12M_PUBLISHED.power.kW} kW at ${K12M_PUBLISHED.power.rpm} rpm is a separate check (within 4 %). One fitted torque point and one power check do not validate the full curve, or effects such as runner length. Every result here is a model prediction, not dyno evidence.`;
   document.querySelectorAll('[data-xrpm]').forEach(b => b.onclick = () => { X.rpm = +b.dataset.xrpm; paint(); });
   $('x-runA').onclick = () => { X.angle = 0; X.playing = false; runPair(X.rpm, 'first', null, { withB: false }); };
-  $('x-scrub').oninput = e => { X.angle = +e.target.value; X.playing = false; readout(); drawPV(); drawPTheta(); $('x-play').textContent = 'Play'; };
+  $('x-scrub').oninput = e => { X.angle = +e.target.value; X.playing = false; readout(); drawPV(); drawPTheta(); drawFlow(); $('x-play').textContent = 'Play'; };
   $('x-play').onclick = () => { X.playing = !X.playing; paint(); };
   document.querySelectorAll('[data-xpv]').forEach(b => b.onclick = () => { X.pv = b.dataset.xpv; document.querySelectorAll('[data-xpv]').forEach(c => c.setAttribute('aria-checked', String(c === b))); drawPV(); });
   document.querySelectorAll('[data-xpth]').forEach(b => b.onclick = () => { X.pth = b.dataset.xpth; document.querySelectorAll('[data-xpth]').forEach(c => c.setAttribute('aria-checked', String(c === b))); drawPTheta(); });
@@ -291,7 +324,7 @@ export function initShaft() {
     // When the experiment owns the clock, the 3D cutaway follows its crank angle.
     tick(dt, moduleOpen) {
       if (!moduleOpen || !viewed()?.A?.valid) return null;
-      if (X.playing) { X.angle = (X.angle + dt * 60) % 720; $('x-scrub').value = X.angle; readout(); drawPV(); drawPTheta(); }
+      if (X.playing) { X.angle = (X.angle + dt * 60) % 720; $('x-scrub').value = X.angle; readout(); drawPV(); drawPTheta(); drawFlow(); }
       return X.angle;
     },
   };

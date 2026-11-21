@@ -31,7 +31,10 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     assert.match(chain, /Friction \(modelled, not measured\)/);
     assert.match(chain, /bench’s own torque for this run is 112\.96 N·m; the chain gives 112\.96 N·m/);
     await page.locator('#x-scrub').fill('588');
-    assert.match(await page.locator('#x-read').innerText(), /588°[\s\S]*Compression[\s\S]*IVC — intake valve closes/);
+    assert.match(await page.locator('#x-read').innerText(), /588°[\s\S]*Compression[\s\S]*Airflow at the intake valve[\s\S]*IVC — intake valve closes/);
+    await page.locator('#x-scrub').fill('450');
+    assert.match(await page.locator('#x-read').innerText(), /Airflow at the intake valve\s+\+[\d.]+ g\/s into the cylinder/);
+    assert.equal(await page.locator('#x-flow .xflow').count(), 1);
     await page.waitForFunction(() => /crank angle from the experiment/.test(document.getElementById('hud-speed').textContent));
     // guided: the length is fixed, no slider
     assert.equal(await page.locator('#x-runner').count(), 0);
@@ -42,7 +45,10 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     await runB.click();
     await state('first');
     assert.equal(await page.locator('#x-pv .xloop').count(), 2);
+    assert.equal(await page.locator('#x-flow .xflow').count(), 2, 'airflow for A and B on the same axes');
     let t = await exp.innerText();
+    assert.match(t, /Air in through the valve\s+369\.2 mg\s+315\.4 mg/);
+    assert.match(t, /Net air kept per cycle\s+353\.4 mg\s+291\.0 mg/);
     assert.match(t, /At 4500 rpm you predicted Down\. Brake torque 113\.0 → 90\.8 N·m \(−19\.6 %\): Down/);
     assert.match(t, /Intake runner \(solver\)\s+34 cm\s+24 cm/);
     assert.match(t, /reflects where the runner meets the plenum/);
@@ -68,6 +74,12 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     assert.match(await exp.innerText(), /A defensible, cautious answer/);
     await exp.locator('[data-why="wave"]').click();
     assert.match(await exp.innerText(), /Consistent with wave timing: at both speeds the late-intake pressure clearly moved the same way[\s\S]*does not prove it/);
+    // follow the air
+    await exp.locator('[data-air="4500"][data-v="backflow"]').click();
+    await exp.locator('[data-air="6000"][data-v="forward"]').click();
+    t = await exp.innerText();
+    assert.match(t, /4500 rpm — the data point to “forward flow”: forward 369\.2 mg → 315\.4 mg/);
+    assert.match(t, /6000 rpm — matches the data: forward 325\.1 mg → 366\.4 mg/);
     // unseen point
     await exp.getByRole('radio', { name: '7000 rpm' }).click();
     await exp.getByRole('button', { name: 'Up', exact: true }).click();
