@@ -111,6 +111,12 @@ function step(g, op, key) {
     if (v > g.od - 2 * MIN_WALL) throw new CutError(`that would leave a wall under ${MIN_WALL} mm`);
     n.bore = real; n.nominal.bore = v;
   }
+  // The commanded size passed; now check what the cut would actually leave (commanded + simulated offset).
+  // Material can only be removed, and the finished wall must respect the minimum. Otherwise refuse the cut.
+  if (op.type === 'face' && n.L >= g.L) throw new CutError('the facing tool would not cut at this length — choose a shorter length');
+  if (op.type === 'turn' && n.od >= g.od) throw new CutError('the turning tool would not cut at this diameter — choose a smaller diameter');
+  if ((op.type === 'drill' || op.type === 'bore') && g.bore !== null && n.bore <= g.bore) throw new CutError(`the ${op.type === 'drill' ? 'drill' : 'boring bar'} would not cut at this size: a hole can only be made larger — choose a larger size`);
+  if (n.bore !== null && (n.od - n.bore) / 2 < MIN_WALL) throw new CutError(`the finished wall would be under ${MIN_WALL} mm — choose ${op.type === 'turn' ? 'a larger diameter' : 'a smaller hole'}`);
   return n;
 }
 

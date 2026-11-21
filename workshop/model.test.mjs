@@ -149,3 +149,39 @@ test('attempts are frozen snapshots and compare row by row', () => {
   M.cut(ws, id, { type: 'bore', D: 20.04 });
   assert.equal(a.rev, 5, 'a saved attempt does not follow later cuts');
 });
+
+// Regression: the commanded size passed validation but the as-cut size (commanded + simulated offset) would have
+// shrunk a hole, grown an outside diameter or left a wall under the minimum. Each cut must be refused, with the
+// part, its revisions and its readings left exactly as they were.
+test('regression: a cut is judged on its as-cut geometry; impossible cuts change nothing', () => {
+  const cases = [
+    { what: 'boring would shrink the hole (preset gear blank, bore 19.95 again: 19.9461 → 19.9421)',
+      make: ws => M.addPartFromPreset(ws, 'gear20'), op: { type: 'bore', D: 19.95 }, err: /hole can only be made larger/ },
+    { what: 'turning would grow the outside (Ø36.009 → 36.0101)',
+      make: ws => { const id = M.addPartFromStock(ws, { material: 'steel1045', D: 40, L: 30 }); M.cut(ws, id, { type: 'turn', D: 36 }); return id; },
+      op: { type: 'turn', D: 36.0037 }, err: /would not cut/ },
+    { what: 'drilling would leave a wall under 2 mm (Ø25 bar, 21 mm drill → 21.0466, wall 1.977)',
+      make: ws => M.addPartFromStock(ws, { material: 'brass360', D: 25, L: 30 }), op: { type: 'drill', D: 21 }, err: /wall would be under 2 mm/ },
+  ];
+  for (const c of cases) {
+    const ws = fresh(), id = c.make(ws);
+    if (M.revisions(ws.parts[0]).at(-1).bore) M.takeReading(ws, id, 'bore', 'boreGauge');
+    M.takeReading(ws, id, 'od', 'micrometer');
+    const before = JSON.stringify({ parts: ws.parts, readings: ws.readings }), revs = JSON.stringify(M.revisions(ws.parts[0]));
+    assert.throws(() => M.cut(ws, id, c.op), c.err, c.what);
+    assert.equal(JSON.stringify({ parts: ws.parts, readings: ws.readings }), before, `${c.what}: part and readings unchanged`);
+    assert.equal(JSON.stringify(M.revisions(ws.parts[0])), revs);
+  }
+  // sweep: no accepted cut ever shrinks a hole, grows the outside or the length, or leaves a thin wall
+  const ws = fresh(), id = M.addPartFromStock(ws, { material: 'al6061', D: 32, L: 40 });
+  M.cut(ws, id, { type: 'drill', D: 20 });
+  const p = ws.parts[0]; let accepted = 0, refused = 0;
+  for (let k = 0; k < 400; k++) {
+    const g = M.revisions(p).at(-1), op = [{ type: 'bore', D: +(g.nominal.bore + (k % 7 - 2) * 0.003).toFixed(3) }, { type: 'turn', D: +(g.nominal.od - (k % 5 - 1) * 0.003).toFixed(3) }, { type: 'face', L: +(g.nominal.L - (k % 4 - 1) * 0.004).toFixed(3) }][k % 3];
+    try { M.cut(ws, id, op); accepted++; } catch (e) { assert.ok(e instanceof M.CutError); refused++; continue; }
+    const n = M.revisions(p).at(-1);
+    assert.ok(n.bore > g.bore || op.type !== 'bore'); assert.ok(n.od <= g.od && n.L <= g.L && n.bore >= g.bore);
+    assert.ok((n.od - n.bore) / 2 >= M.MIN_WALL);
+  }
+  assert.ok(accepted >= 10 && refused >= 10, `sweep exercised both paths (${accepted} accepted, ${refused} refused)`);
+});
