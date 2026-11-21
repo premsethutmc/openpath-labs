@@ -15,7 +15,8 @@
 - [x] Oil engine: ASTM D341 viscosity, SAE J300-anchored cold behaviour, pour point, blends, aged-oil assumption
 - [x] Cylinder model, friction, cranking, oil-pressure delay, Ocvirk bearing film, cooling and warm-up — each labelled Reliable / Approximate / Assumption
 - [x] Fit the parts (assembly with order rules and consequential choices), coolant and antifreeze, fast-forward warm-up timeline
-- [ ] Valve train and intake/exhaust flow, turbocharging
+- [x] Valves and airflow: cams, springs, runner tuning, valve float, valve-to-piston contact, dyno curve, animated valves
+- [ ] Turbocharging, ignition timing and knock, fuel/air mixture
 
 ## Stage 2 — Proof people want it
 

@@ -134,3 +134,52 @@ test('Engine World: build the engine part by part, then feel the consequences', 
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
 });
+
+test('Engine World: valves and airflow — cams, springs, runners, valve-to-piston contact', async () => {
+  const server = await serve();
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(6000);
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await page.goto(server.origin + '/engine-world/index.html');
+    await page.locator('body[data-ready="true"]').waitFor();
+    await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
+    const peak = async () => +(await page.locator('body').getAttribute('data-peak-power'));
+    const torque = async () => +(await page.locator('#drive-results').innerText()).match(/Torque\s+(-?\d+) N·m/)[1];
+
+    await page.locator('#rpm').fill('1500'); await page.locator('#thr').fill('100');
+    const stock = await peak();
+    await page.getByRole('radio', { name: 'Economy' }).click();
+    const ecoLow = await torque(), ecoPeak = await peak();
+    await page.getByRole('radio', { name: 'Sport' }).click();
+    const sportLow = await torque(), sportPeak = await peak();
+    assert.ok(ecoLow > sportLow, `economy pulls harder low down (${ecoLow} vs ${sportLow})`);
+    assert.ok(sportPeak > ecoPeak && sportPeak > stock, 'sport makes the most peak power');
+    assert.match(await page.locator('#dyno').innerHTML(), /dashed: Economy cam/);
+    assert.match(await page.locator('#breathe-results').innerText(), /idle rough/);
+
+    // Soft springs: valve float at high speed
+    await page.getByRole('radio', { name: 'Stock' }).click();
+    await page.getByRole('radio', { name: 'Soft' }).click();
+    await page.locator('#rpm').fill('7200');
+    assert.match(await page.locator('#drive-results').innerText(), /Valve float/);
+
+    // Longer runners move the resonance lower
+    const tuned = async () => +(await page.locator('#breathe-results').innerText()).match(/helps near\s+([\d,]+) rpm/)[1].replace(/,/g, '');
+    const short = await tuned();
+    await page.locator('#runner').fill('65');
+    assert.ok(await tuned() < short);
+
+    // A wild custom cam: valves hit the pistons on the first turn
+    await page.locator('#lift').fill('13'); await page.locator('#dur').fill('310');
+    assert.match(await page.locator('#breathe-results').innerText(), /Valves will hit the pistons/);
+    await page.locator('#key').click();
+    await page.waitForFunction(() => document.body.dataset.phase === 'failed');
+    assert.match(await page.locator('#start-results').innerText(), /Crunch/);
+    await page.locator('#s-breathe').screenshot({ path: '/tmp/breathe.png' });
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); server.close(); }
+});

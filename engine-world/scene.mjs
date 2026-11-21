@@ -57,6 +57,22 @@ export function engineItems(theta, o) {
     }
     // cylinder liner (see-through) so the piston can be watched inside its bore
     add('cyl', cylY(x, (r + l - 2 + DECK) / 2 - 3, 0, bore / 2 + 0.25, DECK - (l - r) + 2), [0.75, 0.82, 0.9, 0.2]);
+    // valves: two inlet (blue) and two exhaust (rust) per cylinder, opened by the cam; air streams in while the inlet is open
+    if (o.valves && has('head')) {
+      const ph = ((theta - ENGINE.firing[i]) % 720 + 720) % 720;
+      const li = o.valves.intakeLift(ph, o.valves.cam) / 10, le = o.valves.exhaustLift(ph, o.valves.cam) / 10;
+      const hit = o.valves.crash && (li > 0 || le > 0) && (ph > 330 && ph < 390);
+      for (const dx of [-1.6, 1.6]) {
+        add('cyl', cylY(x + dx, DECK - li, -1.7, 1.15, 0.22), hit ? hex('#ff2a1a') : hex('#6fa8dc'), { shine: 0.6, glow: hit ? 0.8 : 0 });
+        add('cyl', cylY(x + dx, DECK - li + 2.2, -1.7, 0.25, 4.2), hex('#8a97a3'));
+        add('cyl', cylY(x + dx, DECK - le, 1.7, 1.0, 0.22), hit ? hex('#ff2a1a') : hex('#c0703b'), { shine: 0.6, glow: hit ? 0.8 : 0 });
+        add('cyl', cylY(x + dx, DECK - le + 2.2, 1.7, 0.25, 4.2), hex('#8a97a3'));
+      }
+      if (o.running && li > 0.05) for (let k = 0; k < 4; k++) {
+        const u = ((k / 4 + (theta % 60) / 60) % 1);
+        add('box', box(x + (k % 2 ? 1 : -1) * 1.2, DECK + 3 - u * 5.5, -4.5 + u * 3.6, 0.35, 0.35, 0.35), [0.75, 0.88, 1, 0.85], { glow: 0.8 });
+      }
+    }
     // spark plug
     part('head', 'cyl', cylY(x, DECK + 5.8, 0, 0.55, 2.4), hex('#e8e2d6'));
   }

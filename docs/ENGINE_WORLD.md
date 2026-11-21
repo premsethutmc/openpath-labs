@@ -9,7 +9,8 @@ Goal: one deep, immersive experience that proves the vision. A learner chooses a
 2. **Its history** — fresh, or 50,000 km in the desert never changed (thickening is a visible, adjustable *assumption*).
 3. **Where it is parked** — Chennai +38 °C to Alaska −35 °C, 0–4 days. Engine cools towards ambient.
 4. **Turn the key** — predict first; then cranking speed, start / no-start, seconds until oil reaches the bearings, bearing regime, wear index, warm-up time.
-5. **Drive** — engine speed, accelerator, oil temperature → torque, power, efficiency, friction loss, peak pressure, rod-bearing oil film, pressure–volume diagram.
+5. **Drive** — engine speed, accelerator, oil temperature → torque, power, efficiency, friction loss, peak pressure, rod-bearing oil film, oil pressure, pressure–volume diagram.
+6. **Valves and airflow** — Economy / Stock / Sport cams or a custom one (duration, lift, lobe centre), valve springs, intake runner length → valve events, overlap and idle quality, cylinder filling, runner resonance, valve-float speed, valve-to-piston gap, and a full-throttle dyno curve compared with the previous setup. Valves open and close in the 3D engine; a cam that reaches the pistons crashes on the first turn.
 
 ## Models and confidence
 
@@ -32,6 +33,11 @@ Goal: one deep, immersive experience that proves the vision. A learner chooses a
 | Coolant freezing | Ethylene-glycol table by volume | Reliable |
 | Tight bearings when hot | Rule: < 12 µm clearance above 60 °C → metal contact, seizure risk | Assumption (rule of thumb) |
 | Ring gap, oil level | Compression −10 % (large gap), drag +5 % (small gap), +8 % (overfill) | Assumption |
+| Valve events and lift | Cam duration, lift and lobe centre; 1 − cos lift profile | Reliable (geometry) |
+| Cylinder filling (volumetric efficiency) | Low speed: V(IVC)/V(BDC) push-back; high speed: inertia; Taylor inlet Mach index limit; Helmholtz runner bump; overlap backflow | Approximate (Heywood ch. 6) |
+| Valve float | Spring force vs valve-train mass × peak deceleration; cam-ramp factor 1.8 | Approximate (factor assumed) |
+| Valve-to-piston gap | Piston position + lift around overlap TDC; squish 1.0 mm + pocket 1.6 mm assumed | Reliable geometry, assumed dimensions |
+| Exhaust valve opening | Expansion work ends at EVO (blowdown); late EVO adds exhaust pumping at speed | Approximate |
 | Warm-up timeline | Lumped heat balance, 5 kW into the engine at idle, thermostat at 90 °C | Approximate |
 
 Reference engine: 1.2 L inline-four, bore 73 mm, stroke 71.6 mm, rod 128 mm, 10.5:1, firing order 1-3-4-2. Behaviour checked in tests: ≈62 kW at 6000 rpm, peak pressure 8–25° after TDC, efficiency 25–40 %, each oil grade cranks at its rated cold temperature, 20W-50 fails at −35 °C, 0W-20 starts.

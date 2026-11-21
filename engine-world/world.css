@@ -85,3 +85,7 @@ h2{display:flex;align-items:center;gap:8px;font:800 1.08rem Archivo,sans-serif;m
 .warmline{stroke:#d7261e;stroke-width:2.4}
 .badtext{color:#b42318}
 .results li.verdict.warnline{background:#fdf0d4;color:#7a4a00}
+h3.sub{font-size:.85rem;margin:12px 0 6px;color:var(--muted)}
+#dyno{display:block;width:100%;height:auto;margin-top:10px;background:#fbfcfa;border:1px solid #e3e7e1;border-radius:10px}
+.tq{stroke:#1d58c8;stroke-width:2.4}.pw{stroke:var(--act);stroke-width:2.4}.prev{stroke-dasharray:4 4;stroke-width:1.6;opacity:.6}
+.dynolabel{font:700 10px Inter,sans-serif}

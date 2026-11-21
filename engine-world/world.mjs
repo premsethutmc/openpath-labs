@@ -1,6 +1,7 @@
 import { createRenderer } from '../core/gl3d.mjs';
 import { OILS, viscosity, blend, ageOil } from '../engines/thermofluids/oil.mjs';
 import { ENGINE, operatingPoint, bearing, rodLoad, cranking, oilPressureDelay, soak, warmUp, startWear, oilPressure, coolantFreezePoint, warmUpSeries } from '../engines/thermofluids/engine.mjs';
+import { CAMS, SPRINGS, timing, volumetricEfficiency, machIndex, tunedRpm, floatRpm, valveClearance, idleQuality, intakeLift, exhaustLift } from '../engines/thermofluids/breathing.mjs';
 import { PARTS, emptyBuild, complete, fit, remove, has, option, isComplete, buildEffects } from './assembly.mjs';
 import { engineItems, SCENE_TARGET } from './scene.mjs';
 
@@ -15,7 +16,11 @@ const S = {
   place: 'chennai', hours: 96, rpm: 3000, thr: 0.6, ot: 95,
   phase: 'off', crank: null, start: null, guess: null, gallery: 1, warmed: false,
   tab: 'build', build: emptyBuild(), choice: {}, flash: null, gly: 50,
+  camId: 'stock', cam: { ...CAMS.stock }, spring: 'standard', runner: 0.35, prevDyno: null,
 };
+const br = () => ({ cam: S.cam, runner: S.runner, spring: S.spring });
+const airAt = rpm => volumetricEfficiency(rpm, br());
+const breathe = rpm => ({ ve: airAt(rpm).ve, evo: timing(S.cam).evo });
 const fx = () => buildEffects(S.build);
 const frozen = () => engineT() < coolantFreezePoint(S.gly);
 
@@ -92,6 +97,7 @@ function paintPredict() {
 function startResults() {
   const r = S.start; if (!r) return '';
   if (S.phase === 'cranking') return '<li class="verdict">Starter turning the engine…</li>';
+  if (r.crashed) return `<li class="verdict bad">Crunch. On the first turn the open valves hit the piston crowns (gap ${fmt(valveClearance(S.cam).mm, 1)} mm). With this much lift and overlap the valves reach into the cylinder just as the piston arrives at the top. Bent valves — engine must come apart.</li>`;
   if (r.frozen) return `<li class="verdict bad">Do not start it: the coolant is frozen at ${fmt(r.T, 0)} °C (it freezes at ${fmt(coolantFreezePoint(S.gly), 0)} °C with ${S.gly} % antifreeze). With no coolant flowing the engine would overheat, and the ice may already have cracked the block.</li>`;
   const c = r.crank, T = r.T;
   let h = li('Battery power left at this temperature', `${fmt(c.battery * 100)} %`, 'approximate');
@@ -112,7 +118,7 @@ function startResults() {
 }
 
 function paintDrive() {
-  const o = oil(), f = fx(), op = operatingPoint({ rpm: S.rpm, throttle: S.thr, oil: o, oilTemp: S.ot, compression: f.compressionFactor, friction: f.frictionFactor });
+  const o = oil(), f = fx(), op = operatingPoint({ rpm: S.rpm, throttle: S.thr, oil: o, oilTemp: S.ot, compression: f.compressionFactor, friction: f.frictionFactor, ...breathe(S.rpm) });
   $('rpm-out').textContent = `${S.rpm} rpm`; $('thr-out').textContent = `${Math.round(S.thr * 100)} %`; $('ot-out').textContent = `${S.ot} °C`;
   let h = '';
   if (op.oil.gelled) h = `<li class="verdict bad">At ${S.ot} °C this oil is solid. The engine cannot run.</li>`;
@@ -128,6 +134,8 @@ function paintDrive() {
     h += li('Oil pressure', `${fmt(pr.bar, 1)} bar${pr.relief ? ' (relief valve open)' : ''}${pr.low ? ' — warning light on' : ''}`, 'approximate', pr.low ? 'bad' : 'good');
     if (tightHot) h += `<li class="verdict bad">Tight bearings, hot engine: the parts have expanded into the oil gap. Metal touches metal — this engine is about to seize.</li>`;
     if (f.warnings.length) h += `<li class="verdict warnline">Your build: ${f.warnings.join(' ')}</li>`;
+    const air = airAt(S.rpm);
+    if (air.floating) h += `<li class="verdict bad">Valve float: above ${fmt(air.floatRpm)} rpm the springs cannot pull the valves shut in time. They bounce, the cylinders fill badly — and a floating valve can meet a rising piston.</li>`;
     S.driveRegime = br.regime;
     if (op.torque < 0) h += `<li class="verdict bad">Friction is larger than the work from combustion: the engine cannot hold this speed.</li>`;
     drawPV(op);
@@ -159,6 +167,56 @@ $('warm-go').onclick = () => {
   };
   requestAnimationFrame(step);
 };
+
+function dynoCurve() {
+  const pts = [];
+  for (let rpm = 1000; rpm <= 7500; rpm += 250) {
+    const op = operatingPoint({ rpm, throttle: 1, oil: oil(), oilTemp: 95, compression: fx().compressionFactor, friction: fx().frictionFactor, ...breathe(rpm) });
+    pts.push({ rpm, torque: op.torque, power: op.power / 1000 });
+  }
+  return { name: S.camId === 'custom' ? 'Custom cam' : CAMS[S.camId].name + ' cam', pts };
+}
+function drawDyno(cur) {
+  const x0 = 34, y0 = 172, xw = 270, yh = 150, X = r => x0 + (r - 1000) / 6500 * xw;
+  const curves = [cur, S.prevDyno].filter(Boolean);
+  const tMax = Math.max(140, ...curves.flatMap(c => c.pts.map(p => p.torque))), pMax = Math.max(80, ...curves.flatMap(c => c.pts.map(p => p.power)));
+  const YT = t => y0 - Math.max(t, 0) / tMax * yh, YP = p => y0 - Math.max(p, 0) / pMax * yh;
+  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#9aa5a0" fill="none"/>`;
+  for (const r of [2000, 4000, 6000]) s += `<text x="${X(r)}" y="${y0 + 13}" text-anchor="middle" class="tick">${r / 1000}k rpm</text>`;
+  for (let k = 1; k <= 3; k++) s += `<text x="${x0 - 3}" y="${y0 - yh * k / 3 + 3}" text-anchor="end" class="tick" fill="#1d58c8">${fmt(tMax * k / 3)}</text><text x="${x0 + xw + 3}" y="${y0 - yh * k / 3 + 3}" class="tick">${fmt(pMax * k / 3)}</text>`;
+  const line = (c, key, Y, cls) => `<polyline class="${cls}" fill="none" points="${c.pts.map(p => `${X(p.rpm).toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ')}"/>`;
+  if (S.prevDyno && S.prevDyno.name !== cur.name) s += line(S.prevDyno, 'torque', YT, 'tq prev') + line(S.prevDyno, 'power', YP, 'pw prev');
+  s += line(cur, 'torque', YT, 'tq') + line(cur, 'power', YP, 'pw');
+  const best = cur.pts.reduce((a, b) => (b.power > a.power ? b : a)), bestT = cur.pts.reduce((a, b) => (b.torque > a.torque ? b : a));
+  s += `<text x="${x0 + 4}" y="12" class="dynolabel" fill="#1d58c8">torque N·m · peak ${fmt(bestT.torque)} at ${fmt(bestT.rpm)}</text><text x="${x0 + xw}" y="24" text-anchor="end" class="dynolabel" fill="#e0531f">power kW · peak ${fmt(best.power, 1)} at ${fmt(best.rpm)}</text>`;
+  if (S.prevDyno && S.prevDyno.name !== cur.name) s += `<text x="${x0 + 4}" y="${y0 - 6}" class="tick">dashed: ${S.prevDyno.name}</text>`;
+  $('dyno').innerHTML = `<title id="dyno-t">${cur.name}: peak power ${fmt(best.power, 1)} kW at ${best.rpm} rpm, peak torque ${fmt(bestT.torque)} N·m at ${bestT.rpm} rpm</title>` + s;
+  document.body.dataset.peakPower = best.power.toFixed(1);
+}
+function paintBreathe() {
+  const keys = [...Object.keys(CAMS), 'custom'];
+  $('cams').innerHTML = keys.map(k => `<button type="button" role="radio" data-cam="${k}" aria-checked="${S.camId === k}">${k === 'custom' ? 'Custom' : CAMS[k].name}</button>`).join('');
+  $('cams').querySelectorAll('button').forEach(b => b.onclick = () => {
+    if (b.dataset.cam === 'custom') return;
+    S.prevDyno = dynoCurve(); S.camId = b.dataset.cam; S.cam = { ...CAMS[S.camId] };
+    $('dur').value = S.cam.duration; $('lift').value = S.cam.lift; $('lc').value = S.cam.centre; resetStart(); paint();
+  });
+  $('springs').innerHTML = Object.entries(SPRINGS).map(([k, v]) => `<button type="button" role="radio" data-spring="${k}" aria-checked="${S.spring === k}">${v.name}</button>`).join('');
+  $('springs').querySelectorAll('button').forEach(b => b.onclick = () => { S.prevDyno = dynoCurve(); S.spring = b.dataset.spring; paint(); });
+  $('dur-out').textContent = `${S.cam.duration}°`; $('lift-out').textContent = `${S.cam.lift} mm`; $('lc-out').textContent = `${S.cam.centre}°`; $('run-out').textContent = `${fmt(S.runner * 100)} cm`;
+  const t = timing(S.cam), air = airAt(S.rpm), cl = valveClearance(S.cam), fl = floatRpm(S.cam, S.spring);
+  const deg = (v, ref, after, before) => (v >= ref ? `${fmt(v - ref)}° ${after}` : `${fmt(ref - v)}° ${before}`);
+  let h = li('Inlet opens / closes', `${deg(t.ivo, 360, 'after top', 'before top')} / ${deg(t.ivc, 540, 'after bottom', 'before bottom')}`, 'reliable');
+  h += li('Exhaust opens / closes', `${deg(t.evo, 180, 'after bottom', 'before bottom')} / ${deg(t.evc, 360, 'after top', 'before top')}`, 'reliable');
+  h += li('Overlap (both valves open)', `${fmt(t.overlap)}° — idle ${idleQuality(S.cam)}`, 'assumption', t.overlap > 55 ? 'bad' : '');
+  h += li(`Cylinder filling at ${S.rpm} rpm`, `${fmt(air.ve * 100)} %${air.Z > 0.6 ? ' — valves choking the flow' : ''}`, 'approximate', air.ve < 0.8 ? 'bad' : '');
+  h += li('Intake runner resonance helps near', `${fmt(tunedRpm(S.runner), 0)} rpm`, 'approximate');
+  h += li('Valve float starts at', `${fmt(fl, 0)} rpm`, 'approximate', fl < 7500 ? 'bad' : 'good');
+  h += li('Closest valve-to-piston gap', `${fmt(cl.mm, 1)} mm`, 'reliable', cl.contact ? 'bad' : cl.mm < 1 ? 'bad' : 'good');
+  if (cl.contact) h += `<li class="verdict bad">Valves will hit the pistons. Less lift, less duration, or a later intake lobe centre.</li>`;
+  $('breathe-results').innerHTML = h;
+  drawDyno(dynoCurve());
+}
 
 function drawPV(op) {
   const tr = op.trace, W = 340, x0 = 40, y0 = 165, xw = 286, yh = 150;
@@ -222,7 +280,7 @@ function paint() {
   $('key').disabled = S.phase === 'cranking';
   $('warmbox').hidden = S.phase !== 'running';
   if (S.phase === 'running') drawWarm();
-  paintDrive(); paintGauges();
+  paintDrive(); paintBreathe(); paintGauges();
   document.body.dataset.phase = S.phase;
 }
 
@@ -234,6 +292,7 @@ $('key').onclick = () => {
   if (S.phase !== 'off') { resetStart(); S.guess = null; paint(); return; }
   const o = oil(), T = engineT();
   if (frozen()) { S.start = { T, frozen: true }; S.phase = 'failed'; paint(); return; }
+  if (valveClearance(S.cam).contact) { S.start = { T, crashed: true }; S.phase = 'failed'; paint(); return; }
   const crank = cranking({ oil: o, T });
   const delay = oilPressureDelay({ oil: o, T, rpm: 1000 });
   const idle = operatingPoint({ rpm: 1000, throttle: 0.15, oil: o, oilTemp: T });
@@ -259,6 +318,10 @@ $('tab-run').onclick = () => {
 };
 $('b-ready').onclick = () => { S.build = complete(); S.tab = 'run'; $('build-msg').className = 'msg'; resetStart(); paint(); };
 $('b-strip').onclick = () => { S.build = emptyBuild(); $('build-msg').className = 'msg'; $('build-msg').textContent = 'Stripped down to the bare block.'; resetStart(); paint(); };
+const customCam = () => { if (S.camId !== 'custom') S.prevDyno = dynoCurve(); S.camId = 'custom'; S.cam = { ...S.cam, duration: +$('dur').value, lift: +$('lift').value, centre: +$('lc').value }; resetStart(); paint(); };
+$('dur').oninput = customCam; $('lift').oninput = customCam; $('lc').oninput = customCam;
+$('runner').oninput = e => { if (!S.runnerDrag) S.prevDyno = { ...dynoCurve(), name: `runner ${fmt(S.runner * 100)} cm` }; S.runnerDrag = true; S.runner = +e.target.value / 100; paint(); };
+$('runner').onchange = () => { S.runnerDrag = false; };
 $('gly').oninput = e => { S.gly = +e.target.value; resetStart(); paint(); };
 $('history').querySelectorAll('button').forEach(b => b.onclick = () => { S.history = b.dataset.history; resetStart(); paint(); });
 $('age').oninput = e => { S.age = +e.target.value / 100; resetStart(); paint(); };
@@ -266,7 +329,7 @@ $('hours').oninput = e => { S.hours = +e.target.value; resetStart(); paint(); };
 $('blend-a').onchange = e => { S.blendA = e.target.value; resetStart(); paint(); };
 $('blend-b').onchange = e => { S.blendB = e.target.value; resetStart(); paint(); };
 $('blend-f').oninput = e => { S.blendF = +e.target.value / 100; resetStart(); paint(); };
-$('rpm').oninput = e => { S.rpm = +e.target.value; paintDrive(); paintGauges(); };
+$('rpm').oninput = e => { S.rpm = +e.target.value; paintDrive(); paintBreathe(); paintGauges(); };
 $('thr').oninput = e => { S.thr = +e.target.value / 100; paintDrive(); };
 $('ot').oninput = e => { S.ot = +e.target.value; paintDrive(); paintGauges(); paintChart(); };
 
@@ -301,6 +364,7 @@ function frame(now) {
     const flash = S.flash ? { id: S.flash.id, amount: Math.max(0, 1 - (now - S.flash.t) / 1200) } : null;
     R.draw(engineItems(theta, {
       parts: new Set(S.build.fitted.map(f => f.id)), flash,
+      valves: { cam: S.cam, intakeLift, exhaustLift, crash: S.start?.crashed },
       running: S.phase === 'running', oilColor: oilColour(T, o), oilLevel: 0.55 * fx().oilLitres / 3.5,
       galleryFill: S.phase === 'running' ? S.gallery : S.phase === 'cranking' ? 0 : 1, flow: S.phase === 'running' ? 1 : 0, flowPhase,
       regime: S.phase === 'running' ? (S.gallery < 1 ? 'boundary' : S.driveRegime) : null,

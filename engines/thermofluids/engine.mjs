@@ -28,13 +28,14 @@ export function cylinderVolume(theta, e = ENGINE) {
 // ---------------- closed-cycle model (compression → combustion → expansion) ----------------
 // First law for the cylinder gas: dp/dθ = −γ·p/V·dV/dθ + (γ−1)/V·dQ/dθ, with a Wiebe burn curve.
 // Wall heat loss is a fixed fraction of fuel energy (labelled simplification); γ constant (air-standard-like).
-export function cycle({ rpm = 3000, manifold = 1.0, ignition = -15, burn = 50, gamma = 1.33, wallLoss = 0.22, instant = false } = {}, e = ENGINE) {
+// ve = volumetric efficiency (trapped air ÷ cylinder full at manifold conditions); evo = exhaust valve opening, ° after TDC.
+export function cycle({ rpm = 3000, manifold = 1.0, ignition = -15, burn = 50, gamma = 1.33, wallLoss = 0.22, instant = false, ve = 0.92, evo = 180 } = {}, e = ENGINE) {
   const R = 287, T1 = 320, p1 = manifold * 1e5, LHV = 44e6, afr = 14.7, etaComb = 0.95;
   const deg = Math.PI / 180, V1 = cylinderVolume(-Math.PI, e);
-  const air = (p1 * V1) / (R * T1) * 0.92;                     // trapped air with residual gas, kg
+  const air = (p1 * V1) / (R * T1) * ve;                       // trapped air, kg
   const Qin = (air / afr) * LHV * etaComb * (1 - wallLoss);
   const wiebe = th => { if (instant) return th >= 0 ? 1 : 0; const x = (th - ignition) / burn; return x <= 0 ? 0 : 1 - Math.exp(-5 * x ** 3); };
-  let p = p1, work = 0, pmax = p1, thPmax = 0;
+  let p = p1, work = 0, pmax = p1, thPmax = 0, pEvo = null;
   const trace = [];
   const step = 0.25;
   for (let th = -180; th < 180; th += step) {
@@ -42,14 +43,16 @@ export function cycle({ rpm = 3000, manifold = 1.0, ignition = -15, burn = 50, g
     const dQ = Qin * (wiebe(th + step) - wiebe(th));
     const Vm = (Va + Vb) / 2;
     const dp = -gamma * p / Vm * dV + (gamma - 1) / Vm * dQ;
-    const pNew = p + dp;
+    let pNew = p + dp;
+    if (th + step > evo) { if (pEvo === null) pEvo = p; pNew = pEvo + (1.05e5 - pEvo) * Math.min(1, (th + step - evo) / Math.max(180 - evo, 1)); } // blowdown
     work += ((p + pNew) / 2) * dV;
     p = pNew;
     if (p > pmax) { pmax = p; thPmax = th + step; }
     if (Math.round(th * 4) % 8 === 0) trace.push({ theta: th, V: Va, p });
   }
   const imep = work / swept(e);
-  const pmep = Math.max(0, 1.05e5 - p1) + 0.25e5 * (rpm / 6000) ** 2;  // throttling + valve flow losses (approx.)
+  const lateEvo = Math.max(0, Math.min(1, (evo - 130) / 30));      // exhaust opened late: cylinder not empty at high speed
+  const pmep = Math.max(0, 1.05e5 - p1) + 0.25e5 * (rpm / 6000) ** 2 * (1 + 1.5 * lateEvo);  // throttling + valve flow losses (approx.)
   return { imep, pmep, pmax, thPmax, trace, work, Qfuel: (air / afr) * LHV, air, etaIndicated: work / ((air / afr) * LHV) };
 }
 
@@ -68,9 +71,9 @@ export function fmep(rpm, pmaxPa, muOil, e = ENGINE) {
 
 // ---------------- running engine at a steady operating point ----------------
 // compression and friction factors let assembly choices (ring gap, oil level) change the result.
-export function operatingPoint({ rpm, throttle, oil, oilTemp, compression = 1, friction = 1 }, e = ENGINE) {
+export function operatingPoint({ rpm, throttle, oil, oilTemp, compression = 1, friction = 1, ve, evo }, e = ENGINE) {
   const manifold = 0.3 + 0.7 * throttle;
-  const c = cycle({ rpm, manifold }, e);
+  const c = cycle({ rpm, manifold, ...(ve !== undefined && { ve }), ...(evo !== undefined && { evo }) }, e);
   c.imep *= compression; c.work *= compression; c.etaIndicated *= compression;
   const v = viscosity(oil, oilTemp);
   const f = v.gelled ? Infinity : fmep(rpm, c.pmax, v.mu, e) * friction;

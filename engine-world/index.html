@@ -99,13 +99,26 @@
 
     <div class="card step">
       <h2><span class="n">5</span> Drive</h2>
-      <label class="range">Engine speed <output id="rpm-out"></output><input id="rpm" type="range" min="1000" max="6500" step="100" value="3000"></label>
+      <label class="range">Engine speed <output id="rpm-out"></output><input id="rpm" type="range" min="1000" max="7500" step="100" value="3000"></label>
       <label class="range">Accelerator <output id="thr-out"></output><input id="thr" type="range" min="0" max="100" step="5" value="60"></label>
       <label class="range">Oil temperature <output id="ot-out"></output><input id="ot" type="range" min="-35" max="140" step="1" value="95"></label>
       <ul class="results" id="drive-results"></ul>
       <svg id="pv" viewBox="0 0 340 190" role="img" aria-labelledby="pv-t"><title id="pv-t">Cylinder pressure against volume</title></svg>
     </div>
 
+      <div class="card step" id="s-breathe">
+        <h2><span class="n">6</span> Valves and airflow</h2>
+        <p class="note">How well the engine breathes decides how much fuel it can burn. Choose a camshaft, springs and intake runners, then watch the dyno curve.</p>
+        <div class="chips" id="cams" role="radiogroup" aria-label="Camshaft"></div>
+        <label class="range">Valve open time (duration) <output id="dur-out"></output><input id="dur" type="range" min="200" max="310" step="2" value="240"></label>
+        <label class="range">Valve lift <output id="lift-out"></output><input id="lift" type="range" min="6" max="13" step="0.5" value="8"></label>
+        <label class="range">Lobe centre <output id="lc-out"></output><input id="lc" type="range" min="95" max="120" step="1" value="105"></label>
+        <h3 class="sub">Valve springs</h3>
+        <div class="chips" id="springs" role="radiogroup" aria-label="Valve springs"></div>
+        <label class="range">Intake runner length <output id="run-out"></output><input id="runner" type="range" min="20" max="70" step="1" value="35"></label>
+        <ul class="results" id="breathe-results"></ul>
+        <svg id="dyno" viewBox="0 0 340 200" role="img" aria-labelledby="dyno-t"><title id="dyno-t">Full-throttle torque and power</title></svg>
+      </div>
     </div>
 
     <details class="card about">
@@ -113,6 +126,7 @@
       <p><b>Reliable:</b> piston and crank motion (exact geometry); oil thickness between 0 and 150 °C (ASTM D341 from each oil's 40 °C and 100 °C data); cooling of a parked engine (Newton's law); the ideal Otto cycle as a check on the cylinder model.</p>
       <p><b>Approximate:</b> oil thickness below 0 °C (anchored to SAE J300 cold-cranking limits); cylinder pressure (single-zone model, Wiebe burn, fixed wall heat loss); friction (Chen–Flynn, scaled with oil viscosity); cranking speed (starter and cold-battery curves); time to oil pressure (pump and suction-pipe flow); bearing film (Ocvirk short-bearing solution, steady load).</p>
       <p><b>Assembly choices:</b> bearing clearance changes oil pressure (side leakage ∝ clearance³) and the bearing film; ring gap and oil level change compression and drag by labelled amounts.</p>
+      <p><b>Breathing:</b> valve timing and lift (geometry, reliable); air filling from intake-valve closing, Taylor's inlet Mach index and Helmholtz runner tuning (approximate, Heywood ch. 6); valve float from spring force against valve-train inertia (approximate, cam-ramp factor assumed); valve-to-piston gap from piston position and lift (reliable geometry, assumed pocket depth).</p>
       <p><b>Coolant:</b> freezing point of ethylene-glycol mixes from the standard table (reliable).</p>
       <p><b>Assumptions:</b> how much old oil thickens; reference engine values (1.2 L, 10.5:1, typical bearings and starter).</p>
       <p><b>Not modelled:</b> fuel evaporation in extreme cold, combustion chemistry, detailed 3D oil flow, component lifetime. This is a teaching model of the principles, not an engine test.</p>
