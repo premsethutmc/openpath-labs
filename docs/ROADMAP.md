@@ -1,5 +1,17 @@
 # Roadmap
 
+**Current roadmap (21 Nov 2026):** see [CURRICULUM_MAP.md](./CURRICULUM_MAP.md) — the full mechanical curriculum mapped against what exists, the pump-set connecting project, and six gated stages:
+
+0. Foundations — design record and provenance; merge the open drafts
+1. Connect the existing benches (Pump House + workshop on one project)
+2. Machine design and vibration engines
+3. Heat transfer engine
+4. Pump set test run (all benches, unscripted)
+5. Widen the map (thermodynamics, mechanisms, materials testing, processes, mechatronics)
+
+The checklist below is the history of Stage 1 work.
+
+
 ## Stage 1 — Proof it works *(now)*
 
 - [x] Vision, architecture, learning design, curriculum, validation docs
