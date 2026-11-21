@@ -52,3 +52,30 @@ test('a learner-built king-post truss is far stronger than a plain plank of the 
   assert.ok(b.ok && b.sf > 4 * a.sf, `truss ${b.sf} vs plank ${a.sf}`);
   assert.ok(mass(truss, resolve) > mass(plank, resolve));
 });
+
+// Regression: an editable copy used to reset the scenario and tag every member as deck, so a Truss bridge copy under
+// "Festival crowd" carried crowd load on 13 members instead of the 4 deck members.
+test('an editable copy keeps every model input and solves identically until the learner edits it', async () => {
+  const { editableCopy, buildStructure, deleteMember } = await import('./build.mjs');
+  const { PRESETS } = await import('./presets.mjs');
+  const { analyze } = await import('../engines/solids/analyze.mjs');
+  const truss = PRESETS.find(p => p.id === 'truss');
+  const state = { material: truss.material, section: truss.section, scenario: 'crowd', loads: truss.loads.map(l => ({ ...l })) };
+  const copy = editableCopy(truss, state, { gap: [0, 8000], steps: [{ text: 'a' }, { text: 'b' }] });
+  assert.equal(copy.scenario, 'crowd');
+  assert.deepEqual(copy.members, truss.members, 'member roles (tags, groups, names) are kept');
+  const copyState = { material: copy.material, section: copy.section, scenario: copy.scenario, loads: copy.loads };
+  const orig = buildStructure(truss, state), dup = buildStructure(copy, copyState);
+  const crowd = s => s.memberLoads.filter(l => l.source === 'crowd').length;
+  assert.equal(crowd(orig), 4); assert.equal(crowd(dup), 4);
+  const a = analyze(orig), b = analyze(dup);
+  assert.equal(b.sf, a.sf); assert.equal(b.maxDefl.d, a.maxDefl.d);
+  // one intentional edit changes the result; the original preset is untouched
+  const k = copy.members.findIndex(m => m.type === 'truss' && !m.tags?.includes('deck') && /diagonal/i.test(m.name || ''));
+  assert.ok(k >= 0);
+  const edited = { ...copy, ...deleteMember({ nodes: copy.nodes, members: copy.members, supports: copy.supports, loads: copy.loads }, k) };
+  const c = analyze(buildStructure(edited, { ...copyState, loads: edited.loads }));
+  assert.ok(!c.ok || c.sf !== a.sf, 'removing a diagonal changes the answer');
+  assert.equal(PRESETS.find(p => p.id === 'truss').members.length, truss.members.length);
+  assert.equal(analyze(buildStructure(truss, state)).sf, a.sf, 'the original still solves as before');
+});

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fluid line bench · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <link rel="stylesheet" href="./circuit.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Workshop · fluid line bench</span>
+</header>
+
+<nav class="objects scroll" aria-label="Start from" id="starts"></nav>
+
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1 id="title">Fluid line bench</h1><p id="subtitle"></p></div>
+    <div class="instrument"><svg id="scheme" viewBox="0 0 600 250" role="img" aria-labelledby="scheme-title"><title id="scheme-title">The line as built</title></svg></div>
+    <div class="solve" id="status" role="status" aria-live="polite"></div>
+    <div class="verdicts" id="verdicts"></div>
+    <dl class="readings" id="readings"></dl>
+  </section>
+
+  <section class="side">
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module" data-module="build" data-title="Build" id="m-build"></section>
+    <section class="module" data-module="measure" data-title="Measure" id="m-measure"></section>
+    <section class="module" data-module="duty" data-title="Duty &amp; motor" id="m-duty"></section>
+    <section class="module" data-module="learn" data-title="Learn" id="m-learn"></section>
+    <section class="module" data-module="experiments" data-title="Experiments" id="m-experiments"></section>
+  </section>
+</main>
+<script type="module" src="./circuit.mjs"></script>
+</body>
+</html>

@@ -62,3 +62,17 @@ button:disabled{opacity:.45}
 .mission .guess{flex:1 1 28%}
 .about{font-size:.86rem;color:var(--muted)}.about summary{min-height:44px;align-content:center;font-weight:700;color:var(--ink);cursor:pointer}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Experiments panel (core/notebook.mjs) — shared by every bench */
+.nb-field{display:flex;flex-direction:column;gap:4px;font-size:.84rem;font-weight:600;color:var(--muted)}
+.nb-field select,.nb-rename,.nb-name{min-height:44px;border-radius:10px;border:1px solid #2c3e4a;background:#0b1117;color:var(--ink);font:600 .9rem Inter,sans-serif;padding:0 10px;width:100%}
+.row .grow{flex:1 1 150px}
+.nb-runs{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px;font-size:.84rem}
+.nb-runs li{background:#0d151b;border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:grid;gap:3px}
+.nb-runs label{display:flex;gap:8px;align-items:center;min-height:36px}.nb-runs input{width:20px;height:20px}
+.nb-runs span{font:500 .76rem var(--mono)}.nb-runs em{font-style:normal;font-size:.76rem}.nb-runs .nb-load{justify-self:start;min-height:36px;font-size:.78rem}
+.nb-import{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid #2c3e4a;border-radius:10px;font-weight:600;cursor:pointer}
+.nb-import input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.msg{color:var(--bad);font-size:.86rem;font-weight:600;margin:8px 0 0}.msg.okmsg,.okmsg{color:var(--ok)}.badmsg{color:var(--bad)}
+.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:.82rem;table-layout:fixed}
+.tbl th,.tbl td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);overflow-wrap:anywhere;vertical-align:top}.tbl td{font-family:var(--mono)}
+.tbl tr.chg td{color:var(--act)}
