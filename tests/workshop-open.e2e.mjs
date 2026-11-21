@@ -121,9 +121,14 @@ for (const width of [360, 1280]) test(`Open workshop ${width}px: two jobs, scrat
     const meta = (await pg.locator('.nb-changed').textContent()).split(', ');
     assert.ok(meta.every(p => /^object\.(id|name|editable|copiedFrom|setting|gap|view\.|question)/.test(p)), `only the editing frame differs: ${meta}`);
     // one intentional edit: delete the diagonal from (3 m, 3 m) to (6 m, 0) — member 12 of the preset
+    // a normal tap (touch on the phone, mouse on desktop) on the middle of the diagonal, where the load is drawn over it
+    await pg.locator('#scene').scrollIntoViewIfNeeded();
+    const mid = await pg.evaluate(() => window.__labs.toScreen(4500, 1500)), box = await pg.locator('#scene').boundingBox();
+    const at = [box.x + mid.x, box.y + mid.y], topAt = () => pg.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return `${e.getAttribute('class') || ''} ${e.parentNode.getAttribute?.('class') || ''}`; }, at);
+    if (width < 700) assert.match(await topAt(), /load/, 'on a phone the load really covers the diagonal here');
     await pg.getByRole('radio', { name: 'Delete' }).click();
-    // (on a phone the crowd and the car are drawn over the diagonal, so the tap goes to the member's own hit area)
-    await pg.locator('#scene .hit[data-member="11"]').dispatchEvent('pointerdown', { bubbles: true, pointerId: 1 });
+    assert.match(await topAt(), /hit/, 'with the Delete tool the member takes the tap');
+    if (width < 700) await pg.touchscreen.tap(...at); else await pg.mouse.click(...at);
     assert.notEqual(await pg.locator('#s-sf').textContent(), sf0, 'the edit changes the result');
     await saveRun(pg, 'copy, one diagonal removed');
     await tab(pg, 'Experiments'); await pg.locator('[data-cmp="2"]').uncheck(); await pg.locator('[data-cmp="4"]').check();

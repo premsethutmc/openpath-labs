@@ -41,3 +41,5 @@
 .buildbar .chips button[aria-checked=true]{background:var(--act);border-color:var(--act);color:#140a02}
 .mass{margin:0;font-size:.88rem;color:var(--muted)}.mass b{color:var(--ink);font-family:var(--mono)}
 @media(prefers-reduced-motion:reduce){#meter-fill{transition:none}}
+#scene.editing *{pointer-events:none}
+#scene.editing .hit{pointer-events:stroke}

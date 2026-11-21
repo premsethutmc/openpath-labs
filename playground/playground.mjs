@@ -171,6 +171,9 @@ function scaleNow() { return lastScale; }
 
 function draw() {
   layout();
+  // While drawing, setting supports or deleting, only members and joints take taps: loads, crowds and labels drawn
+  // on top of a member never block it.
+  svg.classList.toggle('editing', !!preset.editable && tool !== 'move');
   const st = buildStructure(preset, state);
   let out = background();
   out += preset.supports.map(supportGlyph).join('');
