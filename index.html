@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+<header class="hero">
+  <div class="hero-text">
+    <p class="brand">OpenPath Labs</p>
+    <h1>An engineering R&amp;D lab in your hands</h1>
+    <p class="lede">Meet a principle inside a real machine. Isolate it. Make it yours. Push it to the edge — in any conditions, as often as you like.</p>
+    <a class="cta" id="continue" href="./playground/#footbridge">Open the Force Playground</a>
+  </div>
+  <svg class="hero-art" viewBox="0 0 520 300" role="img" aria-label="A truss bridge with its members coloured by how hard they work">
+    <defs><linearGradient id="hs" x2="0" y2="1"><stop stop-color="#cfe3ef"/><stop offset="1" stop-color="#f4f5f2"/></linearGradient><linearGradient id="hw" x2="0" y2="1"><stop stop-color="#5aa3c7"/><stop offset="1" stop-color="#2f6f99"/></linearGradient></defs>
+    <rect width="520" height="300" rx="18" fill="url(#hs)"/>
+    <path d="M0 200H70L100 300H0ZM520 200H450L420 300H520Z" fill="#8c7a5b"/><rect y="262" width="520" height="38" fill="url(#hw)"/>
+    <g stroke-linecap="round" stroke-width="7">
+      <path d="M70 196L165 201L260 203L355 201L450 196" stroke="hsl(45 72% 46%)" stroke-width="11"/>
+      <path d="M165 110H260H355" stroke="#d7261e"/>
+      <path d="M70 196L165 110M355 110L450 196" stroke="hsl(60 72% 44%)"/>
+      <path d="M165 110V201M355 110V201" stroke="hsl(180 72% 42%)"/><path d="M260 110V203" stroke="hsl(200 72% 42%)"/>
+      <path d="M165 110L260 203M355 110L260 203" stroke="hsl(110 72% 42%)"/>
+    </g>
+    <g fill="#fff" stroke="#14202b" stroke-width="2"><circle cx="70" cy="196" r="5"/><circle cx="165" cy="201" r="5"/><circle cx="260" cy="203" r="5"/><circle cx="355" cy="201" r="5"/><circle cx="450" cy="196" r="5"/><circle cx="165" cy="110" r="5"/><circle cx="260" cy="110" r="5"/><circle cx="355" cy="110" r="5"/></g>
+    <g transform="translate(240 188)"><rect x="-30" y="-26" width="44" height="22" fill="#e0a12a"/><path d="M14 -22h12l7 9v9H14z" fill="#3c6e91"/><circle cx="-18" cy="-3" r="5" fill="#222"/><circle cx="22" cy="-3" r="5" fill="#222"/></g>
+    <text x="260" y="96" text-anchor="middle" class="art-label">top chord: squeezed, close to buckling</text>
+  </svg>
+</header>
+
+<main>
+  <section class="engines" aria-labelledby="eng-h">
+    <h2 id="eng-h">Five engines, one connected world</h2>
+    <div class="engine-row" id="engines"></div>
+  </section>
+
+  <section aria-labelledby="path-h">
+    <div class="path-head">
+      <h2 id="path-h">Mechanical engineering, from your first force to your own engine</h2>
+      <p>Each stage answers the questions the subject exists for. Learn mode guides you; Explore mode lets you change everything.</p>
+    </div>
+    <ol class="stages" id="stages"></ol>
+  </section>
+
+  <section class="soon" aria-labelledby="next-h">
+    <h2 id="next-h">After mechanical</h2>
+    <p>Civil (bridges, buildings, water), electrical and electronics (circuits, motors, logic), and one day the human body — on the same engines.</p>
+  </section>
+</main>
+<footer><p>OpenPath Labs · early build · results are checked against textbook formulas; see “What this model includes” in each lab.</p></footer>
+<script type="module" src="./dashboard.mjs"></script>
+</body>
+</html>

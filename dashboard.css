@@ -1,0 +1,43 @@
+/* VOICE: confident, technical, generous.
+   IDEA: a campus map of engineering — every stage a lab you can walk into.
+   PICTURE: a live-coloured truss bridge carrying a truck.
+   COLOUR and TYPE: white bench, graphite ink, signal orange for action; stress colours as the only other hues. Archivo + Inter.
+   LAYOUT: hero (title + picture), engines strip, numbered path of stages. */
+:root{color-scheme:light;--bg:#f4f5f2;--ink:#14202b;--muted:#566370;--line:#d9ddd6;--act:#e0531f}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+a:focus-visible{outline:3px solid #1d58c8;outline-offset:2px}
+.hero{display:grid;gap:20px;align-items:center;padding:clamp(20px,4vw,56px) max(5vw,16px);max-width:1240px;margin:auto}
+@media(min-width:860px){.hero{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
+.brand{font:800 .95rem Archivo,sans-serif;margin:0 0 6px;color:var(--act)}
+h1{font:800 clamp(2rem,5vw,3.3rem)/1.05 Archivo,sans-serif;margin:0 0 12px;text-wrap:balance}
+.lede{font-size:1.08rem;color:#33424f;max-width:52ch;margin:0 0 18px}
+.cta{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border-radius:12px;background:var(--act);color:#fff;font-weight:700;text-decoration:none}
+.hero-art{width:100%;height:auto;display:block}
+.art-label{font:700 13px Inter,sans-serif;fill:#8d1510}
+main{max-width:1240px;margin:auto;padding:0 max(5vw,16px) 40px}
+h2{font:800 clamp(1.3rem,3vw,1.8rem)/1.15 Archivo,sans-serif;margin:24px 0 10px;text-wrap:balance}
+.engine-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.engine{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:2px}
+.engine b{font:800 1.05rem Archivo,sans-serif}.engine span{font-size:.86rem;color:var(--muted)}
+.engine em{font-style:normal;font-size:.75rem;font-weight:700;color:var(--muted)}
+.engine.live{border-color:var(--ink);box-shadow:inset 4px 0 0 var(--act)}.engine.live em{color:var(--act)}
+.path-head p{color:var(--muted);margin:0 0 12px;max-width:65ch}
+.stages{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.stage{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.stage.live{border:2px solid var(--ink)}
+.stage.planned,.stage.next{background:#fafbf9}
+.snum{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1.1rem Archivo,sans-serif;background:#e7eae5}
+.stage.live .snum{background:var(--ink);color:#fff}
+.stitle{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.stitle h3{font:800 1.15rem Archivo,sans-serif;margin:0}
+.stitle em{font-style:normal;font-size:.75rem;font-weight:700;color:var(--muted)}.stage.live .stitle em{color:var(--act)}
+.sq{margin:4px 0 8px}
+.soon-line{margin:0 0 6px;color:var(--muted);font-size:.92rem}
+.objs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:8px}
+.obj{display:grid;gap:2px;padding:10px 12px;min-height:44px;border-radius:12px;background:#f3f5f1;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.obj span{font-weight:700}.obj small{color:var(--muted);font-size:.8rem}
+.obj:hover{border-color:var(--ink)}
+.eng{margin:0;font-size:.78rem;color:var(--muted);font-weight:600}
+.soon p{color:var(--muted);max-width:65ch}
+footer{padding:20px max(5vw,16px) 30px;color:var(--muted);font-size:.82rem;max-width:1240px;margin:auto}

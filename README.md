@@ -1,19 +1,29 @@
 # OpenPath Labs
 
-Open-ended simulation worlds for engineering students: make things, break them, discover the subject.
+**Vision: put a world-class industrial R&D lab — like Shell's — in every individual's hands.**
 
-## The Workshop — Strength of Materials (first slice)
+Connected simulation engines behind one dashboard. Learners meet a principle in a real object, isolate it, own it, and push it to the edge — live, in any scenario, at no cost per experiment.
 
-`strength-lab/` is a static page with no build step, backend or external assets.
+Start with the docs:
 
-- **Lathe:** turn down sections (sharp or rounded steps) and cut grooves (sharp or round tool) in mild steel, aluminium or cast iron bars (20 mm × 120 mm).
-- **Test rig:** pull or twist the part to failure; live load–stretch / torque–twist graph, dials with slight measurement wobble, fracture shape (cup-and-cone, flat, 45° helix).
-- **Notebook and quests:** every test is logged in the browser (localStorage) with comparison to the previous test; six discovery quests tick off automatically.
+- [Vision](docs/VISION.md)
+- [Architecture](docs/ARCHITECTURE.md) — five engines, shared formats, plug-and-play scenarios
+- [Learning design](docs/LEARNING_DESIGN.md) — meet → isolate → own → edge; guided and open modes
+- [Mechanical engineering, distilled](docs/MECHANICAL_ENGINEERING.md) — the path from first force to your own engine
+- [Validation](docs/VALIDATION.md) — how results are checked
+- [Roadmap](docs/ROADMAP.md)
 
-Model: σ = F/A, τ = 16T/πd³, δ = ΣFL/AE, θ = ΣTL/GJ; ductile failure at the smallest net section, brittle failure at the highest Kt·σ. Kt values are approximate fits to Peterson's charts. Teaching model, not a design tool.
+## What runs today
+
+- `index.html` — dashboard: engines, the ten-stage mechanical path, progress.
+- `playground/` — **Force Playground** (Solids engine): wall shelf, footbridge, truss bridge, jib crane, diving board, building column. Drag loads live; swap material and size; scenarios (crowd, snow, Arctic, desert, cyclone, Moon); live deformation and stress colours; tap any member for its equations with live numbers; safety factor and failure (yield, fracture, crushing, buckling). Learn mode adds guided steps with pause-and-think predictions computed by the engine.
+- `engines/solids/` — 2D frame/truss solver (direct stiffness), stresses, buckling, safety; validated against textbook cases.
+- `core/` — shared materials, sections, scenarios.
+
+No build step. Serve the repository root with any static server:
 
 ```sh
-node --test strength-lab/model.test.mjs
-node --test tests/workshop.e2e.mjs   # needs playwright + chromium
-python3 -m http.server -d strength-lab 4190
+python3 -m http.server 4190      # then open http://127.0.0.1:4190/
+node --test engines/             # engine validation
+node --test tests/               # browser tests (needs playwright + chromium)
 ```

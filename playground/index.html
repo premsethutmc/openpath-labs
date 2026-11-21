@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Force Playground · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="./playground.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../">‹ Labs</a>
+  <span class="crumb">Strength of Materials</span>
+  <div class="mode" role="radiogroup" aria-label="Mode">
+    <button type="button" role="radio" data-mode="learn" aria-checked="true">Learn</button>
+    <button type="button" role="radio" data-mode="explore" aria-checked="false">Explore</button>
+  </div>
+</header>
+
+<nav class="objects scroll" aria-label="Objects" id="objects"></nav>
+
+<main>
+  <section class="stage">
+    <div class="titleblock">
+      <h1 id="title">Force Playground</h1>
+      <p id="question"></p>
+    </div>
+    <div class="scene-wrap">
+      <svg id="scene" role="img" aria-labelledby="scene-title"><title id="scene-title">Structure</title></svg>
+      <div class="scene-tools">
+        <button type="button" id="t-forces" aria-pressed="false">Forces</button>
+        <button type="button" id="t-shape" aria-pressed="true">Exaggerate bend</button>
+      </div>
+      <div class="legend" aria-hidden="true"><span>Relaxed</span><i></i><span>Failing</span></div>
+    </div>
+    <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+    <div class="meter" aria-hidden="true"><div id="meter-fill"></div><span style="left:44.4%">SF 1.5</span><span style="left:66.7%">SF 1 · fails</span></div>
+    <dl class="stats">
+      <div><dt>Safety factor</dt><dd id="s-sf">–</dd></div>
+      <div><dt>Highest stress</dt><dd id="s-stress">–</dd></div>
+      <div><dt>Biggest movement</dt><dd id="s-defl">–</dd></div>
+      <div><dt>Total load</dt><dd id="s-load">–</dd></div>
+    </dl>
+  </section>
+
+  <section class="side">
+    <div class="guide" id="guide"></div>
+
+    <div class="card inspect" id="inspect" aria-live="polite"></div>
+
+    <div class="card controls">
+      <h2>Change it</h2>
+      <div class="group"><h3>Material</h3><div class="chips" id="materials" role="radiogroup" aria-label="Material"></div></div>
+      <div class="group"><h3>Size</h3><div class="chips" id="sections" role="radiogroup" aria-label="Section size"></div></div>
+      <div class="group"><h3>Scenario</h3><div class="chips" id="scenarios" role="radiogroup" aria-label="Scenario"></div><p class="note" id="scenario-note"></p></div>
+      <div class="group"><h3>Add a load</h3><div class="chips" id="addloads"></div>
+        <div class="chips" id="loadlist" aria-label="Loads on the structure"></div></div>
+    </div>
+
+    <details class="card about">
+      <summary>What this model includes</summary>
+      <p>Linear-elastic 2D frame analysis (direct stiffness method): bending, axial force, self-weight, temperature change, scenario loads. Stress σ = N/A ± M·c/I at every point; members in compression are checked for Euler buckling with their full length (pinned ends). Results are checked automatically against textbook formulas.</p>
+      <p>Not included yet: shear stress, local buckling of thin walls, connection strength, dynamic effects except where a scenario adds them. Material values are typical, not for a specific grade.</p>
+    </details>
+  </section>
+</main>
+<script type="module" src="./playground.mjs"></script>
+</body>
+</html>
