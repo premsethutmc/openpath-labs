@@ -156,6 +156,46 @@
       </div>
     </section>
 
+    <section class="module" data-module="shaft" data-title="Work → power">
+      <h2>From cylinder work to shaft power</h2>
+      <p class="note">One experiment on the 1D test bench (Maruti Suzuki K12M model, full throttle): watch one cycle, follow the work in the cylinder all the way to the crankshaft, then change one thing and measure what it does.</p>
+      <h3 class="sub">1 · Run the bench</h3>
+      <div class="chips" role="radiogroup" aria-label="Engine speed for the experiment">
+        <button type="button" role="radio" data-xrpm="2500" aria-checked="false">2500 rpm</button>
+        <button type="button" role="radio" data-xrpm="4500" aria-checked="true">4500 rpm</button>
+        <button type="button" role="radio" data-xrpm="6000" aria-checked="false">6000 rpm</button>
+      </div>
+      <div class="row"><button type="button" class="primary" id="x-runA">Run A: stock engine</button></div>
+      <p id="x-status" class="msg" role="status" aria-live="polite">No run yet.</p>
+      <p class="note"><b>Reaches the 1D bench:</b> <span id="x-bench-inputs"></span>. <b>Fast model only:</b> oil, temperatures, spark, mixture, fuel, boost and assembly choices — they do not change these runs.</p>
+      <div id="x-after-a" hidden>
+        <h3 class="sub">2 · Scrub one 720° cycle</h3>
+        <div class="row"><button type="button" id="x-play">Play</button></div>
+        <label class="range">Crank angle <input id="x-scrub" type="range" min="0" max="719" step="1" value="0" aria-label="Crank angle"></label>
+        <ul class="results" id="x-read"></ul>
+        <div class="chips" role="radiogroup" aria-label="p–V axes" style="margin-top:10px"><button type="button" role="radio" data-xpv="linear" aria-checked="true">p–V linear</button><button type="button" role="radio" data-xpv="log" aria-checked="false">p–V log–log</button></div>
+        <svg id="x-pv" class="chart" viewBox="0 0 340 205" role="img" aria-labelledby="x-pv-t"><title id="x-pv-t">p–V loop</title></svg>
+        <div class="chips" role="radiogroup" aria-label="Pressure chart range" style="margin-top:10px"><button type="button" role="radio" data-xpth="full" aria-checked="true">Whole cycle</button><button type="button" role="radio" data-xpth="zoom" aria-checked="false">Gas exchange</button></div>
+        <svg id="x-pth" class="chart" viewBox="0 0 340 220" role="img" aria-labelledby="x-pth-t"><title id="x-pth-t">Pressure against crank angle</title></svg>
+        <p class="note">The 3D cutaway follows this crank angle while this module is open. It is an idealised teaching engine — its valve timing and proportions are not the K12M’s; every number here comes from the 1D run.</p>
+        <h3 class="sub">3 · From the loop to the shaft</h3>
+        <div id="x-chain"></div>
+        <h3 class="sub">4 · Controlled experiment: intake runner length</h3>
+        <p class="note">Run B copies Run A exactly — same speed, cam, throttle, ambient air — except the intake runner length.</p>
+        <label class="range">Run B intake runner length <output id="x-runner-out"></output><input id="x-runner" type="range" min="20" max="70" step="1" value="35"></label>
+        <p class="think">Predict before you run: brake torque at this speed will go…</p>
+        <div class="row">
+          <button type="button" class="guess" data-xpred="Up">Up</button>
+          <button type="button" class="guess" data-xpred="Down">Down</button>
+          <button type="button" class="guess" data-xpred="Within ±1 %">Within ±1 %</button>
+        </div>
+        <p class="note" id="x-hint"></p>
+        <div class="row"><button type="button" class="primary" id="x-runB" disabled>Run B</button></div>
+        <div id="x-ab" aria-live="polite"></div>
+      </div>
+      <p class="note" id="x-caveat"></p>
+    </section>
+
     <section class="module about" data-module="about" data-title="Model">
       <h2>What is modelled, and what is not</h2>
       <p><b>Reliable:</b> piston and crank motion (exact geometry); oil thickness between 0 and 150 °C (ASTM D341 from each oil's 40 °C and 100 °C data); cooling of a parked engine (Newton's law); the ideal Otto cycle as a check on the cylinder model.</p>

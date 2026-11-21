@@ -97,3 +97,15 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 | Separation | none at 60 rpm, suction separates at 120 rpm (limit 72 rpm); air vessels prevent it | 2.5 m abs criterion | ✓ |
 
 **Assumptions:** simple harmonic piston motion (long connecting rod), rigid water columns, constant friction factor (taken at mean velocity), air vessels adjacent to the cylinder, slip as one coefficient of discharge.
+
+## Engine World — cylinder work to shaft power (1D bench post-processing)
+
+| Check | Result |
+|---|---|
+| Solver output after adding trace recording | bit-identical torque at 2500 and 4500 rpm (112.96149220597019 N·m at 4500) |
+| ∮p dV of cylinder 1's trace vs solver's cylinder-1 work | within 0.012 % (2500, 4500, 6000 rpm) |
+| IMEP → BMEP → torque → power chain vs solver torque/power | identical to 1e-12 |
+| Unconverged run (maxCycles 2) | flagged invalid, carries no numbers or traces, refused by compare |
+
+**Worked A/B (4500 rpm, full throttle):** runner 35 → 25 cm: volumetric efficiency 101.1 % → 83.2 %, IMEP 13.56 → 11.24 bar, FMEP 1.71 bar both (modelled), brake torque 113.0 → 90.8 N·m (−19.6 %). Cylinder pressure at intake-valve closing 1.76 → 1.40 bar; pressure at the valve near BDC 1.35 → 1.02 bar.
+**Caveat:** the runner effect is a model prediction; the K12M bench is fitted at one torque point and checked at one power point, which does not validate the full curve or runner sensitivity.

@@ -65,3 +65,9 @@ h3.sub{font:700 .72rem var(--mono);text-transform:uppercase;letter-spacing:.05em
 body[data-mode=learn][data-details=off] .results li:not(.key):not(.verdict){display:none}
 body[data-mode=learn][data-details=off] #vchart,body[data-mode=learn][data-details=off] .emis{display:none}
 body[data-mode=learn] .key{display:none}
+.eqs p{margin:8px 0;font-size:.88rem;line-height:1.55}.eqs b{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.abt{width:100%;border-collapse:collapse;margin:8px 0;font:500 .76rem var(--mono)}
+.abt th,.abt td{padding:5px 4px;border-bottom:1px solid #1b2832;text-align:right;white-space:nowrap}
+.abt th:first-child{text-align:left;color:var(--muted);font-weight:500;white-space:normal}.abt thead th{color:var(--dim);font-weight:600}
+.abt td:last-child{color:var(--dim);font-size:.68rem}
+#x-ab{overflow-x:auto}
