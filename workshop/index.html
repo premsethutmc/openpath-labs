@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Workshop · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <link rel="stylesheet" href="./workshop.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Workshop · making and measuring</span>
+  <div class="mode" role="radiogroup" aria-label="Guidance">
+    <button type="button" role="radio" data-guide="hints">Hints</button>
+    <button type="button" role="radio" data-guide="equations">Equations</button>
+    <button type="button" role="radio" data-guide="off">Off</button>
+  </div>
+</header>
+
+<nav class="objects scroll" aria-label="Parts" id="parts"></nav>
+
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1 id="title">Workshop</h1><p id="subtitle"></p></div>
+    <div class="instrument">
+      <svg id="drawing" viewBox="0 0 600 250" role="img" aria-labelledby="drawing-title"><title id="drawing-title">Part section</title></svg>
+    </div>
+    <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+    <dl class="readings">
+      <div><dt>Revision</dt><dd id="r-rev">–</dd></div>
+      <div><dt>Bore target</dt><dd id="r-target">–</dd></div>
+      <div><dt>Bore reading</dt><dd id="r-bore">–</dd></div>
+      <div><dt>Fit</dt><dd id="r-fit">–</dd></div>
+    </dl>
+  </section>
+
+  <section class="side">
+    <nav class="dock" aria-label="Benches"></nav>
+    <section class="module" data-module="lathe" data-title="Lathe" id="lathe"></section>
+    <section class="module" data-module="drawing" data-title="Drawing" id="drawingmod"></section>
+    <section class="module" data-module="measure" data-title="Measure" id="measure"></section>
+    <section class="module" data-module="fit" data-title="Fit" id="fit"></section>
+    <section class="module" data-module="attempts" data-title="Attempts" id="attempts"></section>
+    <section class="module about" data-module="model" data-title="Model" id="model"></section>
+  </section>
+</main>
+<script type="module" src="./workshop.mjs"></script>
+</body>
+</html>
