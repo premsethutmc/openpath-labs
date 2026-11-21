@@ -1,7 +1,7 @@
 // Pump House fault lab — UI. Physics and faults: ./faults.mjs (Pump House only).
 // Shared with Engine World: ../core/workbench.mjs (layout) and ../core/experiment.mjs (journal: predictions locked
 // before results, named runs with units, run comparison, feedback before the next case).
-import { casesForSeed, repair, cleanExpected, SECTIONS, ACTIONS } from './faults.mjs';
+import { casesForSeed, repair, cleanExpected, SECTIONS, ACTIONS, elevations } from './faults.mjs';
 import { workbench } from '../core/workbench.mjs';
 import { Journal, compareRuns, checkAnswers } from '../core/experiment.mjs';
 
@@ -26,13 +26,18 @@ function snapshot(name, state, measured) {
   const c = cur(), d = state.dashboard;
   const outputs = { flow: { value: d.flow * 1000, unit: 'L/s', label: 'Flow' }, head: { value: d.head, unit: 'm', label: 'Pump head' }, power: { value: d.power / 1000, unit: 'kW', label: 'Motor power' }, eff: { value: d.eff * 100, unit: '%', label: 'Efficiency' } };
   if (measured) outputs[`dp_${measured}`] = { value: state.taps[measured] / 1000, unit: 'kPa', label: `Δp across ${SECTION_LABEL[measured]}` };
-  return J.saveRun(`${L.caseId}: ${name}`, { inputs: { lift: { value: c.cond.lift, unit: 'm', label: 'Static lift' }, rpm: { value: c.cond.rpm, unit: 'rpm', label: 'Pump speed' } }, outputs });
+  const e = elevations(c.cond);
+  return J.saveRun(`${L.caseId}: ${name}`, { inputs: {
+    headerElevation: { value: e.header, unit: 'm', label: 'Return-header elevation above pump' },
+    basinElevation: { value: e.basin, unit: 'm', label: 'Basin water elevation above pump' },
+    staticLift: { value: e.staticLift, unit: 'm', label: 'Static lift (header − basin)' },
+    rpm: { value: c.cond.rpm, unit: 'rpm', label: 'Pump speed' } }, outputs });
 }
 
 // ---------- diagram ----------
 function diagram(state, gauge) {
-  const c = cur(), lift = c.cond.lift, s = $('loop');
-  const yP = 228, yHeader = 228 - Math.min(150, 9 * lift), yBasin = 228 - 4 * 9;
+  const c = cur(), e = elevations(c.cond), s = $('loop');
+  const yP = 228, yHeader = yP - Math.min(150, 9 * e.header), yBasin = yP - 9 * e.basin;   // 9 px per metre above the pump centreline
   const pipe = d => `<path d="${d}" fill="none" stroke="#4a5f6c" stroke-width="7"/><path d="${d}" fill="none" stroke="#0d151b" stroke-width="4.4"/><path class="flowline" d="${d}" fill="none" stroke="#7fd4ff" stroke-width="2" stroke-dasharray="4 7"/>`;
   const tapPair = (x1, x2, y, id) => `<g class="taps"><circle cx="${x1}" cy="${y - 7}" r="3" fill="#0d151b" stroke="#a8b8c3"/><circle cx="${x2}" cy="${y - 7}" r="3" fill="#0d151b" stroke="#a8b8c3"/><text x="${(x1 + x2) / 2}" y="${y - 14}" class="t" text-anchor="middle">taps ${id}</text></g>`;
   const g = gauge ? (() => { const x = gauge.id === 'strainer' ? 112 : 232; return `<g><line x1="${x - 12}" y1="${yP - 10}" x2="${x - 4}" y2="${yP - 40}" stroke="#ff8a3d"/><line x1="${x + 12}" y1="${yP - 10}" x2="${x + 4}" y2="${yP - 40}" stroke="#ff8a3d"/><rect x="${x - 34}" y="${yP - 64}" width="68" height="24" rx="4" fill="#0d151b" stroke="#ff8a3d"/><text x="${x}" y="${yP - 48}" class="tl" text-anchor="middle">Δp ${kPa(gauge.value)}</text></g>`; })() : '';
@@ -48,7 +53,10 @@ function diagram(state, gauge) {
     <text x="232" y="${yP + 22 + 12}" class="t" text-anchor="middle">discharge section</text>
     ${tapPair(96, 128, yP, 'A')}${tapPair(212, 254, yP, 'B')}
     <rect x="360" y="${yHeader - 14}" width="30" height="28" fill="#0d151b" stroke="#a8b8c3"/><text x="375" y="${yHeader - 18}" class="t" text-anchor="middle">header</text>
-    <line x1="330" x2="330" y1="${yP}" y2="${yHeader}" stroke="#4fc3f7" stroke-width=".8"/><text x="338" y="${(yP + yHeader) / 2}" class="t" writing-mode="tb" text-anchor="middle" fill="#4fc3f7">static lift ${lift} m</text>
+    <line x1="70" x2="336" y1="${yBasin}" y2="${yBasin}" stroke="#2e4553" stroke-dasharray="2 3"/><line x1="360" x2="336" y1="${yHeader}" y2="${yHeader}" stroke="#2e4553" stroke-dasharray="2 3"/>
+    <line id="lift-dim" x1="330" x2="330" y1="${yBasin}" y2="${yHeader}" stroke="#4fc3f7" stroke-width=".8"/><text id="lift-label" x="340" y="${(yBasin + yHeader) / 2}" class="t" writing-mode="tb" text-anchor="middle" fill="#4fc3f7">static lift ${e.staticLift} m</text>
+    <text x="76" y="${yBasin - 3}" class="t">basin +${e.basin} m</text><text x="358" y="${yHeader + 24}" class="t" text-anchor="end">header +${e.header} m</text>
+    <line x1="186" x2="200" y1="${yP}" y2="${yP}" stroke="#2e4553"/><text x="202" y="${yP + 3}" class="t">0 m (pump ℄)</text>
     <text x="168" y="${yP - 26}" class="t" text-anchor="middle">${c.cond.rpm} rpm</text>${g}`;
   const d = state.dashboard;
   $('g-q').textContent = `${f(d.flow * 1000, 2)} L/s`; $('g-h').textContent = `${f(d.head, 1)} m`; $('g-p').textContent = `${f(d.power / 1000, 2)} kW`; $('g-e').textContent = `${f(d.eff * 100, 0)} %`;
@@ -92,7 +100,8 @@ function mission() {
   h += `<span class="unit">CE3391 Unit IV · centrifugal pumps in a system</span>`;
   if (L.stage === 'done') { el.innerHTML = h + doneHTML(); wire(); return; }
   h += guided() ? `<h2>The factory cooling loop is delivering less water</h2><p>Maintenance wants to replace the pump. Before anything is replaced, find the fault. Two faults are possible: a <b>fouled inlet strainer</b> or a <b>restriction on the discharge side</b>.</p>`
-    : `<h2>Another plant, same complaint</h2><p>Static lift ${c.cond.lift} m, pump at ${c.cond.rpm} rpm. Same two candidate faults. Diagnose and repair it.</p>`;
+    : `<h2>Another plant, same complaint</h2><p>Pump at ${c.cond.rpm} rpm. Same two candidate faults. Diagnose and repair it.</p>`;
+  { const e = elevations(c.cond); h += `<p class="note" id="elev">Elevations above the pump centreline: return header <b>${e.header} m</b>, basin water <b>${e.basin} m</b>. Static lift = ${e.header} − ${e.basin} = <b>${e.staticLift} m</b>.</p>`; }
   h += briefTable();
   if (guided()) h += `<p class="note">The dashboard is identical for both candidate faults — the pump does not know where the extra loss is. You may place one differential-pressure gauge.</p>`;
   // 1 · hypothesis

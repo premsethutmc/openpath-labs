@@ -27,15 +27,23 @@ const LOOP = {
   suction: { D: 0.05, L: 3, material: 'steel', elbows: 1 }, delivery: { D: 0.04, L: 40, material: 'steel', elbows: 6 },
 };
 // Operating conditions: the guided case and the unseen cases (different static lift or pump speed).
+// headerElevation: return-header water surface above the pump centreline (m). The basin elevation is fixed by LOOP.
+// Static lift is never stored — it is derived from the elevations the solver receives (see elevations()).
 // The severity differs per condition (fraction of healthy flow left), so no reading repeats between cases.
 export const CONDITIONS = [
-  { id: 'guided', lift: 12, rpm: 2900, flowLeft: 0.72 },
-  { id: 'low-lift', lift: 6, rpm: 2900, flowLeft: 0.85 },
-  { id: 'slow', lift: 12, rpm: 2600, flowLeft: 0.80 },
-  { id: 'high-fast', lift: 16, rpm: 3100, flowLeft: 0.78 },
+  { id: 'guided', headerElevation: 12, rpm: 2900, flowLeft: 0.72 },
+  { id: 'low-lift', headerElevation: 6, rpm: 2900, flowLeft: 0.85 },
+  { id: 'slow', headerElevation: 12, rpm: 2600, flowLeft: 0.80 },
+  { id: 'high-fast', headerElevation: 16, rpm: 3100, flowLeft: 0.78 },
 ];
 
-const systemFor = (cond, extra) => ({ ...LOOP, tankHeight: cond.lift, extraLoss: extra });
+const systemFor = (cond, extra) => ({ ...LOOP, tankHeight: cond.headerElevation, extraLoss: extra });
+// The elevations exactly as the solver receives them, and the static lift derived from them (m, relative to the pump
+// centreline): static lift = header elevation − basin elevation.
+export function elevations(cond) {
+  const s = systemFor(cond);
+  return { header: s.tankHeight, basin: s.sumpLevel, staticLift: s.tankHeight - s.sumpLevel };
+}
 const pumpFor = cond => ({ ...STOCK_PUMP, rpm: cond.rpm });
 
 // Added loss R (m per (m³/s)²) that brings the flow down to cond.flowLeft × healthy at this condition.

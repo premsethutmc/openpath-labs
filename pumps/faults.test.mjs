@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CONDITIONS, FAULTS, makeCase, repair, cleanExpected, loopState, casesForSeed } from './faults.mjs';
-import { operate } from '../engines/hydraulics/hydraulics.mjs';
+import { CONDITIONS, FAULTS, makeCase, repair, cleanExpected, loopState, casesForSeed, elevations } from './faults.mjs';
+import { operate, STOCK_SYSTEM } from '../engines/hydraulics/hydraulics.mjs';
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol * Math.abs(b), `${msg}: ${a} vs ${b}`);
 const classify = (c, m) => { const r = c.faulted.taps[m] / cleanExpected(c, m); return r > 1.5 ? 'higher' : r < 0.8 ? 'lower' : 'same'; };
@@ -44,7 +44,7 @@ test('the right repair restores the healthy baseline; the wrong one (or a new pu
 test('new cases change the operating point; a pressure number remembered from the guided case does not carry over', () => {
   const g = CONDITIONS[0];
   for (const cond of CONDITIONS.slice(1)) {
-    assert.ok(cond.lift !== g.lift || cond.rpm !== g.rpm, 'different static lift or pump speed');
+    assert.ok(elevations(cond).staticLift !== elevations(g).staticLift || cond.rpm !== g.rpm, 'different static lift or pump speed');
     for (const fault of FAULTS) {
       const G = makeCase(g, fault), N = makeCase(cond, fault);
       assert.ok(Math.abs(N.faulted.taps[fault] / G.faulted.taps[fault] - 1) > 0.15, `${cond.id}: fouled reading differs from the guided one`);
@@ -56,4 +56,24 @@ test('new cases change the operating point; a pressure number remembered from th
   const seen = new Set();
   for (let s = 0; s < 16; s++) { const k = casesForSeed(s); assert.equal(k.guided.cond.id, 'guided'); assert.notEqual(k.unseen.cond.id, 'guided'); seen.add(k.guided.fault + k.unseen.fault); }
   assert.equal(seen.size, 4, 'all fault combinations occur');
+});
+
+test('static lift is derived from the solver’s own elevations: 12 − 4 = 8 m guided; 2, 8 and 12 m unseen', () => {
+  const lifts = CONDITIONS.map(c => elevations(c));
+  assert.deepEqual(lifts.map(e => [e.header, e.basin, e.staticLift]), [[12, 4, 8], [6, 4, 2], [12, 4, 8], [16, 4, 12]]);
+  for (const cond of CONDITIONS) {
+    const c = makeCase(cond, 'strainer');
+    // the solver's static head (header − basin) is the same number the lab shows
+    assert.equal(operate({ ...STOCK_SYSTEM, temp: 32, sumpLevel: elevations(cond).basin, tankHeight: elevations(cond).header }).staticHead, elevations(cond).staticLift);
+  }
+});
+
+test('relabelling changed no result: flows, gauge readings and repairs as before', () => {
+  const g = makeCase(CONDITIONS[0], 'strainer');
+  assert.equal(+(g.healthy.dashboard.flow * 1000).toFixed(2), 3.82); assert.equal(+(g.faulted.dashboard.flow * 1000).toFixed(2), 2.75);
+  assert.equal(+(g.faulted.taps.strainer / 1000).toFixed(2), 100.61); assert.equal(+(g.faulted.taps.discharge / 1000).toFixed(2), 5.13);
+  const u = makeCase(CONDITIONS[2], 'strainer');
+  assert.equal(+(u.faulted.taps.strainer / 1000).toFixed(2), 56.31);
+  const d = makeCase(CONDITIONS[1], 'discharge');
+  assert.equal(+(d.faulted.dashboard.flow * 1000).toFixed(2), 3.70); assert.equal(+(d.faulted.taps.strainer / 1000).toFixed(2), 8.81);
 });

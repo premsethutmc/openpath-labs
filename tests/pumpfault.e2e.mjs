@@ -15,6 +15,19 @@ async function launch(vp) {
   const pick = name => mission.getByRole('button', { name, exact: true }).click();
   return { server, browser, page, errors, go, mission, pick, close: async () => { await browser.close(); server.close(); } };
 }
+const liftUI = page => page.evaluate(() => {
+  const j = window.__fault.journal(), last = j.run(j.runNames().at(-1)).inputs, dim = document.getElementById('lift-dim');
+  return { brief: document.getElementById('elev').innerText, label: document.getElementById('lift-label').textContent,
+    saved: [last.headerElevation.value, last.basinElevation.value, last.staticLift.value, last.headerElevation.label, last.basinElevation.label, last.staticLift.label, last.staticLift.unit],
+    dimSpan: +dim.getAttribute('y1') - +dim.getAttribute('y2') };
+});
+const expectLift = async (page, header, basin, lift) => {
+  const u = await liftUI(page);
+  assert.match(u.brief, new RegExp(`return header ${header} m, basin water ${basin} m\\. Static lift = ${header} − ${basin} = ${lift} m`));
+  assert.equal(u.label, `static lift ${lift} m`);
+  assert.deepEqual(u.saved, [header, basin, lift, 'Return-header elevation above pump', 'Basin water elevation above pump', 'Static lift (header − basin)', 'm']);
+  assert.equal(u.dimSpan, 9 * lift, 'dimension drawn from basin waterline to header (9 px/m)');
+};
 const snapshotUI = page => page.evaluate(() => ({
   mission: document.getElementById('mission').innerText, readings: document.querySelector('.readings').innerText,
   diagram: document.getElementById('loop').outerHTML, status: document.getElementById('status').innerText,
@@ -42,6 +55,7 @@ test('fault lab 390px: wrong hypothesis, clean-section reading, wrong repair sho
   const t = await launch({ width: 390, height: 860 });
   try {
     await t.go(2);   // guided: strainer fault
+    await expectLift(t.page, 12, 4, 8);
     assert.match(await t.mission.innerText(), /Healthy \(commissioning\)\s+Today[\s\S]*Flow\s+3\.82 L\/s\s+2\.75 L\/s/);
     assert.equal(await t.page.locator('#g-q').innerText(), '2.75 L/s');
     await t.pick('Restriction on the discharge side');
@@ -74,7 +88,8 @@ test('fault lab 390px: wrong hypothesis, clean-section reading, wrong repair sho
     // new case, no hints: discharge fault at 6 m lift
     await t.mission.getByRole('button', { name: 'Next: a new case without hints' }).click();
     m = await t.mission.innerText();
-    assert.match(m, /Static lift 6 m, pump at 2900 rpm/);
+    assert.match(m, /Pump at 2900 rpm/);
+    await expectLift(t.page, 6, 4, 2);
     await t.pick('Fouled inlet strainer');
     await t.pick('Across taps A (inlet strainer)');
     m = await t.mission.innerText();
@@ -107,7 +122,8 @@ test('fault lab 1280px: correct guided diagnosis; in the unseen case a misread r
     await t.page.waitForFunction(() => document.body.dataset.result === 'guided-done');
     assert.match(await t.mission.innerText(), /starting hypothesis \(fouled inlet strainer\) was right/);
     await t.mission.getByRole('button', { name: 'Next: a new case without hints' }).click();
-    assert.match(await t.mission.innerText(), /Static lift 12 m, pump at 2600 rpm/);
+    assert.match(await t.mission.innerText(), /Pump at 2600 rpm/);
+    await expectLift(t.page, 12, 4, 8);
     await t.pick('Fouled inlet strainer');
     await t.pick('Across taps A (inlet strainer)');
     const reading = (await t.mission.innerText()).match(/inlet strainer: ([\d.]+) kPa/)[1];
@@ -119,6 +135,21 @@ test('fault lab 1280px: correct guided diagnosis; in the unseen case a misread r
     await t.page.waitForFunction(() => document.body.dataset.result === 'not-passed');
     assert.match(await t.mission.innerText(), /Your reading: not supported\. 56\.31 kPa measured/);
     await t.page.screenshot({ path: '/tmp/fault-1280.png' });
+    assert.deepEqual(t.errors, []);
+  } finally { await t.close(); }
+});
+
+test('fault lab: the 12 m static-lift case (16 m header) shows and saves the derived lift', async () => {
+  const t = await launch({ width: 390, height: 860 });
+  try {
+    await t.go(8);   // guided strainer; unseen strainer at 3100 rpm, header 16 m
+    await t.pick('Fouled inlet strainer'); await t.pick('Across taps A (inlet strainer)'); await t.pick('Much higher');
+    await t.pick('This section loses far more than a clean one would at this flow; a restriction elsewhere would have lowered the flow and made this reading smaller, so the restriction is here.');
+    await t.mission.locator('[data-q="diagnosis"][data-v="strainer"]').click(); await t.pick('Clean the inlet strainer');
+    await t.mission.getByRole('button', { name: 'Carry out the repair and re-run the loop' }).click();
+    await t.mission.getByRole('button', { name: 'Next: a new case without hints' }).click();
+    assert.match(await t.mission.innerText(), /Pump at 3100 rpm/);
+    await expectLift(t.page, 16, 4, 12);
     assert.deepEqual(t.errors, []);
   } finally { await t.close(); }
 });
