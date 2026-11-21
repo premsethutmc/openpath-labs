@@ -17,7 +17,7 @@ test('Flow Tunnel: six syllabus missions answered by experiments, explore, draw 
     await page.locator('body[data-ready="true"]').waitFor();
     const mission = page.locator('#mission');
     assert.match(await mission.innerText(), /Mission 1 of 6[\s\S]*CE3391 Fluid Mechanics and Machinery · Unit I · Continuity/);
-    assert.ok(await page.locator('#c-object').isHidden(), 'Learn mode hides the controls until the answer');
+    assert.ok(await page.getByRole('tab', { name: 'Object' }).isDisabled(), 'Learn mode locks the controls until the answer');
     const expected = ['Faster', 'Lower', 'Centre', 'Yes', 'Wing', '13 m/s'];
     for (let n = 1; n <= 6; n++) {
       if (n > 1) await page.getByRole('button', { name: 'Next mission' }).click();
@@ -27,7 +27,9 @@ test('Flow Tunnel: six syllabus missions answered by experiments, explore, draw 
     }
     // Explore: vortex shedding behind a cylinder at Re ≈ 120
     await page.getByRole('radio', { name: 'Explore' }).click();
+    await page.getByRole('tab', { name: 'Object' }).click();
     await page.getByRole('radio', { name: 'Cylinder' }).click();
+    await page.getByRole('tab', { name: 'Flow' }).click();
     await page.locator('#re').fill('80');
     await page.locator('#re').dispatchEvent('change');
     await page.waitForFunction(() => document.body.dataset.regime === 'Vortex shedding', null, { timeout: 90000 });
@@ -35,6 +37,7 @@ test('Flow Tunnel: six syllabus missions answered by experiments, explore, draw 
     const st = parseFloat((await page.locator('#g-x').textContent()).slice(3));
     assert.ok(st > 0.12 && st < 0.25, `Strouhal ${st}`);
     // Draw your own
+    await page.getByRole('tab', { name: 'Object' }).click();
     await page.getByRole('radio', { name: 'Draw your own' }).click();
     const solids = () => page.evaluate(() => window.__tunnel.T.solid.reduce((a, v) => a + (v === 2), 0));
     assert.equal(await solids(), 0);

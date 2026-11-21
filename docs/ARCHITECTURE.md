@@ -66,3 +66,6 @@ index.html            dashboard
 playground/           Force Playground experience
 tests/                browser tests
 ```
+
+## Workbench layout (all labs)
+`core/workbench.css` + `core/workbench.mjs`: every lab is one screen — the live instrument (machine or field) stays visible, four key readings sit under it, and a dock switches between modules (Mission/Guide, controls, charts, model notes). Exactly one module is open at a time; Learn mode locks the control modules a mission does not need. Visual language: dark engineering-instrument style, monospace readings with units, one meaning per colour scale, no cartoon art.

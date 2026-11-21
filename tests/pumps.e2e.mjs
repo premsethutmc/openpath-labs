@@ -15,7 +15,8 @@ for (const vp of [{ width: 390, height: 860, mobile: true }, { width: 1280, heig
       await page.locator('body[data-ready="true"]').waitFor();
       const mission = page.locator('#mission');
       assert.match(await mission.innerText(), /Mission 1 of 7[\s\S]*Unit II/);
-      assert.ok(await page.locator('#c-pump').isHidden());
+      assert.ok(await page.getByRole('tab', { name: 'Pump' }).isDisabled(), 'controls locked until the learner predicts');
+      assert.equal(await page.locator('.side .module:not([hidden])').count(), 1, 'one module at a time');
       const expected = ['Turbulent', 'Drops, but by much less than half', 'About 30 times', 'Less power', 'A quarter', 'Yes', 'It rises, but less than double'];
       for (let n = 0; n < 7; n++) {
         if (n) await page.getByRole('button', { name: 'Next mission' }).click();
@@ -25,18 +26,24 @@ for (const vp of [{ width: 390, height: 860, mobile: true }, { width: 1280, heig
         if (n === 5) assert.equal(await page.evaluate(() => document.body.dataset.status), 'cavitating');
       }
       await page.getByRole('radio', { name: 'Explore' }).click();
+      assert.ok(await page.getByRole('tab', { name: 'Mission' }).isHidden());
+      await page.getByRole('tab', { name: 'Situations' }).click();
       await page.getByRole('radio', { name: '12-storey tower' }).click();
       assert.equal(await page.evaluate(() => document.body.dataset.status), 'noflow');
+      await page.getByRole('tab', { name: 'Pump' }).click();
       await page.getByRole('radio', { name: 'Two in series' }).click();
       assert.equal(await page.evaluate(() => document.body.dataset.status), 'running');
+      await page.getByRole('tab', { name: 'Situations' }).click();
       await page.getByRole('radio', { name: 'Hill station, Ooty 2240 m' }).click();
       assert.equal(await page.evaluate(() => document.body.dataset.status), 'cavitating');
       await page.getByRole('radio', { name: 'Hostel block' }).click();
       const q0 = await page.evaluate(() => window.__pumps.op.Q);
+      await page.getByRole('tab', { name: 'Pipes' }).click();
       await page.getByRole('radio', { name: '25 mm' }).click();
       assert.ok(await page.evaluate(() => window.__pumps.op.Q) < q0 * 0.8, 'thinner pipe, less flow');
-      for (const tab of ['Energy along the pipe', 'Inside the impeller', 'Pump and system curves']) {
-        await page.getByRole('tab', { name: tab }).click();
+      await page.getByRole('tab', { name: 'Charts' }).click();
+      for (const tab of ['Energy line', 'Impeller', 'Pump vs pipes']) {
+        await page.getByRole('radio', { name: tab }).click();
         assert.ok((await page.locator('#chart polyline, #chart line').count()) > 2, tab);
         if (!vp.mobile) await page.locator('#chart').screenshot({ path: `/tmp/pumps-${tab.split(' ')[0]}.png` });
       }

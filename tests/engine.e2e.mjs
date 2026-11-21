@@ -11,6 +11,7 @@ for (const width of [380, 1280]) test(`Engine World ${width}px: oil, history, Al
     page.setDefaultTimeout(6000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/index.html');
     await page.locator('.obj.feature', { hasText: 'Engine World' }).click();
@@ -72,6 +73,7 @@ for (const width of [380, 1280]) test(`Engine World ${width}px: oil, history, Al
 
     // Drive: cold oil costs far more friction than warm oil
     await page.getByRole('radio', { name: '5W-30' }).click();
+    await mod('Drive');
     const friction = async T => { await page.locator('#ot').fill(String(T)); return +(await page.locator('#drive-results').innerText()).match(/Lost to friction\s+([\d.]+) kW/)[1]; };
     const cold = await friction(-10), warm = await friction(95);
     assert.ok(cold > 2 * warm, `cold ${cold} vs warm ${warm}`);
@@ -91,6 +93,7 @@ test('Engine World: build the engine part by part, then feel the consequences', 
     page.setDefaultTimeout(6000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
@@ -100,7 +103,7 @@ test('Engine World: build the engine part by part, then feel the consequences', 
 
     await fitPart('Crankshaft');
     assert.match(await msg(), /main bearing shells first/);
-    await page.getByRole('tab', { name: 'Run it' }).click();
+    await mod('Cold start');
     assert.match(await msg(), /Finish building first/);
 
     await page.getByRole('radio', { name: 'Worn (60 µm)' }).click();
@@ -118,17 +121,19 @@ test('Engine World: build the engine part by part, then feel the consequences', 
     assert.match(await page.locator('#build-progress').innerText(), /^2 of 9/);
     for (const p of ['Crankshaft', 'Rod bearing shells', 'Pistons and rods', 'Oil pump', 'Oil sump', 'Cylinder head', 'Fill with oil']) await fitPart(p);
 
-    await page.getByRole('tab', { name: 'Run it' }).click();
+    await mod('Cold start');
     await page.locator('#key').click();
     await page.waitForFunction(() => document.body.dataset.phase === 'running');
     assert.ok(await page.locator('#warmbox').isVisible());
     // Hot oil + worn bearings = oil pressure warning
+    await mod('Drive');
     await page.locator('#ot').fill('110');
     await page.locator('#rpm').fill('1000');
     const drive = await page.locator('#drive-results').innerText();
     assert.match(drive, /Oil pressure\s+[\d.]+ bar — warning light on/);
     assert.match(drive, /Your build: Loose/);
     // Fast-forward warm-up reaches 90 °C
+    await mod('Cold start');
     await page.getByRole('button', { name: 'Fast-forward the warm-up' }).click();
     await page.waitForFunction(() => document.getElementById('ot').value === '90');
     assert.match(await page.locator('#warm').innerHTML(), /friction at idle/);
@@ -145,16 +150,19 @@ test('Engine World: valves and airflow — cams, springs, runners, valve-to-pist
     page.setDefaultTimeout(6000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
     await page.getByRole('radio', { name: 'Explore' }).click();
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     const peak = async () => +(await page.locator('body').getAttribute('data-peak-power'));
-    const torque = async () => +(await page.locator('#drive-results').innerText()).match(/Torque\s+(-?\d+) N·m/)[1];
+    const torque = async () => +(await page.locator('#drive-results').textContent()).match(/Torque\s*(-?\d+) N·m/)[1];
 
+    await mod('Drive');
     await page.locator('#rpm').fill('1500'); await page.locator('#thr').fill('100');
     const stock = await peak();
+    await mod('Breathing');
     await page.getByRole('radio', { name: 'Economy' }).click();
     const ecoLow = await torque(), ecoPeak = await peak();
     await page.getByRole('radio', { name: 'Sport' }).click();
@@ -167,11 +175,13 @@ test('Engine World: valves and airflow — cams, springs, runners, valve-to-pist
     // Soft springs: valve float at high speed
     await page.getByRole('radio', { name: 'Stock' }).click();
     await page.getByRole('radio', { name: 'Soft' }).click();
+    await mod('Drive');
     await page.locator('#rpm').fill('7200');
     assert.match(await page.locator('#drive-results').innerText(), /Valve float/);
 
     // Longer runners move the resonance lower
     const tuned = async () => +(await page.locator('#breathe-results').innerText()).match(/helps near\s+([\d,]+) rpm/)[1].replace(/,/g, '');
+    await mod('Breathing');
     const short = await tuned();
     await page.locator('#runner').fill('65');
     assert.ok(await tuned() < short);
@@ -179,9 +189,11 @@ test('Engine World: valves and airflow — cams, springs, runners, valve-to-pist
     // A wild custom cam: valves hit the pistons on the first turn
     await page.locator('#lift').fill('13'); await page.locator('#dur').fill('310');
     assert.match(await page.locator('#breathe-results').innerText(), /Valves will hit the pistons/);
+    await mod('Cold start');
     await page.locator('#key').click();
     await page.waitForFunction(() => document.body.dataset.phase === 'failed');
     assert.match(await page.locator('#start-results').innerText(), /Crunch/);
+    await mod('Breathing');
     await page.locator('#s-breathe').screenshot({ path: '/tmp/breathe.png' });
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
@@ -195,14 +207,17 @@ test('Engine World: spark, octane, mixture and turbo', async () => {
     page.setDefaultTimeout(8000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
     await page.getByRole('radio', { name: 'Explore' }).click();
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
+    await mod('Drive');
     await page.locator('#rpm').fill('2000'); await page.locator('#thr').fill('100');
+    await mod('Spark & fuel');
     const burn = () => page.locator('#burn-results').innerText();
-    const num = async (re, sel = '#drive-results') => +(await page.locator(sel).innerText()).match(re)[1].replace(/,/g, '');
+    const num = async (re, sel = '#drive-results') => +(await page.locator(sel).textContent()).match(new RegExp(re.source.replace(/\\s\+/g, '\\s*')))[1].replace(/,/g, '');
 
     assert.match(await burn(), /held back \d+° from best to stop knock/, 'regular fuel is knock-limited at low speed, full load');
     const t91 = await num(/Torque\s+(\d+) N·m/);
@@ -214,12 +229,12 @@ test('Engine World: spark, octane, mixture and turbo', async () => {
     await page.getByRole('radio', { name: 'Regular (RON 91)' }).click();
     await page.getByRole('radio', { name: 'Set it myself' }).click();
     await page.locator('#adv').fill('40');
-    assert.match(await page.locator('#drive-results').innerText(), /Knocking!/);
+    assert.match(await page.locator('#drive-results').textContent(), /Knocking!/);
     assert.match(await page.locator('#spark').innerHTML(), /knockzone/);
     await page.getByRole('radio', { name: 'Engine computer + knock sensor' }).click();
 
     // Mixture: rich for power, lean for economy
-    await page.locator('#rpm').fill('3000');
+    await mod('Drive'); await page.locator('#rpm').fill('3000'); await mod('Spark & fuel');
     await page.locator('#lam').fill('0.88'); const richP = await num(/Power\s+([\d.]+) kW/), richF = await num(/Fuel per kWh of work\s+(\d+) g/, '#burn-results');
     await page.locator('#lam').fill('1.15'); const leanP = await num(/Power\s+([\d.]+) kW/), leanF = await num(/Fuel per kWh of work\s+(\d+) g/, '#burn-results');
     assert.ok(richP > leanP && leanF < richF, `rich ${richP} kW ${richF} g, lean ${leanP} kW ${leanF} g`);
@@ -227,14 +242,14 @@ test('Engine World: spark, octane, mixture and turbo', async () => {
     assert.match(await page.locator('#emis').innerText(), /three-way catalyst can clean up all three/);
 
     // Turbo: more power, hot compressed air, intercooler cools it
-    await page.locator('#rpm').fill('5000');
+    await mod('Drive'); await page.locator('#rpm').fill('5000'); await mod('Spark & fuel');
     const na = await num(/Power\s+([\d.]+) kW/);
     await page.locator('#boost').fill('0.8');
     assert.ok(await num(/Power\s+([\d.]+) kW/) > 1.25 * na);
     const hotAir = await num(/Air entering the cylinders\s+(\d+) °C/, '#burn-results');
     await page.getByRole('radio', { name: 'Intercooler: Large' }).click();
     assert.ok(await num(/Air entering the cylinders\s+(\d+) °C/, '#burn-results') < hotAir);
-    await page.locator('#rpm').fill('1500');
+    await mod('Drive'); await page.locator('#rpm').fill('1500'); await mod('Spark & fuel');
     assert.match(await burn(), /turbo still spooling up/);
     await page.locator('#s-burn').screenshot({ path: '/tmp/burn.png' });
     assert.deepEqual(errors, []);
@@ -249,6 +264,7 @@ test('Engine World: high-fidelity test bench (1D gas dynamics) in a worker', asy
     page.setDefaultTimeout(60000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
@@ -256,7 +272,7 @@ test('Engine World: high-fidelity test bench (1D gas dynamics) in a worker', asy
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
     assert.match(await page.locator('#dyno').innerHTML(), /class="ref"/);
     assert.match(await page.locator('#dyno').innerHTML(), /published/);
-    await page.locator('#rpm').fill('4500');
+    await mod('Drive'); await page.locator('#rpm').fill('4500'); await mod('Breathing');
     await page.getByRole('button', { name: 'Run the test bench at this speed' }).click();
     await page.locator('#bench-status', { hasText: 'Done: 4500 rpm' }).waitFor();
     const tq = +(await page.locator('#bench-results').innerText()).match(/Torque \(test bench\)\s+(\d+) N·m/)[1];
@@ -279,35 +295,39 @@ test('Engine World Learn mode: nine syllabus-linked missions with simulation-com
     page.setDefaultTimeout(8000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/engine-world/index.html');
     await page.locator('body[data-ready="true"]').waitFor();
     const mission = page.locator('#mission');
-    const visibleCards = () => page.locator('.side > .card:visible, #run-panel > .card:visible').evaluateAll(els => els.map(e => e.id).filter(Boolean));
+    const visibleCards = () => page.locator('.dock [data-open]:not([disabled]):not([hidden])').evaluateAll(els => els.map(e => e.dataset.open).filter(id => id !== 'about'));
     assert.match(await mission.innerText(), /Mission 1 of 9[\s\S]*ME3451 Thermal Engineering · Unit IV · IC engine components/);
-    assert.deepEqual(await visibleCards(), ['mission', 'build-panel']);
+    assert.deepEqual(await visibleCards(), ['mission', 'build']);
+    assert.equal(await page.locator('.side .module:not([hidden])').count(), 1, 'one module at a time');
     await mission.getByRole('button', { name: 'Main bearing shells' }).click();
     assert.match(await mission.innerText(), /Right — the simulation says: Main bearing shells/);
     assert.ok(await page.getByRole('button', { name: 'Next mission' }).isDisabled(), 'must finish the build first');
+    await mod('Build');
     await page.getByRole('button', { name: 'Skip: use a ready-built engine' }).click();
+    await mod('Mission');
     const expected = { 2: 'Bigger', 3: 'Economy', 4: 'Lean', 5: 'Yes', 6: 'No', 7: 'Yes', 8: 'Hotter', 9: '113 N·m' };
     for (let n = 2; n <= 9; n++) {
       await page.getByRole('button', { name: 'Next mission' }).click();
       assert.match(await mission.innerText(), new RegExp(`Mission ${n} of 9`));
       const cards = await visibleCards();
-      assert.ok(cards.length >= 2 && cards.length <= 4, `mission ${n} shows only its cards: ${cards}`);
+      assert.ok(cards.length >= 2 && cards.length <= 3, `mission ${n} unlocks only its modules: ${cards}`);
       await mission.getByRole('button', { name: expected[n], exact: true }).click();
       assert.match(await mission.innerText(), new RegExp(`Right — the simulation says: ${expected[n]}`), `mission ${n}`);
     }
     // simplified numbers: details hidden until "All numbers"
     const hiddenRows = () => page.locator('#drive-results li:not(.key):not(.verdict)').evaluateAll(els => els.filter(e => getComputedStyle(e).display !== 'none').length);
     await page.getByRole('radio', { name: 'Explore' }).click();
-    assert.ok(await page.locator('#s-oil').isVisible() && await page.locator('#s-burn').isVisible());
+    assert.equal(await page.locator('.dock [data-open][disabled]').count(), 0, 'explore unlocks every module');
     assert.ok(await hiddenRows() > 0);
     await page.getByRole('radio', { name: 'Learn' }).click();
     assert.equal(await hiddenRows(), 0);
     await page.getByRole('button', { name: 'All numbers' }).click();
-    assert.match(await page.locator('#s-breathe h2').innerText(), /Unit IV/);
+    assert.match(await page.locator('#s-breathe h2').textContent(), /Unit IV/);
     assert.ok(await page.evaluate(() => innerWidth >= document.documentElement.scrollWidth));
     await page.screenshot({ path: '/tmp/mission.png' });
     assert.deepEqual(errors, []);

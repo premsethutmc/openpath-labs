@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Engine World · OpenPath Labs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
   <link rel="stylesheet" href="./world.css">
 </head>
 <body data-climate="mild">
 <header class="bar">
   <a class="back" href="../index.html">‹ Labs</a>
-  <span class="crumb">Thermal engineering</span>
+  <span class="crumb">ME3451 · thermal engineering</span>
   <button type="button" id="numbers" class="numbers" aria-pressed="false">All numbers</button>
   <div class="mode" role="radiogroup" aria-label="Mode">
     <button type="button" role="radio" data-mode="learn" aria-checked="true">Learn</button>
@@ -19,24 +20,19 @@
   </div>
 </header>
 
-<main>
-  <section class="stage">
-    <div class="titleblock">
-      <h1>Engine World</h1>
-      <p>Choose the oil, give it a history, park the car anywhere on Earth — then turn the key.</p>
-    </div>
-    <div class="viewport">
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1>Engine World</h1><p>Build it, park it anywhere on Earth, turn the key — then tune it.</p></div>
+    <div class="instrument viewport">
       <canvas id="gl" aria-label="Cutaway of a running four-cylinder engine"></canvas>
-      <div class="hud">
-        <span id="hud-state" class="state">Engine off</span>
-        <span id="hud-speed"></span>
-      </div>
+      <span id="hud-state" class="status">Engine off</span>
+      <span id="hud-speed"></span>
       <p class="drag-hint">Drag to turn the engine</p>
       <p class="nogl" id="nogl" hidden>3D view needs WebGL, which this browser has turned off. Every number below still works.</p>
     </div>
-    <dl class="gauges">
-      <div><dt>Engine temperature</dt><dd id="g-temp">–</dd></div>
-      <div><dt>Oil thickness</dt><dd id="g-visc">–</dd></div>
+    <dl class="readings">
+      <div><dt>Engine temp</dt><dd id="g-temp">–</dd></div>
+      <div><dt>Oil viscosity</dt><dd id="g-visc">–</dd></div>
       <div><dt id="g-speed-label">Crank speed</dt><dd id="g-speed">–</dd></div>
       <div><dt>Bearings</dt><dd id="g-bearing">–</dd></div>
     </dl>
@@ -44,22 +40,20 @@
   </section>
 
   <section class="side">
-    <div class="card mission" id="mission" aria-live="polite"></div>
-    <div class="tabs" role="tablist" aria-label="Mode">
-      <button type="button" role="tab" id="tab-build" aria-selected="true" aria-controls="build-panel">Build the engine</button>
-      <button type="button" role="tab" id="tab-run" aria-selected="false" aria-controls="run-panel">Run it</button>
-    </div>
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module mission" data-module="mission" data-title="Mission" id="mission" aria-live="polite"></section>
 
-    <div class="card" id="build-panel" role="tabpanel">
+
+    <section class="module" data-module="build" data-title="Build" id="build-panel">
       <h2>Fit the parts</h2>
       <p class="note" id="build-progress"></p>
       <p id="build-msg" class="msg" role="status" aria-live="polite">Start anywhere. If a part cannot go on yet, you will be told why.</p>
       <ol class="parts" id="parts"></ol>
       <div class="row"><button type="button" id="b-ready">Skip: use a ready-built engine</button><button type="button" id="b-strip">Strip it down</button></div>
-    </div>
+    </section>
 
-    <div id="run-panel" role="tabpanel" hidden>
-    <div class="card step" id="s-oil">
+    <section class="module" data-module="start" data-title="Cold start">
+    <div class="step" id="s-oil">
       <h2><span class="n">1</span> The oil</h2>
       <div class="chips" id="oils" role="radiogroup" aria-label="Oil grade"></div>
       <div id="blendbox" class="blend" hidden>
@@ -71,7 +65,7 @@
       <p class="note" id="oil-note"></p>
     </div>
 
-    <div class="card step" id="s-history">
+    <div class="step" id="s-history">
       <h2><span class="n">2</span> Its history</h2>
       <div class="chips" id="history" role="radiogroup" aria-label="Oil history">
         <button type="button" role="radio" data-history="fresh" aria-checked="true">Fresh oil</button>
@@ -83,7 +77,7 @@
       </label>
     </div>
 
-    <div class="card step" id="s-park">
+    <div class="step" id="s-park">
       <h2><span class="n">3</span> Where it is parked</h2>
       <div class="chips" id="places" role="radiogroup" aria-label="Place"></div>
       <label class="range">Parked for <output id="hours-out"></output><input id="hours" type="range" min="0" max="96" step="1" value="96"></label>
@@ -92,7 +86,7 @@
       <p class="note" id="coolant-note"></p>
     </div>
 
-    <div class="card step key-step" id="s-key">
+    <div class="step key-step" id="s-key">
       <h2><span class="n">4</span> Turn the key</h2>
       <div id="predict"></div>
       <div class="row"><button type="button" class="primary" id="key">Turn the key</button></div>
@@ -103,7 +97,9 @@
       </div>
     </div>
 
-    <div class="card step" id="s-drive">
+    </section>
+    <section class="module" data-module="drive" data-title="Drive">
+    <div class="step" id="s-drive">
       <h2><span class="n">5</span> Drive</h2>
       <label class="range">Engine speed <output id="rpm-out"></output><input id="rpm" type="range" min="1000" max="7500" step="100" value="3000"></label>
       <label class="range">Accelerator <output id="thr-out"></output><input id="thr" type="range" min="0" max="100" step="5" value="60"></label>
@@ -112,7 +108,9 @@
       <svg id="pv" viewBox="0 0 340 190" role="img" aria-labelledby="pv-t"><title id="pv-t">Cylinder pressure against volume</title></svg>
     </div>
 
-      <div class="card step" id="s-breathe">
+    </section>
+    <section class="module" data-module="breathing" data-title="Breathing">
+      <div class="step" id="s-breathe">
         <h2><span class="n">6</span> Valves and airflow</h2>
         <p class="note">How well the engine breathes decides how much fuel it can burn. Choose a camshaft, springs and intake runners, then watch the dyno curve.</p>
         <div class="chips" id="cams" role="radiogroup" aria-label="Camshaft"></div>
@@ -134,7 +132,9 @@
         </div>
       </div>
 
-      <div class="card step" id="s-burn">
+    </section>
+    <section class="module" data-module="combustion" data-title="Spark &amp; fuel">
+      <div class="step" id="s-burn">
         <h2><span class="n">7</span> Spark, fuel and boost</h2>
         <p class="note">When the spark fires, what fuel burns and how much air is forced in decide power, economy — and knock, the uncontrolled explosion that breaks pistons.</p>
         <h3 class="sub">Fuel</h3>
@@ -154,10 +154,10 @@
         <svg id="spark" viewBox="0 0 340 180" role="img" aria-labelledby="spark-t"><title id="spark-t">Torque against spark timing</title></svg>
         <div class="emis" id="emis"></div>
       </div>
-    </div>
+    </section>
 
-    <details class="card about">
-      <summary>What is modelled, and what is not</summary>
+    <section class="module about" data-module="about" data-title="Model">
+      <h2>What is modelled, and what is not</h2>
       <p><b>Reliable:</b> piston and crank motion (exact geometry); oil thickness between 0 and 150 °C (ASTM D341 from each oil's 40 °C and 100 °C data); cooling of a parked engine (Newton's law); the ideal Otto cycle as a check on the cylinder model.</p>
       <p><b>Approximate:</b> oil thickness below 0 °C (anchored to SAE J300 cold-cranking limits); cylinder pressure (single-zone model, Wiebe burn, fixed wall heat loss); friction (Chen–Flynn, scaled with oil viscosity); cranking speed (starter and cold-battery curves); time to oil pressure (pump and suction-pipe flow); bearing film (Ocvirk short-bearing solution, steady load).</p>
       <p><b>Assembly choices:</b> bearing clearance changes oil pressure (side leakage ∝ clearance³) and the bearing film; ring gap and oil level change compression and drag by labelled amounts.</p>
@@ -166,7 +166,7 @@
       <p><b>Coolant:</b> freezing point of ethylene-glycol mixes from the standard table (reliable).</p>
       <p><b>Assumptions:</b> how much old oil thickens; reference engine values (1.2 L, 10.5:1, typical bearings and starter).</p>
       <p><b>Not modelled:</b> fuel evaporation in extreme cold, combustion chemistry, detailed 3D oil flow, component lifetime. This is a teaching model of the principles, not an engine test.</p>
-    </details>
+    </section>
   </section>
 </main>
 <script type="module" src="./world.mjs"></script>

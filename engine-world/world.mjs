@@ -8,6 +8,9 @@ import { K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
 import { makeMissions, COURSE } from './missions.mjs';
 import { PARTS, emptyBuild, complete, fit, remove, has, option, isComplete, buildEffects } from './assembly.mjs';
 import { engineItems, SCENE_TARGET } from './scene.mjs';
+import { workbench } from '../core/workbench.mjs';
+const CARD2MOD = { 'build-panel': 'build', 's-oil': 'start', 's-history': 'start', 's-park': 'start', 's-key': 'start', 's-drive': 'drive', 's-breathe': 'breathing', 's-burn': 'combustion' };
+const RUN_MODS = ['start', 'drive', 'breathing', 'combustion'];
 
 const $ = id => document.getElementById(id);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -69,7 +72,7 @@ function paintChart() {
   const o = oil(), ref = OILS['5W-30'], W = 340, H = 170, x0 = 38, y0 = 150, xw = 292, yh = 136;
   const X = T => x0 + (T + 40) / 190 * xw, Y = mu => y0 - (Math.log10(Math.max(mu, 1)) / 5) * yh;
   let s = '';
-  for (const p of [1, 10, 100, 1000, 10000, 100000]) s += `<path d="M${x0} ${Y(p)}H${x0 + xw}" stroke="#e1e5df"/><text x="${x0 - 4}" y="${Y(p) + 3}" text-anchor="end" class="tick">${p >= 1000 ? p / 1000 + 'k' : p}</text>`;
+  for (const p of [1, 10, 100, 1000, 10000, 100000]) s += `<path d="M${x0} ${Y(p)}H${x0 + xw}" stroke="#1b2832"/><text x="${x0 - 4}" y="${Y(p) + 3}" text-anchor="end" class="tick">${p >= 1000 ? p / 1000 + 'k' : p}</text>`;
   for (const T of [-40, 0, 40, 100, 150]) s += `<text x="${X(T)}" y="${y0 + 13}" text-anchor="middle" class="tick">${T}°</text>`;
   if (o.pour > -40) s += `<rect x="${x0}" y="${y0 - yh}" width="${X(o.pour) - x0}" height="${yh}" fill="url(#gel)"/><text x="${x0 + 4}" y="${y0 - yh + 11}" class="tick gel">solid below ${fmt(o.pour)} °C</text>`;
   const curve = (oo, cls) => {
@@ -83,7 +86,7 @@ function paintChart() {
   if (!v.gelled) s += `<circle cx="${X(T)}" cy="${Y(v.mu)}" r="5" class="mark"/><text x="${Math.min(X(T) + 8, W - 70)}" y="${Y(v.mu) - 8}" class="tick strong">${fmt(v.mu)} mPa·s</text>`;
   else s += `<path d="M${X(T)} ${y0}V${y0 - yh}" class="mark-line"/>`;
   s += `<text x="${x0}" y="10" class="tick">thickness, mPa·s (log scale)</text>`;
-  $('vchart').innerHTML = `<title id="vchart-t">Thickness of ${o.name} against temperature</title><defs><pattern id="gel" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v6" stroke="#b9c7d3" stroke-width="2"/></pattern></defs>` + s;
+  $('vchart').innerHTML = `<title id="vchart-t">Thickness of ${o.name} against temperature</title><defs><pattern id="gel" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v6" stroke="#2c4a63" stroke-width="2"/></pattern></defs>` + s;
   const v40 = viscosity(o, 40), v100 = viscosity(o, 100);
   $('oil-note').innerHTML = `${o.name}: ${fmt(v40.mu)} mPa·s at 40 °C, ${fmt(v100.mu, 1)} at 100 °C ${conf('reliable')}. Below 0 °C ${conf('approximate')}.${S.oilKey !== '5W-30' || S.history === 'desert' ? ' Grey line: fresh 5W-30 for comparison.' : ''}`;
 }
@@ -162,8 +165,8 @@ function paintDrive() {
 function drawWarm() {
   const sr = S.start.series, x0 = 36, y0 = 138, xw = 290, yh = 120, tMax = sr.at(-1).t;
   const tMin = Math.min(...sr.map(p => p.T), 0), X = t => x0 + t / tMax * xw, Y = T => y0 - (T - tMin) / (100 - tMin) * yh;
-  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}" stroke="#7d8a84" fill="none"/>`;
-  for (const T of [tMin, 0, 45, 90]) s += `<text x="${x0 - 4}" y="${Y(T) + 3}" text-anchor="end" class="tick">${fmt(T)}°</text><path d="M${x0} ${Y(T)}H${x0 + xw}" stroke="#eef0ec"/>`;
+  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}" stroke="#4a5f6c" fill="none"/>`;
+  for (const T of [tMin, 0, 45, 90]) s += `<text x="${x0 - 4}" y="${Y(T) + 3}" text-anchor="end" class="tick">${fmt(T)}°</text><path d="M${x0} ${Y(T)}H${x0 + xw}" stroke="#1b2832"/>`;
   for (const t of [0, 10, 20, 30, 40]) s += `<text x="${X(t)}" y="${y0 + 13}" text-anchor="middle" class="tick">${t} min</text>`;
   s += `<polyline class="warmline" fill="none" points="${sr.map(p => `${X(p.t).toFixed(1)},${Y(p.T).toFixed(1)}`).join(' ')}"/>`;
   const idle = T => operatingPoint({ rpm: 1000, throttle: 0.15, oil: oil(), oilTemp: T, friction: fx().frictionFactor }).frictionPower / 1000;
@@ -198,9 +201,9 @@ function drawDyno(cur) {
   const curves = [cur, S.prevDyno, { pts: BENCH_REFERENCE }, S.benchCurve ? { pts: S.benchCurve } : null].filter(Boolean);
   const tMax = Math.max(140, ...curves.flatMap(c => c.pts.map(p => p.torque))), pMax = Math.max(80, ...curves.flatMap(c => c.pts.map(p => p.power)));
   const YT = t => y0 - Math.max(t, 0) / tMax * yh, YP = p => y0 - Math.max(p, 0) / pMax * yh;
-  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#9aa5a0" fill="none"/>`;
+  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#4a5f6c" fill="none"/>`;
   for (const r of [2000, 4000, 6000]) s += `<text x="${X(r)}" y="${y0 + 13}" text-anchor="middle" class="tick">${r / 1000}k rpm</text>`;
-  for (let k = 1; k <= 3; k++) s += `<text x="${x0 - 3}" y="${y0 - yh * k / 3 + 3}" text-anchor="end" class="tick" fill="#1d58c8">${fmt(tMax * k / 3)}</text><text x="${x0 + xw + 3}" y="${y0 - yh * k / 3 + 3}" class="tick">${fmt(pMax * k / 3)}</text>`;
+  for (let k = 1; k <= 3; k++) s += `<text x="${x0 - 3}" y="${y0 - yh * k / 3 + 3}" text-anchor="end" class="tick" fill="#4fc3f7">${fmt(tMax * k / 3)}</text><text x="${x0 + xw + 3}" y="${y0 - yh * k / 3 + 3}" class="tick">${fmt(pMax * k / 3)}</text>`;
   const line = (c, key, Y, cls) => `<polyline class="${cls}" fill="none" points="${c.pts.map(p => `${X(p.rpm).toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ')}"/>`;
   if (S.prevDyno && S.prevDyno.name !== cur.name) s += line(S.prevDyno, 'torque', YT, 'tq prev') + line(S.prevDyno, 'power', YP, 'pw prev');
   s += line(cur, 'torque', YT, 'tq') + line(cur, 'power', YP, 'pw');
@@ -208,10 +211,10 @@ function drawDyno(cur) {
   s += line(ref, 'torque', YT, 'ref') + line(ref, 'power', YP, 'ref');
   if (S.benchCurve?.length > 1) s += line({ pts: S.benchCurve }, 'torque', YT, 'mine') + line({ pts: S.benchCurve }, 'power', YP, 'mine');
   const cross = (x, y, c) => `<path d="M${x - 5} ${y - 5}l10 10m0 -10l-10 10" stroke="${c}" stroke-width="2.4"/>`;
-  s += cross(X(K12M_PUBLISHED.torque.rpm), YT(K12M_PUBLISHED.torque.Nm), '#1d58c8') + cross(X(K12M_PUBLISHED.power.rpm), YP(K12M_PUBLISHED.power.kW), '#e0531f');
-  s += `<text x="${x0 + xw - 4}" y="${y0 - 8}" text-anchor="end" class="tick" fill="#2f8f4e">green: test-bench model (stock K12M)${S.benchCurve ? ' · purple: your setup' : ''} · ✕ published</text>`;
+  s += cross(X(K12M_PUBLISHED.torque.rpm), YT(K12M_PUBLISHED.torque.Nm), '#4fc3f7') + cross(X(K12M_PUBLISHED.power.rpm), YP(K12M_PUBLISHED.power.kW), '#ff8a3d');
+  s += `<text x="${x0 + xw - 4}" y="${y0 - 8}" text-anchor="end" class="tick" fill="#3fbf7f">green: test-bench model (stock K12M)${S.benchCurve ? ' · purple: your setup' : ''} · ✕ published</text>`;
   const best = cur.pts.reduce((a, b) => (b.power > a.power ? b : a)), bestT = cur.pts.reduce((a, b) => (b.torque > a.torque ? b : a));
-  s += `<text x="${x0 + 4}" y="12" class="dynolabel" fill="#1d58c8">torque N·m · peak ${fmt(bestT.torque)} at ${fmt(bestT.rpm)}</text><text x="${x0 + xw}" y="24" text-anchor="end" class="dynolabel" fill="#e0531f">power kW · peak ${fmt(best.power, 1)} at ${fmt(best.rpm)}</text>`;
+  s += `<text x="${x0 + 4}" y="12" class="dynolabel" fill="#4fc3f7">torque N·m · peak ${fmt(bestT.torque)} at ${fmt(bestT.rpm)}</text><text x="${x0 + xw}" y="24" text-anchor="end" class="dynolabel" fill="#ff8a3d">power kW · peak ${fmt(best.power, 1)} at ${fmt(best.rpm)}</text>`;
   if (S.prevDyno && S.prevDyno.name !== cur.name) s += `<text x="${x0 + 4}" y="${y0 - 6}" class="tick">dashed: ${S.prevDyno.name}</text>`;
   $('dyno').innerHTML = `<title id="dyno-t">${cur.name}: peak power ${fmt(best.power, 1)} kW at ${best.rpm} rpm, peak torque ${fmt(bestT.torque)} N·m at ${bestT.rpm} rpm</title>` + s;
   document.body.dataset.peakPower = best.power.toFixed(1);
@@ -272,13 +275,13 @@ function drawSpark() {
   const Y = t => y0 - (t - tMin) / (tMax - tMin) * yh;
   let s = '';
   const firstKnock = sw.pts.find(p => p.knock);
-  if (firstKnock) s += `<rect x="${X(firstKnock.adv)}" y="${y0 - yh}" width="${X(45) - X(firstKnock.adv)}" height="${yh}" class="knockzone"/><text x="${X(firstKnock.adv) + 4}" y="${y0 - yh + 12}" class="tick" fill="#8d1510">knock</text>`;
-  s += `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}" stroke="#9aa5a0" fill="none"/>`;
+  if (firstKnock) s += `<rect x="${X(firstKnock.adv)}" y="${y0 - yh}" width="${X(45) - X(firstKnock.adv)}" height="${yh}" class="knockzone"/><text x="${X(firstKnock.adv) + 4}" y="${y0 - yh + 12}" class="tick" fill="#ff5a4f">knock</text>`;
+  s += `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}" stroke="#4a5f6c" fill="none"/>`;
   for (const a of [0, 10, 20, 30, 40]) s += `<text x="${X(a)}" y="${y0 + 13}" text-anchor="middle" class="tick">${a}°</text>`;
   s += `<text x="${x0 + xw}" y="${y0 + 26}" text-anchor="end" class="tick">spark before top dead centre</text><text x="${x0}" y="10" class="tick">torque, N·m</text>`;
   s += `<polyline class="sparkline" fill="none" points="${sw.pts.map(p => `${X(p.adv).toFixed(1)},${Y(p.torque).toFixed(1)}`).join(' ')}"/>`;
   const mb = sw.pts.find(p => p.adv === sw.mbt);
-  s += `<circle cx="${X(mb.adv)}" cy="${Y(mb.torque)}" r="4" fill="#1d58c8"/><text x="${X(mb.adv)}" y="${Y(mb.torque) - 8}" text-anchor="middle" class="tick strong">best ${mb.adv}°</text>`;
+  s += `<circle cx="${X(mb.adv)}" cy="${Y(mb.torque)}" r="4" fill="#4fc3f7"/><text x="${X(mb.adv)}" y="${Y(mb.torque) - 8}" text-anchor="middle" class="tick strong">best ${mb.adv}°</text>`;
   const cur = -cb.ignition, cp = sw.pts.find(p => p.adv === Math.round(cur)) || mb;
   s += `<circle cx="${X(cp.adv)}" cy="${Y(cp.torque)}" r="6" class="mark"/>`;
   $('spark').innerHTML = `<title id="spark-t">Torque against spark timing at ${S.rpm} rpm: best ${sw.mbt}°, knock from ${firstKnock ? firstKnock.adv + '°' : 'none'}</title>` + s;
@@ -313,13 +316,13 @@ function drawWaves(d) {
   const t = timing(S.cam);
   const band = (a, b, cls) => `<rect x="${X(a)}" y="${y0 - yh}" width="${(b - a) / 720 * xw}" height="${yh}" class="${cls}"/>`;
   let s = band(t.ivo, Math.min(t.ivc, 720), 'openband') + band(t.evo, t.evc, 'exband');
-  s += `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#9aa5a0" fill="none"/>`;
+  s += `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}V${y0 - yh}" stroke="#4a5f6c" fill="none"/>`;
   for (const [th, lab] of [[0, 'TDC'], [180, 'BDC'], [360, 'TDC'], [540, 'BDC']]) s += `<text x="${X(th) + 2}" y="${y0 + 12}" class="tick">${lab}</text>`;
   const order = d.traces.theta.map((th, i) => [th % 720, i]).sort((a, b) => a[0] - b[0]);
   s += `<polyline class="cylp" fill="none" points="${order.map(([th, i]) => `${X(th).toFixed(1)},${Yc(d.traces.cyl[i]).toFixed(1)}`).join(' ')}"/>`;
   s += `<polyline class="runp" fill="none" points="${order.map(([th, i]) => `${X(th).toFixed(1)},${Yr(rv[i]).toFixed(1)}`).join(' ')}"/>`;
-  s += `<path d="M${x0} ${Yr(1e5)}H${x0 + xw}" stroke="#1d58c8" stroke-dasharray="2 3" opacity=".6"/>`;
-  s += `<text x="${x0 + 4}" y="${y0 - yh + 11}" class="tick" fill="#e0531f">cylinder (log scale, peak ${fmt(pmax / 1e5)} bar)</text><text x="${x0 + 4}" y="${y0 - yh + 23}" class="tick" fill="#1d58c8">inlet runner at the valve: ${fmt(rmin / 1e5, 2)}–${fmt(rmax / 1e5, 2)} bar (dotted = 1 bar)</text>`;
+  s += `<path d="M${x0} ${Yr(1e5)}H${x0 + xw}" stroke="#4fc3f7" stroke-dasharray="2 3" opacity=".6"/>`;
+  s += `<text x="${x0 + 4}" y="${y0 - yh + 11}" class="tick" fill="#ff8a3d">cylinder (log scale, peak ${fmt(pmax / 1e5)} bar)</text><text x="${x0 + 4}" y="${y0 - yh + 23}" class="tick" fill="#4fc3f7">inlet runner at the valve: ${fmt(rmin / 1e5, 2)}–${fmt(rmax / 1e5, 2)} bar (dotted = 1 bar)</text>`;
   s += `<text x="${X(t.ivo)}" y="${y0 - 4}" class="tick">inlet open</text><text x="${X(t.evo)}" y="${y0 - 4}" class="tick">exhaust open</text>`;
   svg.innerHTML = `<title id="waves-t">Test bench at ${d.rpm} rpm: cylinder peak ${fmt(pmax / 1e5)} bar; inlet runner pressure swings ${fmt(rmin / 1e5, 2)}–${fmt(rmax / 1e5, 2)} bar</title>` + s;
 }
@@ -331,7 +334,7 @@ function drawPV(op) {
   const Vmax = Math.max(...tr.map(t => t.V)), pmax = Math.max(...tr.map(t => t.p));
   const X = V => x0 + (V / Vmax) * xw, Y = p => y0 - (p / (pmax * 1.08)) * yh;
   const pts = tr.map(t => `${X(t.V).toFixed(1)},${Y(t.p).toFixed(1)}`).join(' ');
-  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}" stroke="#7d8a84" fill="none"/>`;
+  let s = `<path d="M${x0} ${y0 - yh}V${y0}H${x0 + xw}" stroke="#4a5f6c" fill="none"/>`;
   for (let k = 1; k <= 4; k++) { const p = pmax * 1.08 * k / 4; s += `<text x="${x0 - 4}" y="${Y(p) + 3}" text-anchor="end" class="tick">${fmt(p / 1e5)}</text>`; }
   s += `<polyline points="${pts}" class="pvline" fill="none"/><text x="${x0}" y="10" class="tick">pressure, bar</text><text x="${x0 + xw}" y="${y0 + 16}" text-anchor="end" class="tick">cylinder volume → (${fmt(Vmax * 1e6)} cc)</text>`;
   s += `<text x="${x0 + 60}" y="${y0 - 30}" class="tick strong">area inside = work per cycle</text>`;
@@ -346,7 +349,7 @@ function paintGauges() {
   $('g-speed').textContent = S.phase === 'cranking' ? `${fmt(S.start.crank.rpm)} rpm` : running ? `${S.rpm} rpm` : '0 rpm';
   $('g-bearing').textContent = running ? (S.gallery < 1 ? 'waiting for oil' : S.driveRegime || '–') : S.phase === 'failed' ? 'stopped' : 'still';
   $('hud-state').textContent = { off: 'Engine off', cranking: 'Cranking…', running: 'Running', failed: 'Did not start' }[S.phase];
-  $('hud-state').className = 'state ' + S.phase;
+  $('hud-state').className = 'status ' + S.phase;
 }
 
 function paintBuild() {
@@ -370,11 +373,6 @@ function paintBuild() {
     paint();
   });
   $('parts').querySelectorAll('[data-remove]').forEach(b => b.onclick = () => { S.build = remove(S.build, b.dataset.remove); $('build-msg').className = 'msg'; $('build-msg').textContent = 'Removed — along with anything that was fitted on top of it.'; resetStart(); paint(); });
-  $('tab-run').disabled = false;
-  $('tab-build').setAttribute('aria-selected', String(S.tab === 'build'));
-  $('tab-run').setAttribute('aria-selected', String(S.tab === 'run'));
-  $('build-panel').hidden = S.tab !== 'build';
-  $('run-panel').hidden = S.tab !== 'run';
 }
 
 function paint() {
@@ -460,8 +458,10 @@ function paintMission() {
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
   // visibility: in Learn mode only the cards this mission needs
   const learn = mode === 'learn';
-  document.querySelector('.tabs').classList.toggle('learn-hidden', learn);
-  for (const id of ['build-panel', 's-oil', 's-history', 's-park', 's-key', 's-drive', 's-breathe', 's-burn']) $(id).classList.toggle('learn-hidden', learn && !m.show.includes(id));
+  const allowed = new Set(m.show.map(id => CARD2MOD[id]));
+  WB.lock(learn ? ['build', ...RUN_MODS].filter(id => !allowed.has(id)) : []);
+  document.querySelector('[data-open="mission"]').hidden = !learn;
+  if (!learn && WB.current === 'mission') WB.open(S.tab === 'build' ? 'build' : 'start');
   for (const [id, u] of Object.entries(UNITS)) { const h = $(id).querySelector('h2'); if (!h.querySelector('.syll')) h.insertAdjacentHTML('beforeend', `<span class="syll" title="${COURSE}">${u}</span>`); }
   if (!learn) return;
   let h = `<div class="mhead"><span>Mission ${M.i + 1} of ${MISSIONS.length}</span><div class="dots">${MISSIONS.map((_, k) => `<i class="${k <= M.i ? 'on' : ''}"></i>`).join('')}</div></div>
@@ -470,7 +470,7 @@ function paintMission() {
     h += `<p class="think">Pause and think</p><p>${m.predict.q}</p><div class="row">${m.predict.options.map(o => `<button type="button" class="guess" data-mguess="${o}">${o}</button>`).join('')}</div>`;
   } else {
     const right = M.guess === M.answer;
-    h += `<p class="result ${right ? 'right' : 'wrong'}">${right ? 'Right' : 'Not quite'} — the simulation says: ${M.answer}.</p><p>${m.explain}</p><p class="task">Now try it: ${m.task}</p>`;
+    h += `<p class="result ${right ? 'right' : 'wrong'}">${right ? 'Right' : 'Not quite'} — the simulation says: ${M.answer}.</p><p>${m.explain}</p><p class="task">Now try it: ${m.task}</p><button type="button" class="trybtn" id="m-try">Open ${document.querySelector(`[data-module="${CARD2MOD[m.show[0]]}"]`).dataset.title} →</button>`;
     const blocked = m.done && !m.done();
     h += `<div class="row">${M.i > 0 ? '<button type="button" id="m-prev">Back</button>' : ''}${M.i < MISSIONS.length - 1 ? `<button type="button" class="primary" id="m-next" ${blocked ? 'disabled' : ''}>Next mission</button>` : '<button type="button" class="primary" id="m-explore">Explore everything</button>'}</div>`;
     if (blocked) h += `<p class="note">Finish the task to continue.</p>`;
@@ -480,18 +480,21 @@ function paintMission() {
   const nx = $('m-next'); if (nx) nx.onclick = () => startMission(M.i + 1);
   const pv = $('m-prev'); if (pv) pv.onclick = () => startMission(M.i - 1);
   const ex = $('m-explore'); if (ex) ex.onclick = () => setMode('explore');
+  const tb = $('m-try'); if (tb) tb.onclick = () => WB.open(CARD2MOD[m.show[0]]);
 }
-function setMode(m) { mode = m; try { localStorage.setItem('engine.mode', m); } catch {} document.body.dataset.details = m === 'learn' ? (S.allNumbers ? 'on' : 'off') : 'on'; paint(); }
+function setMode(m) { mode = m; if (m === 'learn') WB.open('mission'); try { localStorage.setItem('engine.mode', m); } catch {} document.body.dataset.details = m === 'learn' ? (S.allNumbers ? 'on' : 'off') : 'on'; paint(); }
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 $('numbers').onclick = () => { S.allNumbers = !S.allNumbers; $('numbers').setAttribute('aria-pressed', String(S.allNumbers)); document.body.dataset.details = mode === 'learn' && !S.allNumbers ? 'off' : 'on'; };
 
 // ---------- inputs ----------
-$('tab-build').onclick = () => { S.tab = 'build'; resetStart(); paint(); };
-$('tab-run').onclick = () => {
-  if (!isComplete(S.build)) { $('build-msg').className = 'msg bad'; $('build-msg').textContent = `Finish building first: ${PARTS.filter(p => !has(S.build, p.id)).map(p => p.name.toLowerCase()).join(', ')} still to fit.`; return; }
-  S.tab = 'run'; paint();
-};
-$('b-ready').onclick = () => { S.build = complete(); S.tab = 'run'; $('build-msg').className = 'msg'; resetStart(); paint(); };
+const WB = workbench('engine', { initial: 'mission' });
+document.addEventListener('module', ({ detail: id }) => {
+  if (id === 'build') { if (S.tab !== 'build') { S.tab = 'build'; resetStart(); paint(); } return; }
+  if (!RUN_MODS.includes(id)) return;
+  if (!isComplete(S.build)) { $('build-msg').className = 'msg bad'; $('build-msg').textContent = `Finish building first: ${PARTS.filter(p => !has(S.build, p.id)).map(p => p.name.toLowerCase()).join(', ')} still to fit.`; WB.open('build'); return; }
+  if (S.tab !== 'run') { S.tab = 'run'; paint(); }
+});
+$('b-ready').onclick = () => { S.build = complete(); S.tab = 'run'; $('build-msg').className = 'msg'; resetStart(); paint(); WB.open('start'); };
 $('b-strip').onclick = () => { S.build = emptyBuild(); $('build-msg').className = 'msg'; $('build-msg').textContent = 'Stripped down to the bare block.'; resetStart(); paint(); };
 const customCam = () => { S.benchCurve = null; if (S.camId !== 'custom') S.prevDyno = dynoCurve(); S.camId = 'custom'; S.cam = { ...S.cam, duration: +$('dur').value, lift: +$('lift').value, centre: +$('lc').value }; resetStart(); paint(); };
 $('dur').oninput = customCam; $('lift').oninput = customCam; $('lc').oninput = customCam;
@@ -558,6 +561,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 document.body.dataset.details = mode === 'learn' ? 'off' : 'on';
+if (mode !== 'learn' && WB.current !== 'mission') document.dispatchEvent(new CustomEvent('module', { detail: WB.current }));
 if (mode === 'learn') { let i = 0; try { i = +(localStorage.getItem('engine.mission') || 0); } catch {} startMission(i); } else paint();
 requestAnimationFrame(frame);
 window.__engine = { state: S };

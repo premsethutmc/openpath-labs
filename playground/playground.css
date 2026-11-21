@@ -1,84 +1,43 @@
-/* VOICE: a workshop bench — calm, technical, alive when things move.
-   IDEA: an engineer's test rig in the open air; the structure is the hero.
-   PICTURE: the live structure, colour-coded by how hard each part works.
-   COLOUR and TYPE: white bench, graphite ink, signal orange for actions; stress scale blue→green→amber→red. Archivo + Inter.
-   LAYOUT: phone: bar, objects, scene, verdict, controls. Wide: scene left (sticky), panels right. */
-:root{color-scheme:light;--bg:#f4f5f2;--ink:#14202b;--muted:#566370;--line:#d9ddd6;--card:#fff;--act:#e0531f;--sel:#14202b}
-*{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
-button{font:inherit;font-weight:600;min-height:44px;border-radius:10px;border:1px solid #c5cbc4;background:#fff;color:var(--ink);padding:0 12px;cursor:pointer}
-button:focus-visible,a:focus-visible,.hit:focus-visible,summary:focus-visible{outline:3px solid #1d58c8;outline-offset:2px}
-.bar{display:flex;align-items:center;gap:10px;padding:6px max(4vw,12px);background:var(--ink);color:#fff}
-.back{color:#fff;text-decoration:none;font-weight:700;min-height:44px;display:flex;align-items:center}
-.crumb{flex:1;font-size:.85rem;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mode{display:flex;background:#2a3946;border-radius:12px;padding:3px;gap:3px}
-.mode button{border:0;background:transparent;color:#cbd5dd;min-height:38px}
-.mode button[aria-checked=true]{background:#fff;color:var(--ink)}
-.objects{display:flex;gap:6px;padding:8px max(4vw,12px);overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);scrollbar-width:none}
-.objects button{flex:none;border-radius:22px}
-.objects button[aria-current=true]{background:var(--sel);color:#fff;border-color:var(--sel)}
-main{display:grid;gap:14px;padding:12px max(4vw,12px) 40px;max-width:1240px;margin:auto}
-@media(min-width:900px){main{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);align-items:start}.stage{position:sticky;top:12px}}
-.titleblock h1{font:800 clamp(1.6rem,4vw,2.4rem)/1.05 Archivo,system-ui,sans-serif;margin:2px 0 4px;text-wrap:balance}
-.titleblock p{margin:0 0 10px;color:var(--muted)}
-.scene-wrap{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#dfe9ee}
-#scene{display:block;width:100%;height:320px;touch-action:none;user-select:none}
-#scene .ghost{stroke:#5b6b78;stroke-opacity:.35;stroke-width:1.5;stroke-dasharray:5 4}
+/* Force Playground — lab-specific pieces on top of the shared workbench. */
+.objects{display:flex;gap:6px;padding:8px max(3vw,12px);overflow-x:auto;background:#0d151b;border-bottom:1px solid var(--line);scrollbar-width:none}
+.objects button{flex:none;min-height:38px;font-size:.84rem}
+.objects button[aria-current=true]{background:var(--ink);color:#0b1117;border-color:var(--ink)}
+.objects .buildbtn{border-style:dashed;border-color:var(--act);color:var(--act)}
+.objects .buildbtn[aria-current=true]{background:var(--act);color:#140a02;border-style:solid}
+#scene{display:block;width:100%;height:330px;touch-action:none;user-select:none}
+#scene .ghost{stroke:#8fa3b0;stroke-opacity:.45;stroke-width:1.2;stroke-dasharray:5 4}
 #scene .hit{fill:none;stroke:transparent;stroke-width:26;cursor:pointer;pointer-events:stroke}
 #scene .draggable{cursor:grab}
-#scene .tag{font:700 11px Inter,sans-serif;fill:#14202b;paint-order:stroke;stroke:#fff;stroke-width:3px}
-#scene .force{font:700 11px Inter,sans-serif;fill:#127a43;paint-order:stroke;stroke:#fff;stroke-width:3px}
-#scene .arrow{stroke:#127a43;stroke-width:3}
-#scene .hint{font:600 11px Inter,sans-serif;fill:#3d4b57}
-.scene-tools{position:absolute;left:8px;top:8px;display:flex;gap:6px}
-.scene-tools button{min-height:36px;font-size:.8rem;background:#ffffffd9;padding:0 10px}
-.scene-tools button[aria-pressed=true]{background:var(--sel);color:#fff;border-color:var(--sel)}
-.legend{position:absolute;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;background:#ffffffd9;padding:3px 8px;border-radius:8px}
-.legend i{width:70px;height:7px;border-radius:4px;background:linear-gradient(90deg,#6f8796,#96a096 45%,#d9a441 65%,#e0531f 85%,#b3141b)}
-.verdict{margin:10px 0 6px;padding:10px 12px;border-radius:12px;font-weight:700;background:#e7f3ea;color:#14532d}
-.verdict.ok{background:#eef6e5;color:#3b5a12}.verdict.danger{background:#fff1d6;color:#7a4a00}
-.verdict.failed,.verdict.unstable{background:#fde2df;color:#8d1510}
-.meter{position:relative;height:10px;border-radius:6px;background:#e3e6e1;margin:0 0 18px}
-#meter-fill{height:100%;border-radius:6px;transition:width .2s}
-.meter span{position:absolute;top:12px;font-size:.68rem;color:var(--muted);transform:translateX(-50%)}
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0}
-.stats div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
-.stats dt{font-size:.72rem;color:var(--muted)}.stats dd{margin:0;font:700 1.05rem Archivo,sans-serif;white-space:nowrap}
-@media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.side{display:grid;gap:12px}
-.card,.guide{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
-.guide{border:2px solid var(--ink)}
-.ghead{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:var(--muted);font-weight:600}
-.dots{display:flex;gap:4px}.dots i{width:18px;height:5px;border-radius:3px;background:#d6dad3}.dots i.on{background:var(--act)}
-.think{margin:10px 0 0;font:800 .8rem Archivo,sans-serif;color:var(--act)}
-.gtext{margin:6px 0 10px;font-size:1.02rem}
-.result{margin:10px 0 0;font-weight:700}.result.right{color:#14632f}.result.wrong{color:#9a3412}
-.row{display:flex;flex-wrap:wrap;gap:8px}
-.primary{background:var(--act);border-color:var(--act);color:#fff;padding:0 20px}
-.guess{flex:1 1 30%}
-h2{font:800 1.05rem Archivo,sans-serif;margin:0 0 8px}
-h3{font-size:.78rem;color:var(--muted);margin:0 0 6px;font-weight:700}
+#scene .tag{font:600 10.5px "JetBrains Mono",ui-monospace,monospace;fill:#e6eef3;paint-order:stroke;stroke:#0d151b;stroke-width:3px}
+#scene .force{font:600 10.5px "JetBrains Mono",ui-monospace,monospace;fill:#3fbf7f;paint-order:stroke;stroke:#0d151b;stroke-width:3px}
+#scene .arrow{stroke:#3fbf7f;stroke-width:2.4}
+#scene .hint{font:500 10.5px "JetBrains Mono",ui-monospace,monospace;fill:#8fa3b0}
+#scene .node{fill:#0d151b;stroke:#e6eef3;stroke-width:2;cursor:grab}
+#scene .node.target{fill:#3a2414;stroke:var(--act)}
+.scene-tools{position:absolute;left:8px;top:8px;display:flex;gap:4px}
+.scene-tools button{min-height:36px;font:600 .72rem var(--mono);background:#0b1117cc;padding:0 9px}
+.scene-tools button[aria-pressed=true]{background:var(--ink);color:#0b1117}
+.legend{position:absolute;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;font:500 .66rem var(--mono);color:var(--muted);background:#0b1117cc;border:1px solid var(--line);padding:3px 8px;border-radius:8px}
+.legend i{width:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,#6f8796,#96a096 45%,#d9a441 65%,#e0531f 85%,#b3141b)}
+.verdict{margin:10px 0 6px;padding:10px 12px;border-radius:10px;font-weight:600;background:var(--panel);border:1px solid #1f5a3c;color:var(--ok)}
+.verdict.ok{color:#a3d977;border-color:#3a5a1f}.verdict.danger{color:var(--warn);border-color:#5a4615}
+.verdict.failed,.verdict.unstable{color:var(--bad);border-color:#5a2420}
+.meter{position:relative;height:6px;border-radius:3px;background:#1b2832;margin:0 0 18px}
+#meter-fill{height:100%;border-radius:3px;transition:width .2s}
+.meter span{position:absolute;top:9px;font:500 .64rem var(--mono);color:var(--dim);transform:translateX(-50%)}
+.ghead{display:flex;justify-content:space-between;align-items:center;font:600 .72rem var(--mono);color:var(--dim)}
+.gtext{margin:6px 0 10px}
 .ihead{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.pill{color:#fff;font-weight:800;font-size:.8rem;padding:3px 9px;border-radius:20px;white-space:nowrap}
-.doing{margin:0 0 8px;color:var(--muted);font-size:.92rem}
-.eq p{margin:4px 0;font-size:.92rem}
-.eq .f{font-family:ui-monospace,Menlo,monospace;font-size:.82rem;background:#f3f5f1;border-radius:8px;padding:8px;overflow-wrap:anywhere}
+.ihead h2{margin:0}
+.pill{color:#0b1117;font:700 .72rem var(--mono);padding:3px 8px;border-radius:6px;white-space:nowrap}
+.doing{margin:6px 0 8px;color:var(--muted);font-size:.9rem}
+.eq p{margin:4px 0;font-size:.9rem}
+.eq .f{font:500 .8rem var(--mono);background:#0d151b;border:1px solid var(--line);border-radius:8px;padding:8px;overflow-wrap:anywhere}
 .tip{font-size:.78rem;color:var(--muted);margin:8px 0 0}
-.group{margin-bottom:12px}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips button[aria-checked=true]{background:var(--sel);color:#fff;border-color:var(--sel)}
-.chips button{font-size:.88rem}
-#loadlist{margin-top:6px}
-.loadchip{background:#f3efe6;border-color:#d8cfbd;font-size:.82rem}
-.note{font-size:.82rem;color:var(--muted);margin:6px 0 0}
-.about{font-size:.88rem;color:var(--muted)}.about summary{min-height:44px;align-content:center;font-weight:700;color:var(--ink);cursor:pointer}
-#scene .node{fill:#fff;stroke:#14202b;stroke-width:2.5;cursor:grab}
-#scene .node.target{fill:#ffe8dc;stroke:#e0531f}
+#loadlist{margin-top:4px}
+.loadchip{border-color:#5a4615;color:#f0b429;font-size:.8rem}
 .buildbar{display:grid;gap:8px;margin-top:10px}
 .buildbar:empty{display:none}
-.buildbar .chips button[aria-checked=true]{background:#e0531f;border-color:#e0531f;color:#fff}
-.buildbar button:disabled{opacity:.45}
-.mass{margin:0;font-size:.9rem;color:var(--muted)}.mass b{color:var(--ink)}
-.objects .buildbtn{border-style:dashed;border-color:#e0531f;color:#b43d10}
-.objects .buildbtn[aria-current=true]{background:#e0531f;color:#fff;border-style:solid}
+.buildbar .chips button[aria-checked=true]{background:var(--act);border-color:var(--act);color:#140a02}
+.mass{margin:0;font-size:.88rem;color:var(--muted)}.mass b{color:var(--ink);font-family:var(--mono)}
 @media(prefers-reduced-motion:reduce){#meter-fill{transition:none}}

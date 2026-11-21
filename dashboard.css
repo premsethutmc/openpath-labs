@@ -3,16 +3,16 @@
    PICTURE: a live engineering section of one engine cylinder with its p–V diagram (dark instrument panel).
    COLOUR and TYPE: white bench, graphite ink, signal orange for action; stress colours as the only other hues. Archivo + Inter.
    LAYOUT: hero (title + picture), engines strip, numbered path of stages. */
-:root{color-scheme:light;--bg:#f4f5f2;--ink:#14202b;--muted:#566370;--line:#d9ddd6;--act:#e0531f}
+:root{color-scheme:dark;--bg:#0b1117;--ink:#e6eef3;--muted:#8fa3b0;--line:#22323d;--act:#ff8a3d;--panel:#111a21;--mono:"JetBrains Mono",ui-monospace,monospace}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
-a:focus-visible{outline:3px solid #1d58c8;outline-offset:2px}
+a:focus-visible{outline:2px solid #4fc3f7;outline-offset:2px}
 .hero{display:grid;gap:20px;align-items:center;padding:clamp(20px,4vw,56px) max(5vw,16px);max-width:1240px;margin:auto}
 @media(min-width:860px){.hero{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
 .brand{font:800 .95rem Archivo,sans-serif;margin:0 0 6px;color:var(--act)}
 h1{font:800 clamp(2rem,5vw,3.3rem)/1.05 Archivo,sans-serif;margin:0 0 12px;text-wrap:balance}
 .lede{font-size:1.08rem;color:#33424f;max-width:52ch;margin:0 0 18px}
-.cta{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border-radius:12px;background:var(--act);color:#fff;font-weight:700;text-decoration:none}
+.cta{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border-radius:12px;background:var(--act);color:#140a02;font-weight:700;text-decoration:none}
 .hero-band{background:radial-gradient(120% 90% at 80% 20%,#16222b,#0b1117 70%);color:#e6eef3;border-bottom:1px solid #1f2c35}
 .hero-band .lede{color:#aebfca}.hero-band .brand{color:#ff8a3d}
 .ctas{display:flex;flex-wrap:wrap;gap:10px}
@@ -23,27 +23,27 @@ h1{font:800 clamp(2rem,5vw,3.3rem)/1.05 Archivo,sans-serif;margin:0 0 12px;text-
 main{max-width:1240px;margin:auto;padding:0 max(5vw,16px) 40px}
 h2{font:800 clamp(1.3rem,3vw,1.8rem)/1.15 Archivo,sans-serif;margin:24px 0 10px;text-wrap:balance}
 .engine-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-.engine{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:2px}
+.engine{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:2px}
 .engine b{font:800 1.05rem Archivo,sans-serif}.engine span{font-size:.86rem;color:var(--muted)}
-.engine em{font-style:normal;font-size:.75rem;font-weight:700;color:var(--muted)}
-.engine.live{border-color:var(--ink);box-shadow:inset 4px 0 0 var(--act)}.engine.live em{color:var(--act)}
+.engine em{font-style:normal;font:600 .7rem var(--mono);color:var(--muted)}
+.engine.live{border-color:#2c3e4a;box-shadow:inset 3px 0 0 var(--act)}.engine.live em{color:var(--act)}
 .path-head p{color:var(--muted);margin:0 0 12px;max-width:65ch}
 .stages{list-style:none;padding:0;margin:0;display:grid;gap:10px}
-.stage{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
-.stage.live{border:2px solid var(--ink)}
-.stage.planned,.stage.next{background:#fafbf9}
-.snum{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1.1rem Archivo,sans-serif;background:#e7eae5}
-.stage.live .snum{background:var(--ink);color:#fff}
+.stage{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stage.live{border-color:#2c3e4a}
+.stage.planned,.stage.next{background:#0e161c;opacity:.85}
+.snum{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font:700 1rem var(--mono);background:#16222b;color:var(--muted);border:1px solid var(--line)}
+.stage.live .snum{color:var(--act);border-color:#5a3a20}
 .stitle{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .stitle h3{font:800 1.15rem Archivo,sans-serif;margin:0}
-.stitle em{font-style:normal;font-size:.75rem;font-weight:700;color:var(--muted)}.stage.live .stitle em{color:var(--act)}
+.stitle em{font-style:normal;font:600 .7rem var(--mono);color:var(--muted)}.stage.live .stitle em{color:var(--act)}
 .sq{margin:4px 0 8px}
 .soon-line{margin:0 0 6px;color:var(--muted);font-size:.92rem}
 .objs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:8px}
-.obj{display:grid;gap:2px;padding:10px 12px;min-height:44px;border-radius:12px;background:#f3f5f1;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.obj{display:grid;gap:2px;padding:10px 12px;min-height:44px;border-radius:12px;background:#0d151b;border:1px solid var(--line);color:var(--ink);text-decoration:none}
 .obj span{font-weight:700}.obj small{color:var(--muted);font-size:.8rem}
-.obj:hover{border-color:var(--ink)}
-.obj.feature{background:#14202b;color:#fff;border-color:#14202b}.obj.feature small{color:#c9d3db}
-.eng{margin:0;font-size:.78rem;color:var(--muted);font-weight:600}
+.obj:hover{border-color:#4a5f6c}
+.obj.feature{border-color:#5a3a20;box-shadow:inset 3px 0 0 var(--act)}
+.eng{margin:0;font:500 .72rem var(--mono);color:var(--muted)}
 .soon p{color:var(--muted);max-width:65ch}
 footer{padding:20px max(5vw,16px) 30px;color:var(--muted);font-size:.82rem;max-width:1240px;margin:auto}

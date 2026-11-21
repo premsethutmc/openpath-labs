@@ -11,6 +11,7 @@ for (const width of [380, 1200]) test(`Build your own ${width}px: replace a fail
     page.setDefaultTimeout(6000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
+    const mod = name => page.getByRole('tab', { name }).click();
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(server.origin + '/playground/index.html#build');
     await page.evaluate(() => localStorage.clear());
@@ -39,6 +40,7 @@ for (const width of [380, 1200]) test(`Build your own ${width}px: replace a fail
 
     await page.getByRole('radio', { name: 'Supports' }).click();
     await tap(0, 0); await tap(8000, 0); await tap(8000, 0);
+    await mod('Loads');
     await page.getByRole('button', { name: '+ Car' }).click();
     const truss = await sf();
     assert.ok(truss > 1 && truss > 2 * plank, `truss ${truss} vs plank ${plank}`);

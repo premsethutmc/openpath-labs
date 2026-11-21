@@ -5,6 +5,7 @@ import { analyze, verdict, SAMPLES } from '../engines/solids/analyze.mjs';
 import { displacedPoint } from '../engines/solids/frame.mjs';
 import { PRESETS, LOAD_OBJECTS } from './presets.mjs';
 import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap } from './build.mjs';
+import { workbench } from '../core/workbench.mjs';
 
 const BUILD = {
   id: 'build', name: 'Build your own', setting: 'gap', editable: true, gap: [0, 8000], deckWidth: 3000,
@@ -107,50 +108,50 @@ function layout() {
 // A river valley: far bank haze, water with ripples, earth banks with a grass edge, concrete abutments.
 function valley(a, b, top, slope, abut = true) {
   const { W, H } = view, wy = H - 34, mid = (a + b) / 2;
-  return `<path d="M0 ${wy - 18} C${W * 0.25} ${wy - 34} ${W * 0.5} ${wy - 20} ${W * 0.7} ${wy - 30} S${W} ${wy - 22} ${W} ${wy - 26} V${H}H0Z" fill="#a9c2b9" opacity=".5"/>
+  return `<path d="M0 ${wy - 18} C${W * 0.25} ${wy - 34} ${W * 0.5} ${wy - 20} ${W * 0.7} ${wy - 30} S${W} ${wy - 22} ${W} ${wy - 26} V${H}H0Z" fill="#16222b" opacity=".9"/>
     <rect x="0" y="${wy}" width="${W}" height="34" fill="url(#water)"/>
-    <g stroke="#d6e8f2" stroke-opacity=".5" stroke-width="1.4" stroke-linecap="round"><path d="M${mid - 70} ${wy + 10}h36M${mid + 10} ${wy + 20}h50M${mid - 30} ${wy + 28}h24"/></g>
+    <g stroke="#4fc3f7" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"><path d="M${mid - 70} ${wy + 10}h36M${mid + 10} ${wy + 20}h50M${mid - 30} ${wy + 28}h24"/></g>
     <path d="M0 ${top}H${a}L${a + slope} ${H}H0Z" fill="url(#earth)"/><path d="M${W} ${top}H${b}L${b - slope} ${H}H${W}Z" fill="url(#earth)"/>
-    <path d="M0 ${top + 1}H${a}M${W} ${top + 1}H${b}" stroke="#6f8f55" stroke-width="4"/>
+    <path d="M0 ${top + 1}H${a}M${W} ${top + 1}H${b}" stroke="#8fa3b0" stroke-width="1.4"/>
     ${abut ? `<path d="M${a - 26} ${top + 2}h26l-3 ${Math.min(60, H - top - 30)}h-20z" fill="url(#conc)"/><path d="M${b} ${top + 2}h26l-3 ${Math.min(60, H - top - 30)}h-20z" fill="url(#conc)"/>` : ''}`;
 }
 function background() {
   const { W, H, X, Y } = view, y0 = Y(0), x0 = X(0);
   const sky = `<rect width="${W}" height="${H}" fill="url(#sky)"/>`;
-  const defs = `<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#cfe3ef"/><stop offset="1" stop-color="#eef3f1"/></linearGradient>
-    <linearGradient id="water" x2="0" y2="1"><stop stop-color="#5f93b0"/><stop offset="1" stop-color="#2c5d7c"/></linearGradient>
-    <linearGradient id="earth" x2="0" y2="1"><stop stop-color="#9c8a68"/><stop offset="1" stop-color="#6f604a"/></linearGradient>
-    <linearGradient id="conc" x2="1"><stop stop-color="#bfc2be"/><stop offset="1" stop-color="#999d9a"/></linearGradient>
-    <pattern id="brick" width="28" height="14" patternUnits="userSpaceOnUse"><rect width="28" height="14" fill="#b4644a"/><path d="M0 .5H28M0 7.5H28M14 0v7M0 7v7M28 7v7" stroke="#e7cdb8" stroke-width="1"/></pattern>
-    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v8" stroke="#6d5a43" stroke-width="2"/></pattern></defs>`;
+  const defs = `<defs><pattern id="sky" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#0f171d"/><path d="M20 0H0V20" fill="none" stroke="#17232c" stroke-width=".8"/></pattern>
+    <linearGradient id="water" x2="0" y2="1"><stop stop-color="#16405e"/><stop offset="1" stop-color="#0d2638"/></linearGradient>
+    <pattern id="earth" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="#15130f"/><path d="M0 0v7" stroke="#3b3326" stroke-width="1.2"/></pattern>
+    <pattern id="conc" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="6" height="6" fill="#1c262d"/><path d="M0 0v6" stroke="#3a4b57" stroke-width="1"/></pattern>
+    <pattern id="brick" width="28" height="14" patternUnits="userSpaceOnUse"><rect width="28" height="14" fill="#1e1612"/><path d="M0 .5H28M0 7.5H28M14 0v7M0 7v7M28 7v7" stroke="#5a3a2c" stroke-width="1"/></pattern>
+    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v8" stroke="#6d8796" stroke-width="1.4"/></pattern></defs>`;
   let g = '';
   const xEnd = X(Math.max(...preset.nodes.map(n => n.x)));
-  if (preset.setting === 'wall') g = `<rect x="0" y="0" width="${x0}" height="${H}" fill="url(#brick)"/><rect x="${x0 - 4}" y="0" width="4" height="${H}" fill="#7a3d2b"/>`;
+  if (preset.setting === 'wall') g = `<rect x="0" y="0" width="${x0}" height="${H}" fill="url(#brick)"/><rect x="${x0 - 4}" y="0" width="4" height="${H}" fill="#a8b8c3"/>`;
   if (preset.setting === 'river') g = valley(x0 + 6, xEnd - 6, y0 + 6, 30);
-  if (preset.setting === 'site') g = `<rect x="0" y="${y0 + 2}" width="${W}" height="${H - y0}" fill="#a8916b"/><rect x="0" y="${y0 + 2}" width="${W}" height="6" fill="#8a7553"/>`;
-  if (preset.setting === 'pool') g = `<rect x="0" y="${y0 + 8}" width="${x0 + view.s * 1100}" height="${H - y0}" fill="#d9d4c7"/><rect x="${x0 + view.s * 1100}" y="${y0 + 60}" width="${W}" height="${H}" fill="url(#water)"/>`;
+  if (preset.setting === 'site') g = `<rect x="0" y="${y0 + 2}" width="${W}" height="${H - y0}" fill="url(#earth)"/><rect x="0" y="${y0 + 2}" width="${W}" height="1.4" fill="#8fa3b0"/>`;
+  if (preset.setting === 'pool') g = `<rect x="0" y="${y0 + 8}" width="${x0 + view.s * 1100}" height="${H - y0}" fill="url(#conc)" stroke="#8fa3b0"/><rect x="${x0 + view.s * 1100}" y="${y0 + 60}" width="${W}" height="${H}" fill="url(#water)"/>`;
   if (preset.setting === 'gap') {
     const a = X(preset.gap[0]), b = X(preset.gap[1]);
     g = valley(a, b, y0, 14, false);
   }
   if (preset.editable) {
     const v = preset.view; let dots = '';
-    for (let x = Math.ceil(v.minX / 1000) * 1000; x <= v.maxX; x += 1000) for (let y = Math.ceil(v.minY / 1000) * 1000; y <= v.maxY; y += 1000) dots += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="1.4" fill="#5b6b78" opacity=".45"/>`;
+    for (let x = Math.ceil(v.minX / 1000) * 1000; x <= v.maxX; x += 1000) for (let y = Math.ceil(v.minY / 1000) * 1000; y <= v.maxY; y += 1000) dots += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="1.4" fill="#4a5f6c" opacity=".7"/>`;
     g += dots + `<text class="hint" x="${X(preset.gap[0]) + 4}" y="${y0 + 14}">← ${(preset.gap[1] - preset.gap[0]) / 1000} m →</text>`;
   }
   if (preset.setting === 'building') {
     const yt = Y(preset.nodes[1].y);
-    g = `<rect x="0" y="${y0 + 4}" width="${W}" height="${H - y0}" fill="#9c9488"/><rect x="0" y="${yt - 26}" width="${W}" height="22" fill="#b9b2a6"/><rect x="0" y="0" width="${W}" height="${yt - 26}" fill="#e6e1d6" opacity=".6"/>`;
+    g = `<rect x="0" y="${y0 + 4}" width="${W}" height="${H - y0}" fill="url(#conc)"/><rect x="0" y="${yt - 26}" width="${W}" height="22" fill="url(#conc)" stroke="#4a5f6c"/>`;
   }
   return defs + sky + g;
 }
 
 function supportGlyph(sp) {
   const n = preset.nodes[sp.node], x = view.X(n.x), y = view.Y(n.y);
-  if (sp.type === 'fixed') return preset.setting === 'wall' ? '' : `<rect x="${x - 16}" y="${y + 4}" width="32" height="10" fill="url(#hatch)" stroke="#4b3b2a"/>`;
-  if (sp.type === 'pin') return `<path d="M${x} ${y + 3}l-12 18h24z" fill="#3c4a55"/><rect x="${x - 16}" y="${y + 21}" width="32" height="6" fill="url(#hatch)"/>`;
-  if (sp.type === 'roller') return `<path d="M${x} ${y + 3}l-11 14h22z" fill="#3c4a55"/><circle cx="${x - 6}" cy="${y + 21}" r="4" fill="#3c4a55"/><circle cx="${x + 6}" cy="${y + 21}" r="4" fill="#3c4a55"/>`;
-  if (sp.type === 'guide') return `<path d="M${x - 14} ${y - 10}v20M${x + 14} ${y - 10}v20" stroke="#3c4a55" stroke-width="4"/>`;
+  if (sp.type === 'fixed') return preset.setting === 'wall' ? '' : `<rect x="${x - 16}" y="${y + 4}" width="32" height="10" fill="url(#hatch)" stroke="#8fa3b0"/>`;
+  if (sp.type === 'pin') return `<path d="M${x} ${y + 3}l-12 18h24z" fill="#0d151b" stroke="#c9d6df" stroke-width="1.2"/><rect x="${x - 16}" y="${y + 21}" width="32" height="6" fill="url(#hatch)"/>`;
+  if (sp.type === 'roller') return `<path d="M${x} ${y + 3}l-11 14h22z" fill="#0d151b" stroke="#c9d6df" stroke-width="1.2"/><circle cx="${x - 6}" cy="${y + 21}" r="4" fill="#0d151b" stroke="#c9d6df"/><circle cx="${x + 6}" cy="${y + 21}" r="4" fill="#0d151b" stroke="#c9d6df"/>`;
+  if (sp.type === 'guide') return `<path d="M${x - 14} ${y - 10}v20M${x + 14} ${y - 10}v20" stroke="#c9d6df" stroke-width="3"/>`;
   return '';
 }
 
@@ -163,12 +164,12 @@ function loadGlyph(l, k) {
   const hang = preset.hang, vertical = preset.id === 'column';
   const gy = hang ? y + 40 : y - (vertical ? 22 : 8);
   let shape;
-  if (o.glyph === 'person') { const k = size; shape = `<g fill="#2b3a44" stroke="#2b3a44" stroke-linecap="round"><circle cx="0" cy="${-k * .86}" r="${k * .11}" stroke="none"/><path d="M0 ${-k * .72}V${-k * .36}" stroke-width="${k * .14}"/><path d="M${-k * .02} ${-k * .38}L${-k * .1} -2M${k * .02} ${-k * .38}L${k * .1} -2" stroke-width="${k * .09}" fill="none"/><path d="M0 ${-k * .66}L${-k * .14} ${-k * .44}M0 ${-k * .66}L${k * .14} ${-k * .44}" stroke-width="${k * .07}" fill="none"/></g>${l.obj === 'jump' ? `<path d="M${-k * .5} ${-k * .9}l6 6M${k * .5} ${-k * .9}l-6 6" stroke="#d7261e" stroke-width="2"/>` : ''}`; }
+  if (o.glyph === 'person') { const k = size; shape = `<g fill="#c9d6df" stroke="#c9d6df" stroke-linecap="round"><circle cx="0" cy="${-k * .86}" r="${k * .11}" stroke="none"/><path d="M0 ${-k * .72}V${-k * .36}" stroke-width="${k * .14}"/><path d="M${-k * .02} ${-k * .38}L${-k * .1} -2M${k * .02} ${-k * .38}L${k * .1} -2" stroke-width="${k * .09}" fill="none"/><path d="M0 ${-k * .66}L${-k * .14} ${-k * .44}M0 ${-k * .66}L${k * .14} ${-k * .44}" stroke-width="${k * .07}" fill="none"/></g>${l.obj === 'jump' ? `<path d="M${-k * .5} ${-k * .9}l6 6M${k * .5} ${-k * .9}l-6 6" stroke="#d7261e" stroke-width="2"/>` : ''}`; }
   else if (o.glyph === 'car') shape = `<path d="M${-size * .7} -4v${-size * .22}l${size * .2} ${-size * .2}h${size * .7}l${size * .3} ${size * .2}h${size * .2}v${size * .22}z" fill="#c0442b"/><circle cx="${-size * .4}" cy="-3" r="${size * .1}" fill="#222"/><circle cx="${size * .4}" cy="-3" r="${size * .1}" fill="#222"/>`;
   else if (o.glyph === 'truck') shape = `<rect x="${-size * .8}" y="${-size * .62}" width="${size * 1.1}" height="${size * .52}" fill="#e0a12a"/><path d="M${size * .32} ${-size * .5}h${size * .25}l${size * .15} ${size * .2}v${size * .2}h${-size * .4}z" fill="#3c6e91"/><circle cx="${-size * .5}" cy="-3" r="${size * .11}" fill="#222"/><circle cx="${size * .48}" cy="-3" r="${size * .11}" fill="#222"/>`;
   else shape = `<rect x="${-size * .4}" y="${-size * .7}" width="${size * .8}" height="${size * .66}" rx="3" fill="#8a6b43" stroke="#5a4426"/>`;
   const arrow = hang
-    ? `<path d="M${x} ${y}V${gy - size * .75}" stroke="#2b3a44" stroke-width="1.5"/>`
+    ? `<path d="M${x} ${y}V${gy - size * .75}" stroke="#8fa3b0" stroke-width="1.2"/>`
     : '';
   const label = `<text class="tag" x="${x}" y="${hang ? gy + 14 : gy - size - 4}" text-anchor="middle">${o.kg >= 1000 ? (o.kg / 1000) + ' t' : o.kg + ' kg'}</text>`;
   return `${arrow}<g class="load${l.fixed ? '' : ' draggable'}" data-load="${k}" transform="translate(${x} ${hang ? gy + size * .7 : gy})" role="img" aria-label="${o.name}, ${o.kg} kg"><rect x="${-size * .8}" y="${-size * 1.1}" width="${size * 1.6}" height="${size * 1.2}" fill="transparent"/>${shape}</g>${label}`;
@@ -211,11 +212,11 @@ function draw() {
     }
     if (failed === am && am.mode !== 'buckling') {
       const p = pts[Math.round(am.worst.t * SAMPLES)], x = view.X(p.x), y = view.Y(p.y);
-      out += `<path d="M${x - 4} ${y - 14}l8 7-8 7 8 7" stroke="#fff" stroke-width="3" fill="none"/><path d="M${x - 4} ${y - 14}l8 7-8 7 8 7" stroke="#7a0f0a" stroke-width="1.5" fill="none"/>`;
+      out += `<path d="M${x - 4} ${y - 14}l8 7-8 7 8 7" stroke="#0d151b" stroke-width="3" fill="none"/><path d="M${x - 4} ${y - 14}l8 7-8 7 8 7" stroke="#ff5a4f" stroke-width="1.5" fill="none"/>`;
     }
     const sel = (state.selected ?? analysis.governing.index) === k;
     const d = 'M' + pts.map(p => `${view.X(p.x).toFixed(1)},${view.Y(p.y).toFixed(1)}`).join('L');
-    if (sel) out += `<path d="${d}" fill="none" stroke="#111" stroke-width="${width + 6}" stroke-opacity=".18" stroke-linecap="round" pointer-events="none"/>`;
+    if (sel) out += `<path d="${d}" fill="none" stroke="#4fc3f7" stroke-width="${width + 6}" stroke-opacity=".25" stroke-linecap="round" pointer-events="none"/>`;
     out += `<path class="hit" data-member="${k}" d="${d}" role="button" tabindex="0" aria-label="${memberRole(k)} ${k + 1}"/>`;
   });
   // joints
@@ -223,7 +224,7 @@ function draw() {
   preset.members.forEach((m, k) => [[m.i, 0], [m.j, 1]].forEach(([n, t]) => {
     if (seen.has(n) || (preset.members.length < 2 && !preset.editable)) return; seen.add(n);
     const p = displacedPoint(st, analysis.res, k, t, lastScale);
-    out += `<circle cx="${view.X(p.x)}" cy="${view.Y(p.y)}" r="3.5" fill="#fff" stroke="#2b3a44" stroke-width="1.5"/>`;
+    out += `<circle cx="${view.X(p.x)}" cy="${view.Y(p.y)}" r="3.5" fill="#0d151b" stroke="#e6eef3" stroke-width="1.4"/>`;
   }));
   if (state.forces) out += analysis.res.reactions.map(r => {
     const n = preset.nodes[r.node], x = view.X(n.x), y = view.Y(n.y) + 34;
@@ -232,7 +233,7 @@ function draw() {
     if (Math.abs(r.fx) > 1) a += `<text class="force" x="${x + 6}" y="${y + 46}">${kN(Math.abs(r.fx))} ${r.fx > 0 ? '→' : '←'}</text>`;
     if (Math.abs(r.m) > 1) a += `<text class="force" x="${x + 6}" y="${y - 40}">${kNm(Math.abs(r.m))} ${r.m > 0 ? '↺' : '↻'}</text>`;
     return a;
-  }).join('') + `<defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#127a43"/></marker></defs>`;
+  }).join('') + `<defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3fbf7f"/></marker></defs>`;
   out += state.loads.map(loadGlyph).join('');
   if (lastScale > 1.5) out += `<text class="hint" x="${view.W - 8}" y="16" text-anchor="end">bend shown ×${fmt(lastScale, 0)}</text>`;
   svg.innerHTML = `<title id="scene-title">${preset.name}: ${verdict(analysis).text}</title>` + out + editOverlay();
@@ -349,8 +350,8 @@ function changeWords(step, before, after) {
 function paintGuide() {
   const el = $('guide');
   if (!preset) return;
-  if (mode !== 'learn') { el.hidden = true; return; }
-  el.hidden = false;
+  document.querySelector('[data-open="guide"]').hidden = mode !== 'learn';
+  if (mode !== 'learn') { if (WB.current === 'guide') WB.open('inspect'); return; }
   const steps = preset.steps, step = steps[guide.step], last = guide.step === steps.length - 1;
   let html = `<div class="ghead"><span>Step ${guide.step + 1} of ${steps.length}</span><div class="dots">${steps.map((_, i) => `<i class="${i <= guide.step ? 'on' : ''}"></i>`).join('')}</div></div>`;
   if (!step.predict) {
@@ -442,7 +443,7 @@ function setPreset(id) {
 }
 
 function setMode(m) {
-  mode = m; store.set('labs.mode', m);
+  mode = m; store.set('labs.mode', m); if (m === 'learn') WB.open('guide');
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === m)));
   paintGuide(); if (preset) paintBuildbar();
 }
@@ -482,7 +483,7 @@ svg.addEventListener('pointerdown', e => {
   if (g) { drag = +g.dataset.load; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
   const nd = e.target.closest('.node');
   if (nd && preset.editable) { nodeDrag = { k: +nd.dataset.node, before: clone(design()) }; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
-  if (hit) update({ selected: +hit.dataset.member });
+  if (hit) { update({ selected: +hit.dataset.member }); WB.open('inspect'); }
 });
 svg.addEventListener('pointermove', e => {
   if (pending) { hover = pointer(e); draw(); return; }
@@ -501,12 +502,13 @@ const endDrag = () => {
   if (drag !== null) { drag = null; paintGuide(); saveDesign(); }
 };
 svg.addEventListener('pointerup', endDrag); svg.addEventListener('pointercancel', endDrag);
-svg.addEventListener('keydown', e => { const hit = e.target.closest?.('.hit'); if (hit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); update({ selected: +hit.dataset.member }); } });
+svg.addEventListener('keydown', e => { const hit = e.target.closest?.('.hit'); if (hit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); update({ selected: +hit.dataset.member }); WB.open('inspect'); } });
 $('t-forces').onclick = () => update({ forces: !state.forces });
 $('t-shape').onclick = () => update({ exaggerate: !state.exaggerate });
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 new ResizeObserver(() => { if (preset) draw(); }).observe(svg);
 
+const WB = workbench('playground', { initial: 'guide' });
 $('objects').innerHTML = PRESETS.map(p => `<button type="button" data-preset="${p.id}">${p.name}</button>`).join('') + '<button type="button" data-preset="build" class="buildbtn">+ Build your own</button>';
 $('objects').querySelectorAll('button').forEach(b => b.onclick = () => { setPreset(b.dataset.preset); location.hash = b.dataset.preset; });
 setMode(mode);

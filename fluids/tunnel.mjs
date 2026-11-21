@@ -1,5 +1,6 @@
 import { SCENES, build, coeffs, sectionMean, profile, venturiThroatX } from '../engines/fluids/scenes.mjs';
 import { MISSIONS, COURSE } from './missions.mjs';
+import { workbench } from '../core/workbench.mjs';
 
 const $ = id => document.getElementById(id);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -100,12 +101,12 @@ function readouts() {
   if (S.scene === 'venturi') { xl = 'Throat ÷ inlet speed'; x = (sectionMean(T, venturiThroatX(T.nx)) / sectionMean(T, Math.round(T.nx * 0.12))).toFixed(2); reg = 'Pipe flow'; }
   if (S.scene === 'pipe') { const p = profile(T, Math.round(T.nx * 0.7)); xl = 'Centre ÷ mean speed'; x = (Math.max(...p) / mean(p)).toFixed(2); reg = 'Laminar pipe flow'; }
   $('g-x-label').textContent = xl; $('g-x').textContent = x;
-  $('regime').textContent = T.t < 400 ? 'Starting…' : reg; $('regime').className = 'state ' + (reg === 'Vortex shedding' ? 'shedding' : 'steady');
+  $('regime').textContent = T.t < 400 ? 'Starting…' : reg; $('regime').className = 'status ' + (reg === 'Vortex shedding' ? 'shedding' : 'steady');
   // lift trace
   if (isBody && hist.length > 2) {
     const W = 340, H = 90, lo = Math.min(-0.2, ...hist.map(h => h.cl)), hi = Math.max(0.2, ...hist.map(h => h.cl));
     const pts = hist.map((h, i) => `${(i / (hist.length - 1) * (W - 10) + 5).toFixed(1)},${(H - 8 - (h.cl - lo) / (hi - lo) * (H - 20)).toFixed(1)}`).join(' ');
-    $('trace').innerHTML = `<title id="trace-t">Lift coefficient over time: ${reg.toLowerCase()}</title><text x="6" y="11" class="tick">sideways force (lift) over time</text><polyline points="${pts}" fill="none" stroke="#1d58c8" stroke-width="1.6"/>`;
+    $('trace').innerHTML = `<title id="trace-t">Lift coefficient over time: ${reg.toLowerCase()}</title><text x="6" y="11" class="tick">sideways force (lift) over time</text><polyline points="${pts}" fill="none" stroke="#4fc3f7" stroke-width="1.6"/>`;
   }
   document.body.dataset.regime = reg; document.body.dataset.steps = String(T.t);
 }
@@ -164,8 +165,9 @@ function startMission(i) {
 function paintMission() {
   document.body.dataset.mode = S.mode;
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === S.mode)));
-  $('c-object').classList.toggle('learn-hidden', S.mode === 'learn' && M.answer === null);
-  if (S.mode !== 'learn') return;
+  WB.lock(S.mode === 'learn' && M.answer === null ? ['object', 'flow'] : []);
+  document.querySelector('[data-open="mission"]').hidden = S.mode !== 'learn';
+  if (S.mode !== 'learn') { if (WB.current === 'mission') WB.open('object'); return; }
   const m = MISSIONS[M.i], el = $('mission');
   let h = `<div class="mhead"><span>Mission ${M.i + 1} of ${MISSIONS.length}</span><div class="dots">${MISSIONS.map((_, k) => `<i class="${k <= M.i ? 'on' : ''}"></i>`).join('')}</div></div>
     <span class="unit">${COURSE} · ${m.unit}</span><h2>${m.title}</h2><p>${m.intro}</p>`;
@@ -190,7 +192,7 @@ function paintMission() {
   const pv = $('m-prev'); if (pv) pv.onclick = () => startMission(M.i - 1);
   const ex = $('m-explore'); if (ex) ex.onclick = () => setMode('explore');
 }
-function setMode(m) { S.mode = m; try { localStorage.setItem('fluids.mode', m); } catch {} paintMission(); }
+function setMode(m) { S.mode = m; if (m === 'learn') WB.open('mission'); try { localStorage.setItem('fluids.mode', m); } catch {} paintMission(); }
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
 // ---------- main loop ----------
@@ -209,6 +211,7 @@ function frame(now) {
   last = now;
   requestAnimationFrame(frame);
 }
+const WB = workbench('fluids', { initial: 'mission' });
 try { S.mode = localStorage.getItem('fluids.mode') || 'learn'; } catch {}
 setup();
 if (S.mode === 'learn') { let i = 0; try { i = +(localStorage.getItem('fluids.mission') || 0); } catch {} startMission(i); } else paintMission();
