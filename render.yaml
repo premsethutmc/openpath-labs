@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: openpath-labs-api
+    runtime: node
+    plan: free
+    buildCommand: "true"
+    startCommand: node server/api.mjs
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: RATE_PER_MIN
+        value: "60"
+      - key: API_KEYS
+        sync: false
