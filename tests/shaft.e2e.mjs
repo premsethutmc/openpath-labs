@@ -42,6 +42,8 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     await runB.click();
     await state('first');
     assert.equal(await page.locator('#x-pv .xloop').count(), 2);
+    // shared experiment journal (core/experiment.mjs): prediction locked before the run, both runs saved with units
+    assert.deepEqual(await page.evaluate(() => { const j = window.__shaft.journal(); const r = j.run(j.runNames().find(n => n.startsWith('first B'))); return [j.prediction('pair:first'), j.predictions.get('pair:first').locked, j.runNames().length, r.inputs.runner.value, r.inputs.runner.unit, r.outputs.torque.unit]; }), ['Down', true, 2, 24, 'cm', 'N·m']);
     let t = await exp.innerText();
     assert.match(t, /At 4500 rpm you predicted Down\. Brake torque 113\.0 → 90\.8 N·m \(−19\.6 %\): Down/);
     assert.match(t, /Intake runner \(solver\)\s+34 cm\s+24 cm/);

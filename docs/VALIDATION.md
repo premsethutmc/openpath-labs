@@ -111,3 +111,18 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 **Caveat:** the runner effect is a model prediction; the K12M bench is fitted at one torque point and checked at one power point, which does not validate the full curve or runner sensitivity.
 
 **Evidence used for explanations.** Runner-side pressure averaged (lift-weighted) over the late intake event, 520° to IVC. Across 34 → 24 cm at 2500, 4500, 6000 and 7000 rpm and 34 → 50 cm at 4500 and 6000 rpm, its change has the same sign as the change in volumetric efficiency. Pressure at a single angle (BDC) does not: with 34 → 50 cm at 6000 rpm it is unchanged, 1.22 bar, while torque falls 14.7 %. The whole-event average does not either: with 34 → 24 cm at 6000 rpm it moves 0.862 → 0.861 bar while filling rises 11.4 points. This is an observation about this model at these points, not a general law, so the lab accepts "inconclusive" whenever the evidence is mixed.
+
+## Pump House fault lab (simulated fixture)
+
+Fixture: Pump House model pump and pipe models, cooling-loop water at 32 °C, basin 4 m above the pump. The fault is an added loss R·Q² in either the inlet strainer or the discharge section; R is the same for both, chosen so that flow falls to a set fraction of healthy (72 % guided; 85 %, 80 %, 78 % in the unseen cases at 6 m lift, 2600 rpm and 16 m / 3100 rpm). Differential-pressure taps are on the same pipe at equal elevation and diameter, so Δp = ρg × that section's loss. **Simulated, not manufacturer or field data.**
+
+| Check | Result |
+|---|---|
+| Flow, head, power, efficiency identical for both faults (all 4 conditions) | to 1e-12 |
+| Faulted section Δp vs clean-at-today's-flow value | > 5× in every case; the clean section equals healthy × (Q/Q₀)² to 1e-9 |
+| Right repair | restores healthy flow (1e-12) |
+| Wrong repair / new identical pump | flow and faulted Δp unchanged |
+| NPSH margin | ≥ 2 m in every case (guided strainer fault 2.3 m) |
+| Unseen cases vs guided case | different lift or speed; fouled Δp differs by > 15 %, flow by > 5 % |
+| Pump House stock operating point | unchanged (bit-identical) |
+| Interface before a gauge is placed | identical DOM, data attributes and journal for both faults |

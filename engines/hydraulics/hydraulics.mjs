@@ -94,8 +94,11 @@ const pipesOf = s => ({
   suction: { ...s.suction, K: FITTINGS.footValve + s.suction.elbows * FITTINGS.elbow },
   delivery: { ...s.delivery, K: FITTINGS.checkValve + s.delivery.elbows * FITTINGS.elbow + gateK(s.valveOpen) + FITTINGS.exit },
 });
+// s.extraLoss (optional): an added local loss R·Q² (m per (m³/s)²) on the suction or delivery side — used by the
+// Pump House fault lab for a fouled strainer or a discharge restriction. Absent → results unchanged.
 export function systemHead(Q, s, w) {
   const P = pipesOf(s), a = pipeLoss(Q, P.suction, w), b = pipeLoss(Q, P.delivery, w);
+  if (s.extraLoss) { a.hm += (s.extraLoss.suction || 0) * Q * Q; b.hm += (s.extraLoss.delivery || 0) * Q * Q; }
   return { H: s.tankHeight - s.sumpLevel + a.hf + a.hm + b.hf + b.hm, suction: a, delivery: b };
 }
 
