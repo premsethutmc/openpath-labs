@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pump set drive check · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <link rel="stylesheet" href="./pumpset.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Pump set · drive check</span>
+</header>
+
+<nav class="objects scroll" aria-label="Project" id="projectbar"></nav>
+
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1 id="title">Pump set</h1><p id="subtitle"></p></div>
+    <div class="instrument"><svg id="scheme" viewBox="0 0 600 230" role="img" aria-labelledby="scheme-title"><title id="scheme-title">Pump set installation</title></svg></div>
+    <div class="verdicts">
+      <section class="vcard" id="v-flow" aria-live="polite"><h2>Does it deliver the required flow?</h2><p class="vword" id="vf-word">–</p><p class="note" id="vf-why"></p></section>
+      <section class="vcard" id="v-drive" aria-live="polite"><h2>Can the motor supply the shaft power at this speed?</h2><p class="vword" id="vd-word">–</p><p class="note" id="vd-why"></p></section>
+    </div>
+    <p class="design" id="design" role="status"></p>
+    <dl class="readings six">
+      <div><dt>Flow</dt><dd id="r-flow">–</dd></div>
+      <div><dt>Head</dt><dd id="r-head">–</dd></div>
+      <div><dt>Shaft power</dt><dd id="r-power">–</dd></div>
+      <div><dt>Torque</dt><dd id="r-torque">–</dd></div>
+      <div><dt>Motor rating</dt><dd id="r-rated">–</dd></div>
+      <div><dt>Motor margin</dt><dd id="r-margin">–</dd></div>
+    </dl>
+  </section>
+
+  <section class="side">
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module" data-module="pipework" data-title="Pipework" id="m-pipework"></section>
+    <section class="module" data-module="pump" data-title="Pump &amp; speed" id="m-pump"></section>
+    <section class="module" data-module="duty" data-title="Required flow" id="m-duty"></section>
+    <section class="module" data-module="motor" data-title="Motor" id="m-motor"></section>
+    <section class="module" data-module="runs" data-title="Runs" id="m-runs"></section>
+    <section class="module about" data-module="model" data-title="Model" id="m-model"></section>
+  </section>
+</main>
+<script type="module" src="./pumpset.mjs"></script>
+</body>
+</html>
