@@ -19,7 +19,7 @@ for (const width of [360, 1280]) test(`Labs ${width}px: dashboard → playground
     await page.goto(server.origin + '/');
     await page.locator('body[data-ready="true"]').waitFor();
     assert.equal(await page.locator('.stage').count(), 10);
-    assert.equal(await page.locator('.stage.live .obj').count(), 10); // six structures + Engine World, Flow Tunnel, Pump House, Piston Pump
+    assert.equal(await page.locator('.stage.live .obj').count(), 11); // six structures + Engine World, Flow Tunnel, Pump House, Piston Pump, Workshop
     await page.locator('.obj', { hasText: 'Footbridge' }).click();
     await page.waitForURL(/playground\/(index\.html)?#footbridge/);
     await page.locator('body[data-ready="true"]').waitFor();
