@@ -1,0 +1,34 @@
+/* Machine design bench — pieces on top of the shared workbench. */
+.objects{display:flex;gap:6px;padding:8px max(3vw,12px);overflow-x:auto;background:#0d151b;border-bottom:1px solid var(--line);scrollbar-width:none}
+.objects button{flex:none;min-height:38px;font-size:.84rem}
+.objects .buildbtn{border-style:dashed;border-color:var(--act);color:var(--act)}
+#shaft,#plots{display:block;width:100%;height:auto;background:#0d151b;touch-action:none}
+.plots{margin-top:8px}
+#shaft .steel{fill:#6f7d89}#shaft .aluminium{fill:#9fadb8}#shaft .castIron{fill:#4f5459}
+#shaft .seg{stroke:#e6eef3;stroke-width:1}#shaft .bore{fill:#0d151b;stroke:#4a5f6c;stroke-dasharray:3 2}
+#shaft .brg{fill:#26343e;stroke:var(--acc);stroke-width:2;cursor:grab}#shaft .brg.over{stroke:var(--bad)}
+#shaft .force{stroke:#f0b429;stroke-width:2.5}#shaft .lbl{font:600 10.5px var(--mono);fill:#e6eef3}#shaft .dim{font:500 10px var(--mono);fill:#8fa3b0}
+#shaft .torque{fill:none;stroke:#4fc3f7;stroke-width:2}#shaft .hint{font:500 12px Inter,sans-serif;fill:#8fa3b0}
+#plots .ax{stroke:#4a5f6c}#plots .m{fill:#f0b42933;stroke:#f0b429;stroke-width:1.5}#plots .v{fill:none;stroke:#4fc3f7;stroke-width:2}
+#plots .gov{stroke:var(--bad);stroke-dasharray:4 3}#plots .lbl{font:600 10px var(--mono);fill:#8fa3b0}
+.solve{margin:10px 0 0;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-size:.9rem}
+.solve.unsupported{border-color:#5a2420;color:#ffb3ad}.solve.unsupported b{color:var(--bad)}.solve.fail{border-color:#5a2420}.solve.pass{border-color:#2a5c43}
+.checks{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+.checks li{font:600 .76rem var(--mono);padding:4px 8px;border-radius:8px;border:1px solid var(--line)}
+.checks li.pass{color:var(--ok)}.checks li.fail{color:var(--bad);border-color:#5a2420}
+.readings{margin-top:8px}
+.rows{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.rows li{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr)) auto;gap:6px;align-items:end;background:#0d151b;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.rows li > b{font:700 .8rem var(--mono);align-self:center}
+.rows label{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted);font-weight:600}
+.rows input,.field input,.field select{min-height:40px;border-radius:8px;border:1px solid #2c3e4a;background:#0b1117;color:var(--ink);font:600 .9rem var(--mono);padding:0 8px;width:100%}
+.rows button{min-height:40px;min-width:40px;padding:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.84rem;font-weight:600;color:var(--muted);margin-top:8px}
+.field .unit{font:500 .72rem var(--mono);color:var(--dim)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+.movers td button{min-height:34px;font-size:.76rem}
+.sweepplot{display:block;width:100%;height:auto;background:#0d151b;border-radius:8px;margin-top:8px}
+.sweepplot .q{fill:none;stroke:#4fc3f7;stroke-width:2}.sweepplot .best{fill:var(--ok)}.sweepplot .lbl{font:500 10px var(--mono);fill:#8fa3b0}.sweepplot .ax{stroke:#4a5f6c}
+details.topic{border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:8px}
+details.topic summary{min-height:44px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+details.topic code{display:block;font:500 .8rem var(--mono);white-space:pre-wrap;background:#0d151b;border-radius:8px;padding:8px;margin:6px 0}
