@@ -63,11 +63,11 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     assert.match(t, /4500 rpm — matches the data: late-intake pressure 1\.291 → 1\.050 bar/);
     assert.match(t, /6000 rpm — the data say “same way”: late-intake pressure 1\.204 → 1\.297 bar, whole-event 0\.862 → 0\.861 bar/);
     await exp.locator('[data-why="friction"]').click();
-    assert.match(await exp.innerText(), /FMEP\) is identical/);
+    assert.match(await exp.innerText(), /mechanical engine friction \(FMEP\) is identical[\s\S]*runner walls is different/);
     await exp.locator('[data-why="inconclusive"]').click();
     assert.match(await exp.innerText(), /A defensible, cautious answer/);
     await exp.locator('[data-why="wave"]').click();
-    assert.match(await exp.innerText(), /Supported: at both speeds the late-intake pressure clearly moved the same way/);
+    assert.match(await exp.innerText(), /Consistent with wave timing: at both speeds the late-intake pressure clearly moved the same way[\s\S]*does not prove it/);
     // unseen point
     await exp.getByRole('radio', { name: '7000 rpm' }).click();
     await exp.getByRole('button', { name: 'Up', exact: true }).click();
@@ -104,7 +104,7 @@ test('Engine World 1280px, Explore: any length — 34 → 50 cm needs no “shor
     await exp.locator('[data-cite="6000"][data-v="same"]').click();
     await exp.locator('[data-cite="4500"][data-v="same"]').click();
     await exp.locator('[data-why="wave"]').click();
-    assert.match(await exp.innerText(), /Supported/);
+    assert.match(await exp.innerText(), /Consistent with wave timing/);
     // a forced non-converged unseen run is reported, never plotted or offered
     await page.evaluate(() => window.__shaft.setMaxCycles(2));
     await exp.getByRole('radio', { name: '7000 rpm' }).click();

@@ -141,8 +141,8 @@ function resultBlock(p) {
 }
 const predictRow = (key, disabled) => `<p class="think">Predict before you run: brake torque will go…</p><div class="row">${['Up', 'Down', 'Within ±1 %'].map(o => `<button type="button" class="guess" data-xp="${key}" data-v="${o}" aria-pressed="${X.prediction === o}" ${disabled ? 'disabled' : ''}>${o}</button>`).join('')}</div>`;
 const WHY = [
-  ['wave', 'Wave timing: at every speed the late-intake pressure moved the same way as filling, indicated work and torque.'],
-  ['friction', 'Friction: the change in runner length changed the friction losses.'],
+  ['wave', 'Consistent with wave timing: at every speed the late-intake pressure moved the same way as filling, indicated work and torque.'],
+  ['friction', 'Mechanical engine friction: changing the runner changed the engine’s friction losses.'],
   ['inconclusive', 'Inconclusive: the pressure trace does not line up clearly with filling and work at every speed.'],
 ];
 function evidenceChart(p) {
@@ -178,7 +178,7 @@ function expHTML() {
   }
   h += resultBlock(first);
   if (!compare(first.A, first.B).ok) return h + `<div class="row"><button type="button" id="x-reset">Try Run B again</button></div>`;
-  h += `<p><b>What to look at.</b> Friction depends only on speed in this model, so it is identical within the pair and the torque change comes from indicated work, which follows the air trapped (volumetric efficiency). The runner is a tuned pipe: when the intake valve opens, a pressure wave travels up the runner, reflects where the runner meets the plenum (a sudden widening) and returns to the valve. Whether that helps depends on the pressure on the runner side of the valve across the whole intake event — especially late in it, when the piston slows and the valve is closing. One crank angle is not enough: compare the whole trace (switch the second chart to “Gas exchange”).</p>`;
+  h += `<p><b>What to look at.</b> Mechanical engine friction (FMEP) depends only on speed in this model, so it is identical within the pair and the torque change comes from indicated work, which follows the air trapped (volumetric efficiency). The runner is a tuned pipe: when the intake valve opens, a pressure wave travels up the runner, reflects where the runner meets the plenum (a sudden widening) and returns to the valve. Whether that helps depends on the pressure on the runner side of the valve across the whole intake event — especially late in it, when the piston slows and the valve is closing. One crank angle is not enough: compare the whole trace (switch the second chart to “Gas exchange”).</p>`;
   // step 5: the same comparison at another speed
   const used = new Set(X.pairs.map(p => p.rpm)), second = X.pairs.find(p => p.kind === 'repeat');
   h += `<h3 class="sub">5 · Same change, another speed</h3>`;
@@ -206,11 +206,11 @@ function expHTML() {
   h += `<p class="think">What do your runs support?</p><div class="whys">${WHY.map(([k, t]) => `<button type="button" class="guess why" data-why="${k}" aria-pressed="${X.why === k}">${t}</button>`).join('')}</div>`;
   if (!X.why) return h;
   const bad = J.rows.find(r => !r.agree);
-  const fb = X.why === 'friction' ? ['wrong', 'Not supported: within each pair the modelled friction (FMEP) is identical, so friction cannot explain the difference between A and B.']
-    : J.verdict === 'wave' ? (X.why === 'wave' ? ['right', 'Supported: at both speeds the late-intake pressure clearly moved the same way as filling, indicated work and torque.'] : ['right', 'A defensible, cautious answer — but here the late-intake pressure clearly moved with filling, work and torque at both speeds, so the runs do support wave timing.'])
+  const fb = X.why === 'friction' ? ['wrong', 'Not supported: within each pair the modelled mechanical engine friction (FMEP) is identical, so it cannot explain the difference between A and B. (Air dragging on the runner walls is different: it is part of the 1D gas model and does change with runner length, so it can change the size of the effect.)']
+    : J.verdict === 'wave' ? (X.why === 'wave' ? ['right', 'Consistent with wave timing: at both speeds the late-intake pressure clearly moved the same way as filling, indicated work and torque. That supports the explanation; it does not prove it.'] : ['right', 'A defensible, cautious answer — but here the late-intake pressure clearly moved with filling, work and torque at both speeds, so the runs are consistent with wave timing.'])
     : (X.why === 'inconclusive' ? ['right', `Right to hold back: at ${bad.rpm} rpm the pressure trace does not clearly line up with filling and work. A next step would be the mass flow through the valve over the cycle (not shown in this lab) or a finer speed sweep.`] : ['wrong', `Not supported at every speed: at ${bad.rpm} rpm the late-intake pressure ${Math.abs(bad.dLate) < CLEAR_BAR ? 'barely changed' : 'moved the other way'} while filling ${bad.dVE > 0 ? 'rose' : 'fell'}. “Inconclusive” is the honest answer here.`]);
   h += `<p class="result ${fb[0]}">${fb[1]}</p>`;
-  if (J.verdict === 'wave') h += `<p>In these runs, what matters is when the reflected wave reaches the valve relative to the end of the intake event. The round trip takes roughly the same time at every speed, but the intake event gets shorter in time as speed rises, so the same length helps at one speed and hurts at another.</p>`;
+  if (J.verdict === 'wave') h += `<p>The likely mechanism in these runs: what matters is when the reflected wave reaches the valve relative to the end of the intake event. The round trip takes roughly the same time at every speed, but the intake event gets shorter in time as speed rises, so the same length helps at one speed and hurts at another.</p>`;
   h += `<p class="note">Model predictions from one 1D model, not dyno evidence.</p>`;
   // step 7: an operating point the learner has not run
   const third = X.pairs.find(p => p.kind === 'unseen');
