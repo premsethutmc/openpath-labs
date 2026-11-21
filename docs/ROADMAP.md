@@ -2,8 +2,8 @@
 
 **Current roadmap (21 Nov 2026):** see [CURRICULUM_MAP.md](./CURRICULUM_MAP.md) — the full mechanical curriculum mapped against what exists, the pump-set connecting project, and six gated stages:
 
-0. Foundations — design record and provenance; merge the open drafts
-1. Connect the existing benches (Pump House + workshop on one project)
+0. Minimal design record — only what milestone 1 uses
+1. Drive check (first milestone) — change pipework → pump recalculates shaft demand → the same saved project shows whether the motor still copes
 2. Machine design and vibration engines
 3. Heat transfer engine
 4. Pump set test run (all benches, unscripted)

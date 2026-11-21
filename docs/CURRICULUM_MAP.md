@@ -53,17 +53,17 @@ An electric motor driving a centrifugal pump on one shaft. It touches six subjec
 
 ```
 Pump duty (fluids, live) ──torque──▶ Shaft and bearings (machine design, new) ──shaft Ø──▶ Rotor dynamics (vibration, new)
-   │ losses, water temp                 │ shaft Ø, fit range                                  ▲            │ critical-speed margin
+   │ speed, loads, water                │ shaft Ø, fit range                                  ▲            │ critical-speed margin
    ▼                                    ▼                                                     │            │
-Bearing heat (heat transfer, new)   Make and measure (workshop, draft) ──measured fit → unbalance┘            │
+Bearing heat (heat transfer, new)   Make and measure (workshop, draft) ─measured runout → unbalance┘            │
    │ bearing temperature                │ fit verdict                                                      │
    └──────────────────────────────▶  TEST RUN: shakes? cavitates? overheats?  ◀────────────────────────────┘
 ```
 
-- **Fluids → machine design:** duty sets impeller and speed, hence shaft power and torque; more head, thicker shaft.
-- **Machine design → vibration:** a thinner shaft is cheaper but its critical speed falls; near 2,900 rpm the set shakes.
-- **Manufacturing → vibration:** a loose measured hub fit lets the impeller sit off-centre; unbalance shows at once per revolution.
-- **Fluids → heat transfer → machine design:** losses and water temperature set bearing temperature, which sets oil viscosity (existing oil model) and bearing life; hotter water also cuts NPSH margin (already modelled).
+- **Fluids → drive → machine design:** a pipework or delivery-height change moves the operating point on the pump curve; the pump solver gives the new shaft power and speed, so torque is calculated (T = P / ω), never assumed. More head does not automatically mean more torque — on a centrifugal pump flow often falls, and shaft power with it. Shaft size follows from the calculated torque and bending loads.
+- **Machine design → vibration:** a thinner shaft is cheaper but its critical speed falls; near running speed the set shakes.
+- **Manufacturing → vibration:** a measured fit gives only the possible radial clearance. Where the hub actually sits depends on how it is located (key, set screw, taper) and is found by measuring runout on the assembled rotor, or modelled separately. Unbalance comes from that eccentricity, not from the fit alone.
+- **Heat transfer → machine design:** most pump losses go into the water, not the bearings. Bearing temperature comes from bearing friction (load, speed, oil viscosity) and how the housing sheds heat; it in turn changes oil viscosity (existing oil model) and bearing life. Hotter water separately cuts NPSH margin (already modelled).
 - **Test run:** smooth, shakes, cavitates or overheats; the learner traces the symptom back to a decision.
 
 The project is a spine, not the product: every bench also opens alone.
@@ -72,14 +72,16 @@ The project is a spine, not the product: every bench also opens alone.
 
 | Stage | What it builds | Gate to pass |
 |---|---|---|
-| 0 · Foundations | Design record; every number tagged with its source. Review and merge PR #2, #3, #4, #6 | A workshop part opens in another bench at the same revision |
-| 1 · Connect existing benches | Pump House and workshop read and write one project; presets and scratch builds stay one object | Change the impeller: shaft torque updates in the project |
+| 0 · Minimal design record | Project file: quantities with units and their source — only what milestone 1 uses; no draft merges required | Save and reopen: identical project, identical results |
+| **1 · Drive check (first milestone)** | Change a pipe or delivery height; the pump solver recalculates operating point and shaft demand; the same saved project shows whether the chosen motor still copes | One pipework change flips the motor verdict, end to end |
 | 2 · Machine design and vibration engines | Shaft fatigue, bearing life, critical speed, unbalance response; also opens alone ("why does it shake at one speed?") | Matches hand calculations; a thin shaft shakes at resonance |
 | 3 · Heat transfer engine | Conduction, convection, fins, transient heating, heat exchangers; also opens alone ("design a cooling system") | Matches textbook cases; bearing temperature sets oil viscosity |
-| **4 · Pump set test run** | All benches on one project; symptoms traced to decisions; no script | All four failures (shake, cavitate, overheat, misfit) reachable, unscripted, phone and desktop |
+| 4 · Pump set test run | All benches on one project; symptoms traced to decisions; no script | All four failures (shake, cavitate, overheat, misfit) reachable, unscripted, phone and desktop |
 | 5 · Widen the map | Thermodynamic properties and cycles, mechanisms and gears, materials testing, more processes, mechatronics, a second project | Each new engine meets the same evidence bar |
 
-Order: stages 0–1 reuse what exists and prove the cross-bench idea cheaply. Vibration and machine design come before heat transfer because the pump set's most instructive failure (shaking from a thin shaft or loose fit) needs them, and they build on the frame solver and fit model. Every engine meets the workshop's evidence bar: preset equals scratch build, results match hand calculations or published cases, numbers carry their source, guidance never changes controls or physics.
+The first milestone is a design decision, not a data handoff: change a pipe or the delivery height, the pump solver recalculates the operating point and shaft demand, and the same saved project shows whether the chosen motor can still do the job. Vibration, bearings and heat come only after that works end to end. It brings in only what it uses (Pump House on main, a minimal project file, a motor rating check); none of the open drafts is a prerequisite.
+
+Every bench stays usable on its own, and every engine meets the workshop's evidence bar: preset equals scratch build, results match hand calculations or published cases, numbers carry their source, guidance never changes controls or physics.
 
 ## Risks and what we will not build yet
 
@@ -90,7 +92,7 @@ Order: stages 0–1 reuse what exists and prove the cross-bench idea cheaply. Vi
 
 Not yet: 3D CAD or 3D finite-element stress analysis, a general multi-physics solver, CNC programming, combustion chemistry beyond the engine model, any claim of design certification.
 
-Open product question: confirm the pump set as the first connected project (alternative: battery-pack cooling and mounting — suits the EV vertical, reuses less).
+**Decided (21 Nov 2026):** pump set first; the full curriculum stays the goal; every bench stays independently usable.
 
 ## Sources
 
