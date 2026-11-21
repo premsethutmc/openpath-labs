@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flow Tunnel · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="./tunnel.css">
+</head>
+<body data-mode="learn">
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Fluid mechanics</span>
+  <div class="mode" role="radiogroup" aria-label="Mode">
+    <button type="button" role="radio" data-mode="learn" aria-checked="true">Learn</button>
+    <button type="button" role="radio" data-mode="explore" aria-checked="false">Explore</button>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="titleblock">
+      <h1>Flow Tunnel</h1>
+      <p>Put anything in the stream — a pipe, a wing, a car, your own drawing — and watch the fluid flow around it.</p>
+    </div>
+    <div class="tunnel">
+      <canvas id="field" aria-label="Flow around the object, coloured by the selected view"></canvas>
+      <canvas id="smoke" aria-hidden="true"></canvas>
+      <div class="hud"><span id="regime" class="state">Starting…</span><span id="hud-re"></span></div>
+      <div class="views" role="radiogroup" aria-label="View">
+        <button type="button" role="radio" data-view="speed" aria-checked="true">Speed</button>
+        <button type="button" role="radio" data-view="swirl" aria-checked="false">Swirl</button>
+        <button type="button" role="radio" data-view="pressure" aria-checked="false">Pressure</button>
+        <button type="button" role="radio" data-view="smoke" aria-checked="false">Smoke</button>
+      </div>
+      <p class="legend" id="legend"></p>
+    </div>
+    <dl class="gauges">
+      <div><dt>Reynolds number</dt><dd id="g-re">–</dd></div>
+      <div><dt>Drag coefficient</dt><dd id="g-cd">–</dd></div>
+      <div><dt>Lift coefficient</dt><dd id="g-cl">–</dd></div>
+      <div><dt id="g-x-label">Vortex shedding</dt><dd id="g-x">–</dd></div>
+    </dl>
+    <svg id="trace" viewBox="0 0 340 90" role="img" aria-labelledby="trace-t"><title id="trace-t">Lift over time</title></svg>
+  </section>
+
+  <section class="side">
+    <div class="card mission" id="mission" aria-live="polite"></div>
+
+    <div class="card" id="c-object">
+      <h2>What is in the stream</h2>
+      <div class="chips" id="scenes" role="radiogroup" aria-label="Object"></div>
+      <label class="range" id="aoa-box" hidden>Wing angle <output id="aoa-out"></output><input id="aoa" type="range" min="-10" max="25" step="1" value="6"></label>
+      <div class="chips draw" role="radiogroup" aria-label="Drawing tool">
+        <button type="button" role="radio" data-tool="none" aria-checked="true">Look</button>
+        <button type="button" role="radio" data-tool="draw" aria-checked="false">Draw</button>
+        <button type="button" role="radio" data-tool="erase" aria-checked="false">Erase</button>
+      </div>
+    </div>
+
+    <div class="card" id="c-flow">
+      <h2>The flow</h2>
+      <label class="range">Reynolds number <output id="re-out"></output><input id="re" type="range" min="0" max="100" step="1" value="60"></label>
+      <p class="note" id="re-note"></p>
+      <div class="row"><button type="button" id="pause">Pause</button><button type="button" id="restart">Restart the flow</button></div>
+    </div>
+
+    <details class="card about">
+      <summary>What is modelled, and what is not</summary>
+      <p><b>Method:</b> lattice Boltzmann (D2Q9, two-relaxation-time), which solves the Navier–Stokes equations for slow, nearly incompressible flow. No-slip walls by bounce-back; forces by momentum exchange.</p>
+      <p><b>Checked:</b> channel flow matches the exact parabolic solution within 0.4 %; mass is conserved; the Schäfer–Turek cylinder benchmark (Re 100) gives the correct shedding frequency. See docs/VALIDATION.md.</p>
+      <p><b>Limits:</b> two-dimensional; Reynolds numbers up to a few hundred (laminar and vortex-shedding flows). Real cars and aircraft run at Re in the millions, where flow is three-dimensional and turbulent — the patterns here teach the principles, not those exact numbers. Coefficients include the effect of the tunnel walls (blockage).</p>
+    </details>
+  </section>
+</main>
+<script type="module" src="./tunnel.mjs"></script>
+</body>
+</html>

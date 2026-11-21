@@ -43,3 +43,7 @@
 ## Later
 
 - Multiple interface languages (platform-wide, all at once — not one language as a selling point)
+
+## Fluids
+- Done: Flow Tunnel (live LBM, 6 CE3391 missions, draw-your-own).
+- Next: pumps and pipe networks (Units IV–V: Darcy losses, Moody chart, centrifugal pump curves); finer grid / GPU for higher Re.

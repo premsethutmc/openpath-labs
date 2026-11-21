@@ -53,3 +53,19 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 - Unpublished geometry (valve sizes, cam timing, rod length, pipe lengths) uses typical values; the real K12M also has intake VVT, not modelled, so mid-range torque dips (3000–3500 rpm) are likely deeper than the real engine's.
 - Constant γ within each pipe; single gas species; no fuel-film or evaporation; no knock-limited spark at full load (combustion phased for best torque); friction from a correlation, not components.
 - Valve flow uses a quasi-steady orifice with an anti-overshoot limit; professional codes use characteristic or junction-Riemann valve boundaries.
+
+## Fluids — Flow Tunnel (2D lattice Boltzmann, D2Q9 TRT)
+
+| Check | Result | Reference | Verdict |
+|---|---|---|---|
+| Poiseuille channel, peak velocity | −0.34 % | analytic parabola | ✓ |
+| Mass conservation over 4000 steps | balanced | — | ✓ |
+| Venturi: continuity / Bernoulli | throat speed ×2.7, pressure falls | A₁V₁ = A₂V₂, Bernoulli | ✓ qualitative |
+| Cylinder Re 20 steady drag (Schäfer–Turek 2D-1, D = 20 cells) | Cd 5.79 | 5.58 | +4 % |
+| Cylinder Re 100 (Schäfer–Turek 2D-2), Strouhal number | 0.297 | 0.295–0.305 | ✓ |
+| Same, peak drag / peak lift | 3.74 / 1.17 | 3.22–3.24 / 0.99–1.01 | +16 % / +17 % (coarse grid) |
+| Shedding onset | steady at Re 20, shedding at Re 100 | onset ≈ Re 47 | ✓ |
+
+**What is reliable:** flow patterns, steady vs shedding regimes, shedding frequency, trends (streamlined vs blunt, continuity, Bernoulli, laminar profile).
+**Approximate:** force coefficients (±5 % steady, ~±15–20 % peak values on the coarse live grid).
+**Not modelled:** 3D effects, turbulence at everyday Reynolds numbers (10⁴–10⁶), compressibility. The tunnel caps the Reynolds number where the grid can no longer resolve the flow and says so ("max").
