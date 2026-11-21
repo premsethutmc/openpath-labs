@@ -1,17 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { simulate } from '../engines/thermofluids/gasdyn.mjs';
-import { BENCH_STOCK, engineFor, runPoint, chain, loopWork, compare } from './bench-setup.mjs';
+import { BENCH_STOCK, engineFor, runPoint, chain, loopWork, compare, solverRunner, setupForRunner } from './bench-setup.mjs';
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol * Math.abs(b), `${msg}: ${a} vs ${b}`);
 
-test('baseline unchanged: recording traces for the experiment leaves the solver output bit-for-bit identical', () => {
-  // values recorded on main (commit c124848) before this branch touched the solver
-  assert.equal(simulate(4500).torque, 112.96149220597019);
-  assert.equal(simulate(2500).torque, 100.975972013305);
-  // the stock learner setup maps to the calibrated K12M exactly
-  assert.equal(simulate(4500, { engine: engineFor(BENCH_STOCK) }).torque, 112.96149220597019);
-  assert.equal(runPoint(BENCH_STOCK, 4500).torque, 112.96149220597019);
+test('baseline unchanged: recording traces for the experiment leaves the solver output unchanged', () => {
+  // values recorded on main (commit c124848) before this branch touched the solver; tolerance 1e-9 relative so the
+  // check is portable across Node/V8 versions (floating-point order of evaluation), far below any physical change
+  const base = { 2500: 100.975972013305, 4500: 112.96149220597019 };
+  near(simulate(4500).torque, base[4500], 1e-9, '4500 rpm');
+  near(simulate(2500).torque, base[2500], 1e-9, '2500 rpm');
+  // the stock learner setup maps to the calibrated K12M exactly (same run, same code path: identical)
+  assert.equal(simulate(4500, { engine: engineFor(BENCH_STOCK) }).torque, simulate(4500).torque);
+  assert.equal(runPoint(BENCH_STOCK, 4500).torque, simulate(4500).torque);
+  assert.equal(solverRunner(BENCH_STOCK), 0.34, 'calibrated K12M runner length');
+  near(solverRunner(setupForRunner(0.24)), 0.24, 1e-9, 'learner length → solver length');
 });
 
 test('work → power: the p–V loop, IMEP, BMEP, torque and power are one consistent chain from a single run', () => {

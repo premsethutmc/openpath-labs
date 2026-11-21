@@ -170,6 +170,7 @@
       <p class="note"><b>Reaches the 1D bench:</b> <span id="x-bench-inputs"></span>. <b>Fast model only:</b> oil, temperatures, spark, mixture, fuel, boost and assembly choices — they do not change these runs.</p>
       <div id="x-after-a" hidden>
         <h3 class="sub">2 · Scrub one 720° cycle</h3>
+        <div class="chips" id="x-view" role="radiogroup" aria-label="Which runs to show"></div>
         <div class="row"><button type="button" id="x-play">Play</button></div>
         <label class="range">Crank angle <input id="x-scrub" type="range" min="0" max="719" step="1" value="0" aria-label="Crank angle"></label>
         <ul class="results" id="x-read"></ul>
@@ -181,17 +182,8 @@
         <h3 class="sub">3 · From the loop to the shaft</h3>
         <div id="x-chain"></div>
         <h3 class="sub">4 · Controlled experiment: intake runner length</h3>
-        <p class="note">Run B copies Run A exactly — same speed, cam, throttle, ambient air — except the intake runner length.</p>
-        <label class="range">Run B intake runner length <output id="x-runner-out"></output><input id="x-runner" type="range" min="20" max="70" step="1" value="35"></label>
-        <p class="think">Predict before you run: brake torque at this speed will go…</p>
-        <div class="row">
-          <button type="button" class="guess" data-xpred="Up">Up</button>
-          <button type="button" class="guess" data-xpred="Down">Down</button>
-          <button type="button" class="guess" data-xpred="Within ±1 %">Within ±1 %</button>
-        </div>
-        <p class="note" id="x-hint"></p>
-        <div class="row"><button type="button" class="primary" id="x-runB" disabled>Run B</button></div>
-        <div id="x-ab" aria-live="polite"></div>
+        <p class="note">Run B copies Run A exactly — same speed, cam, throttle, ambient air — except the intake runner length. Lengths are the ones the solver uses (stock K12M model: 34 cm).</p>
+        <div id="x-exp" aria-live="polite"></div>
       </div>
       <p class="note" id="x-caveat"></p>
     </section>

@@ -9,6 +9,11 @@ export const BENCH_STOCK = { cam: { duration: 240, lift: 8, centre: 105 }, runne
 // assembly choices) changes only the fast model.
 export const BENCH_INPUTS = ['cam duration', 'cam lift', 'lobe centre', 'intake runner length'];
 
+// The learner-facing runner value is offset from the solver's (the calibrated K12M runner is 0.34 m while the
+// Engine World stock setting is 0.35). Always show learners the length the solver actually uses.
+export const solverRunner = setup => engineFor(setup).runner.L;
+export const setupForRunner = (L, base = BENCH_STOCK) => ({ ...base, runner: +(L + (base.runner - K12M.runner.L)).toFixed(4) });
+
 export function engineFor({ cam, runner }) {
   const d = { duration: cam.duration - BENCH_STOCK.cam.duration, lift: (cam.lift - BENCH_STOCK.cam.lift) / 1000, centre: cam.centre - BENCH_STOCK.cam.centre };
   return {

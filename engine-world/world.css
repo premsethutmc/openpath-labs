@@ -71,3 +71,5 @@ body[data-mode=learn] .key{display:none}
 .abt th:first-child{text-align:left;color:var(--muted);font-weight:500;white-space:normal}.abt thead th{color:var(--dim);font-weight:600}
 .abt td:last-child{color:var(--dim);font-size:.68rem}
 #x-ab{overflow-x:auto}
+.whys{display:grid;gap:8px;margin-top:8px}.whys .why{text-align:left;padding:10px 12px;min-height:auto;line-height:1.45;font-weight:500}
+.whys .why[aria-pressed=true]{background:var(--ink);color:#0b1117}
