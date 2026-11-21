@@ -6,6 +6,7 @@ import { displacedPoint } from '../engines/solids/frame.mjs';
 import { PRESETS, LOAD_OBJECTS } from './presets.mjs';
 import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap } from './build.mjs';
 import { workbench } from '../core/workbench.mjs';
+import { notebook } from '../core/notebook.mjs';
 
 const BUILD = {
   id: 'build', name: 'Build your own', setting: 'gap', editable: true, gap: [0, 8000], deckWidth: 3000,
@@ -262,13 +263,13 @@ function paintStats() {
   const util = analysis.ok ? 1 / analysis.sf : 1.5;
   $('meter-fill').style.width = `${Math.min(100, util / 1.5 * 100)}%`;
   $('meter-fill').style.background = utilColour(util);
+  const kg = state.loads.reduce((s, l) => s + LOAD_OBJECTS[l.obj].kg, 0);
+  $('s-load').textContent = kg >= 1000 ? `${fmt(kg / 1000, 1)} t` : `${kg} kg`;
   if (!analysis.ok) { ['s-sf', 's-stress', 's-defl'].forEach(id => { $(id).textContent = '–'; }); paintBuildbar(); return; }
   $('s-sf').textContent = sfText(analysis.sf);
   const top = analysis.members.reduce((a, b) => (b.maxSigma > a.maxSigma ? b : a));
   $('s-stress').textContent = `${fmt(top.maxSigma)} MPa`;
   $('s-defl').textContent = `${fmt(analysis.maxDefl.d, analysis.maxDefl.d < 10 ? 2 : 0)} mm`;
-  const kg = state.loads.reduce((s, l) => s + LOAD_OBJECTS[l.obj].kg, 0);
-  $('s-load').textContent = kg >= 1000 ? `${fmt(kg / 1000, 1)} t` : `${kg} kg`;
   paintBuildbar();
 }
 
@@ -387,12 +388,13 @@ function update(patch) {
   draw(); paintStats(); paintInspect(); paintControls(); if (!patch.loads || !drag) paintGuide();
   document.body.dataset.sf = analysis.ok ? analysis.sf.toFixed(3) : 'unstable';
   if (preset.editable && !drag && !nodeDrag) saveDesign();
+  if (nb && !drag && !nodeDrag) nb.sync();
 }
 
 function paintBuildbar() {
   const bar = $('buildbar');
   if (!preset.editable) {
-    bar.innerHTML = mode === 'explore' ? '<button type="button" id="b-copy">Edit this structure</button>' : '';
+    bar.innerHTML = '<button type="button" id="b-copy">Edit this structure</button>';
     const c = $('b-copy'); if (c) c.onclick = () => editCopy();
     return;
   }
@@ -508,6 +510,30 @@ $('t-shape').onclick = () => update({ exaggerate: !state.exaggerate });
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 new ResizeObserver(() => { if (preset) draw(); }).observe(svg);
 
+// ---------- experiments (shared project + evidence record, core/project.mjs) ----------
+const SETUP_KEYS = ['id', 'name', 'editable', 'setting', 'gap', 'view', 'deckWidth', 'sideHeight', 'hang', 'question', 'nodes', 'members', 'supports', 'groups', 'materials', 'sections', 'loadChoices'];
+const getSetup = () => ({ object: Object.fromEntries(SETUP_KEYS.filter(k => preset[k] !== undefined).map(k => [k, clone(preset[k])])),
+  state: { material: state.material, section: state.section, scenario: state.scenario, loads: clone(state.loads) } });
+export const SOLIDS_ADAPTER = {
+  domain: 'solids-frame', title: 'Structure',
+  evaluate(setup) {
+    if (!setup.object.members.length) return { ok: false, reason: 'nothing is built yet' };
+    const st = buildStructure(setup.object, setup.state), a = analyze(st);
+    if (!a.ok) return { ok: false, reason: a.message || 'the structure is a mechanism: it can move freely' };
+    const kg = setup.state.loads.reduce((s, l) => s + LOAD_OBJECTS[l.obj].kg, 0);
+    const used = mass(setup.object, m => st.members[setup.object.members.indexOf(m)]);
+    return { ok: true,
+      outputs: { sf: { label: 'Safety factor', value: a.sf, unit: '', source: 'simulated' }, stress: { label: 'Highest stress', value: Math.max(...a.members.map(m => m.maxSigma)), unit: 'MPa', source: 'simulated' },
+        movement: { label: 'Biggest movement', value: a.maxDefl.d, unit: 'mm', source: 'simulated' }, load: { label: 'Load carried', value: kg, unit: 'kg', source: 'input' }, mass: { label: 'Material used', value: used, unit: 'kg', source: 'simulated' } },
+      verdicts: { holds: { label: 'Holds the load?', value: a.sf >= 1 ? 'pass' : 'fail', reason: `safety factor ${a.sf.toFixed(2)}` } } };
+  },
+};
+function applySetup(setup) {
+  if (setup.object.editable) openBuild({ ...clone(BUILD), ...setup.object, loads: setup.state.loads, material: setup.state.material, section: setup.state.section });
+  else { setPreset(setup.object.id); state = { ...state, ...setup.state }; }
+  update({ scenario: setup.state.scenario });
+}
+let nb = null;
 const WB = workbench('playground', { initial: 'guide' });
 $('objects').innerHTML = PRESETS.map(p => `<button type="button" data-preset="${p.id}">${p.name}</button>`).join('') + '<button type="button" data-preset="build" class="buildbtn">+ Build your own</button>';
 $('objects').querySelectorAll('button').forEach(b => b.onclick = () => { setPreset(b.dataset.preset); location.hash = b.dataset.preset; });
@@ -515,5 +541,7 @@ setMode(mode);
 setPreset(location.hash.slice(1) || store.get('labs.preset', 'footbridge'));
 window.addEventListener('hashchange', () => { if (location.hash.slice(1) !== preset.id) setPreset(location.hash.slice(1)); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && pending) { pending = null; draw(); } });
+nb = notebook($('experiments'), { adapter: SOLIDS_ADAPTER, getSetup, applySetup });
+nb.sync(); nb.render();
 window.__labs = { toScreen: (x, y) => ({ x: view.X(x), y: view.Y(y) }) }; // used by browser tests
 document.body.dataset.ready = 'true';
