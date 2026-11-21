@@ -7,7 +7,7 @@
 - [x] Solids engine v1: 2D frame FEM (bending + axial), reactions, member forces, stress, buckling, safety factor — validated against textbook cases
 - [x] Dashboard: all labs across the mechanical path, with status
 - [x] Force Playground v1: real objects (shelf bracket, footbridge, truss bridge, crane, diving board), drag loads live, swap material and section, scenarios, live deformation, stress colours, live equations, safety meter, failure; guided path with pause-and-think
-- [ ] Open build mode: add and connect your own members
+- [x] Build your own: draw members (rigid or pin joints), supports, delete, move joints, undo, material used; edit any preset; designs saved in the browser
 - [ ] Tamil interface
 - [ ] Solids v2: 2D plane stress (holes, notches, stress concentrations), shear stress, torsion members
 

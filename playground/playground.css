@@ -72,4 +72,13 @@ h3{font-size:.78rem;color:var(--muted);margin:0 0 6px;font-weight:700}
 .loadchip{background:#f3efe6;border-color:#d8cfbd;font-size:.82rem}
 .note{font-size:.82rem;color:var(--muted);margin:6px 0 0}
 .about{font-size:.88rem;color:var(--muted)}.about summary{min-height:44px;align-content:center;font-weight:700;color:var(--ink);cursor:pointer}
+#scene .node{fill:#fff;stroke:#14202b;stroke-width:2.5;cursor:grab}
+#scene .node.target{fill:#ffe8dc;stroke:#e0531f}
+.buildbar{display:grid;gap:8px;margin-top:10px}
+.buildbar:empty{display:none}
+.buildbar .chips button[aria-checked=true]{background:#e0531f;border-color:#e0531f;color:#fff}
+.buildbar button:disabled{opacity:.45}
+.mass{margin:0;font-size:.9rem;color:var(--muted)}.mass b{color:var(--ink)}
+.objects .buildbtn{border-style:dashed;border-color:#e0531f;color:#b43d10}
+.objects .buildbtn[aria-current=true]{background:#e0531f;color:#fff;border-style:solid}
 @media(prefers-reduced-motion:reduce){#meter-fill{transition:none}}

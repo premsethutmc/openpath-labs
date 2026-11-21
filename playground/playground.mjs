@@ -4,6 +4,37 @@ import { SCENARIOS, applyScenario } from '../core/scenarios.mjs';
 import { analyze, verdict, SAMPLES } from '../engines/solids/analyze.mjs';
 import { displacedPoint } from '../engines/solids/frame.mjs';
 import { PRESETS, LOAD_OBJECTS } from './presets.mjs';
+import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap } from './build.mjs';
+
+const BUILD = {
+  id: 'build', name: 'Build your own', setting: 'gap', editable: true, gap: [0, 8000], deckWidth: 3000,
+  question: 'Bridge the 8 m river. Carry the load safely with the least material.',
+  view: { minX: -1500, maxX: 9500, minY: -1000, maxY: 4500 },
+  nodes: [{ x: 0, y: 0 }, { x: 8000, y: 0 }],
+  members: [{ i: 0, j: 1, type: 'frame', group: 'main', tags: ['deck'] }],
+  supports: [{ node: 0, type: 'pin' }, { node: 1, type: 'roller' }],
+  materials: ['steel', 'aluminium', 'timber', 'bamboo'], material: 'steel',
+  sections: [{ shape: 'tube', d: 60, t: 4 }, { shape: 'tube', d: 114, t: 5 }, { shape: 'I', h: 200, b: 100, tw: 5.7, tf: 10.8 }, { shape: 'I', h: 300, b: 140, tw: 7.5, tf: 12.4 }], section: 1,
+  loadChoices: ['person', 'car', 'truck', 'sack'], loads: [{ obj: 'car', member: 0, at: 0.5 }],
+  steps: [
+    { text: 'A single steel tube across the river, with a car on it. It fails. Your job: design something better.' },
+    { text: 'Choose “Draw”, then tap one point and another to add a member. Members snap to a 0.5 m grid and join where they meet. Try building triangles above the deck.' },
+    { text: '“Supports”: tap a joint to change it — pin, roller, fixed, wall guide, none. “Delete”: tap a member to remove it. Rigid joints carry bending; pin joints only push and pull.' },
+    { text: 'Challenge: carry the loaded truck with a safety factor above 1.5 using less than 2,000 kg of material. Watch “Material used”.' },
+  ],
+};
+let tool = 'move', jointType = 'frame', pending = null, hover = null, nodeDrag = null, undoStack = [];
+const clone = o => JSON.parse(JSON.stringify(o));
+const design = () => ({ nodes: preset.nodes, members: preset.members, supports: preset.supports, loads: state.loads });
+function saveDesign() { if (preset.editable) store.set('labs.design', { ...clone(preset), loads: state.loads, section: state.section, material: state.material }); }
+function edit(fn) {
+  const before = design(), after = fn(before);
+  if (after === before) return;
+  undoStack.push(clone(before)); if (undoStack.length > 40) undoStack.shift();
+  Object.assign(preset, { nodes: after.nodes, members: after.members, supports: after.supports });
+  update({ loads: after.loads.filter(l => l.member < after.members.length), selected: null });
+  saveDesign();
+}
 
 const $ = id => document.getElementById(id);
 const svg = $('scene');
@@ -30,7 +61,7 @@ export function buildStructure(p, s) {
   return { ...base, memberLoads: [...memberLoads, ...extra.memberLoads], temperatureChange: extra.temperatureChange, gravity: extra.gravity, temperature: sc.temperature };
 }
 
-const run = s => analyze(buildStructure(preset, s));
+const run = s => (preset.members.length ? analyze(buildStructure(preset, s)) : { ok: false, reason: 'empty', message: 'Nothing built yet — choose “Draw” and tap two points.' });
 
 // ---------- formatting ----------
 const fmt = (n, d = 1) => Math.abs(n) >= 1000 ? Math.round(n).toLocaleString('en-IN') : n.toFixed(d);
@@ -57,9 +88,9 @@ const memberRole = (k) => {
 // ---------- view transform ----------
 function layout() {
   const W = svg.clientWidth || 360;
-  const xs = preset.nodes.map(n => n.x), ys = preset.nodes.map(n => n.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  const padX = 34, top = preset.hang ? 50 : 96, bottom = preset.hang ? 120 : 70;
+  const xs = preset.nodes.map(n => n.x), ys = preset.nodes.map(n => n.y), v = preset.view;
+  const minX = v ? v.minX : Math.min(...xs), maxX = v ? v.maxX : Math.max(...xs), minY = v ? v.minY : Math.min(...ys), maxY = v ? v.maxY : Math.max(...ys);
+  const padX = v ? 10 : 34, top = v ? 16 : preset.hang ? 50 : 96, bottom = v ? 16 : preset.hang ? 120 : 70;
   const spanX = Math.max(maxX - minX, 1), spanY = Math.max(maxY - minY, 1);
   // Fit the scene height to the object so small screens are not mostly sky.
   const ideal = Math.max(260, Math.min((spanY / spanX) * (W - 2 * padX) + top + bottom + 40, innerHeight * 0.58, 560));
@@ -84,6 +115,15 @@ function background() {
   if (preset.setting === 'river') g = `<path d="M0 ${y0 + 6}H${x0 + 6}L${x0 + 30} ${H}H0Z" fill="#8c7a5b"/><path d="M${W} ${y0 + 6}H${xEnd - 6}L${xEnd - 30} ${H}H${W}Z" fill="#8c7a5b"/><rect x="0" y="${H - 34}" width="${W}" height="34" fill="url(#water)" opacity=".9"/>`;
   if (preset.setting === 'site') g = `<rect x="0" y="${y0 + 2}" width="${W}" height="${H - y0}" fill="#a8916b"/><rect x="0" y="${y0 + 2}" width="${W}" height="6" fill="#8a7553"/>`;
   if (preset.setting === 'pool') g = `<rect x="0" y="${y0 + 8}" width="${x0 + view.s * 1100}" height="${H - y0}" fill="#d9d4c7"/><rect x="${x0 + view.s * 1100}" y="${y0 + 60}" width="${W}" height="${H}" fill="url(#water)"/>`;
+  if (preset.setting === 'gap') {
+    const a = X(preset.gap[0]), b = X(preset.gap[1]);
+    g = `<path d="M0 ${y0}H${a}L${a + 14} ${H}H0Z" fill="#8c7a5b"/><path d="M${W} ${y0}H${b}L${b - 14} ${H}H${W}Z" fill="#8c7a5b"/><rect x="${a}" y="${H - 30}" width="${b - a}" height="30" fill="url(#water)"/>`;
+  }
+  if (preset.editable) {
+    const v = preset.view; let dots = '';
+    for (let x = Math.ceil(v.minX / 1000) * 1000; x <= v.maxX; x += 1000) for (let y = Math.ceil(v.minY / 1000) * 1000; y <= v.maxY; y += 1000) dots += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="1.4" fill="#5b6b78" opacity=".45"/>`;
+    g += dots + `<text class="hint" x="${X(preset.gap[0]) + 4}" y="${y0 + 14}">← ${(preset.gap[1] - preset.gap[0]) / 1000} m →</text>`;
+  }
   if (preset.setting === 'building') {
     const yt = Y(preset.nodes[1].y);
     g = `<rect x="0" y="${y0 + 4}" width="${W}" height="${H - y0}" fill="#9c9488"/><rect x="0" y="${yt - 26}" width="${W}" height="22" fill="#b9b2a6"/><rect x="0" y="0" width="${W}" height="${yt - 26}" fill="#e6e1d6" opacity=".6"/>`;
@@ -130,11 +170,12 @@ function draw() {
   out += preset.supports.map(supportGlyph).join('');
   if (!analysis.ok) {
     lastScale = 1;
-    out += preset.members.map(m => `<line x1="${view.X(preset.nodes[m.i].x)}" y1="${view.Y(preset.nodes[m.i].y)}" x2="${view.X(preset.nodes[m.j].x)}" y2="${view.Y(preset.nodes[m.j].y)}" stroke="#888" stroke-width="6"/>`).join('');
-    svg.innerHTML = out; return;
+    out += preset.members.map((m, k) => `<line x1="${view.X(preset.nodes[m.i].x)}" y1="${view.Y(preset.nodes[m.i].y)}" x2="${view.X(preset.nodes[m.j].x)}" y2="${view.Y(preset.nodes[m.j].y)}" stroke="#8a949c" stroke-width="7" stroke-linecap="round"/><path class="hit" data-member="${k}" d="M${view.X(preset.nodes[m.i].x)},${view.Y(preset.nodes[m.i].y)}L${view.X(preset.nodes[m.j].x)},${view.Y(preset.nodes[m.j].y)}"/>`).join('');
+    if (preset.members.length) out += state.loads.map(loadGlyph).join('');
+    svg.innerHTML = out + editOverlay(); return;
   }
   const md = analysis.maxDefl.d;
-  lastScale = state.exaggerate && md > 0 ? Math.max(1, (0.07 * Math.min(view.W, view.H)) / (md * view.s)) : 1;
+  lastScale = state.exaggerate && md > 0 && !(preset.editable && tool !== 'move') ? Math.max(1, (0.07 * Math.min(view.W, view.H)) / (md * view.s)) : 1;
   // undeformed ghost
   out += preset.members.map(m => `<line x1="${view.X(preset.nodes[m.i].x)}" y1="${view.Y(preset.nodes[m.i].y)}" x2="${view.X(preset.nodes[m.j].x)}" y2="${view.Y(preset.nodes[m.j].y)}" class="ghost"/>`).join('');
   const failed = analysis.sf < 1 ? analysis.governing : null;
@@ -166,7 +207,7 @@ function draw() {
   // joints
   const seen = new Set();
   preset.members.forEach((m, k) => [[m.i, 0], [m.j, 1]].forEach(([n, t]) => {
-    if (seen.has(n) || preset.members.length < 2) return; seen.add(n);
+    if (seen.has(n) || (preset.members.length < 2 && !preset.editable)) return; seen.add(n);
     const p = displacedPoint(st, analysis.res, k, t, lastScale);
     out += `<circle cx="${view.X(p.x)}" cy="${view.Y(p.y)}" r="3.5" fill="#fff" stroke="#2b3a44" stroke-width="1.5"/>`;
   }));
@@ -180,7 +221,22 @@ function draw() {
   }).join('') + `<defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#127a43"/></marker></defs>`;
   out += state.loads.map(loadGlyph).join('');
   if (lastScale > 1.5) out += `<text class="hint" x="${view.W - 8}" y="16" text-anchor="end">bend shown ×${fmt(lastScale, 0)}</text>`;
-  svg.innerHTML = `<title id="scene-title">${preset.name}: ${verdict(analysis).text}</title>` + out;
+  svg.innerHTML = `<title id="scene-title">${preset.name}: ${verdict(analysis).text}</title>` + out + editOverlay();
+}
+
+// Joints you can grab, the member being drawn, pin markers — only while building.
+function editOverlay() {
+  if (!preset.editable) return '';
+  const d = analysis.ok && tool === 'move' ? analysis.res.displacements : null; // joints follow the drawn (bent) shape
+  let o = preset.nodes.map((n, k) => {
+    const x = n.x + (d ? lastScale * d[3 * k] : 0), y = n.y + (d ? lastScale * d[3 * k + 1] : 0);
+    return `<circle class="node${tool === 'supports' ? ' target' : ''}" data-node="${k}" cx="${view.X(x)}" cy="${view.Y(y)}" r="${tool === 'move' ? 5.5 : 9}"/>`;
+  }).join('');
+  if (pending) {
+    o += `<circle cx="${view.X(pending.x)}" cy="${view.Y(pending.y)}" r="8" fill="#e0531f"/>`;
+    if (hover) o += `<line x1="${view.X(pending.x)}" y1="${view.Y(pending.y)}" x2="${view.X(snap(hover.x))}" y2="${view.Y(snap(hover.y))}" stroke="#e0531f" stroke-width="4" stroke-dasharray="8 6" pointer-events="none"/>`;
+  }
+  return o;
 }
 
 // ---------- panels ----------
@@ -191,13 +247,14 @@ function paintStats() {
   const util = analysis.ok ? 1 / analysis.sf : 1.5;
   $('meter-fill').style.width = `${Math.min(100, util / 1.5 * 100)}%`;
   $('meter-fill').style.background = utilColour(util);
-  if (!analysis.ok) { ['s-sf', 's-stress', 's-defl'].forEach(id => { $(id).textContent = '–'; }); return; }
+  if (!analysis.ok) { ['s-sf', 's-stress', 's-defl'].forEach(id => { $(id).textContent = '–'; }); paintBuildbar(); return; }
   $('s-sf').textContent = sfText(analysis.sf);
   const top = analysis.members.reduce((a, b) => (b.maxSigma > a.maxSigma ? b : a));
   $('s-stress').textContent = `${fmt(top.maxSigma)} MPa`;
   $('s-defl').textContent = `${fmt(analysis.maxDefl.d, analysis.maxDefl.d < 10 ? 2 : 0)} mm`;
   const kg = state.loads.reduce((s, l) => s + LOAD_OBJECTS[l.obj].kg, 0);
   $('s-load').textContent = kg >= 1000 ? `${fmt(kg / 1000, 1)} t` : `${kg} kg`;
+  paintBuildbar();
 }
 
 function paintInspect() {
@@ -236,13 +293,14 @@ function paintControls() {
   $('scenario-note').textContent = SCENARIOS[state.scenario].note;
   $('addloads').innerHTML = preset.loadChoices.map(id => `<button type="button" data-add="${id}">+ ${LOAD_OBJECTS[id].name}</button>`).join('');
   $('addloads').querySelectorAll('button').forEach(b => b.onclick = () => {
-    if (state.loads.length >= 8) return;
+    if (state.loads.length >= 8 || !preset.members.length) return;
+    if (preset.editable) undoStack.push(clone(design()));
     const deck = preset.members.findIndex(m => m.tags?.includes('deck'));
     const fixed = preset.loads[0]?.fixed;
     update({ loads: [...state.loads, fixed ? { ...preset.loads[0], obj: b.dataset.add } : { obj: b.dataset.add, member: deck < 0 ? 0 : deck, at: 0.5 }] });
   });
   $('loadlist').innerHTML = state.loads.map((l, k) => `<button type="button" class="loadchip" data-remove="${k}" aria-label="Remove ${LOAD_OBJECTS[l.obj].name}">${LOAD_OBJECTS[l.obj].name} ×</button>`).join('');
-  $('loadlist').querySelectorAll('button').forEach(b => b.onclick = () => update({ loads: state.loads.filter((_, k) => k !== +b.dataset.remove) }));
+  $('loadlist').querySelectorAll('button').forEach(b => b.onclick = () => { if (preset.editable) undoStack.push(clone(design())); update({ loads: state.loads.filter((_, k) => k !== +b.dataset.remove) }); });
   $('t-forces').setAttribute('aria-pressed', String(state.forces));
   $('t-shape').setAttribute('aria-pressed', String(state.exaggerate));
 }
@@ -313,9 +371,52 @@ function update(patch) {
   analysis = run(state);
   draw(); paintStats(); paintInspect(); paintControls(); if (!patch.loads || !drag) paintGuide();
   document.body.dataset.sf = analysis.ok ? analysis.sf.toFixed(3) : 'unstable';
+  if (preset.editable && !drag && !nodeDrag) saveDesign();
+}
+
+function paintBuildbar() {
+  const bar = $('buildbar');
+  if (!preset.editable) {
+    bar.innerHTML = mode === 'explore' ? '<button type="button" id="b-copy">Edit this structure</button>' : '';
+    const c = $('b-copy'); if (c) c.onclick = () => editCopy();
+    return;
+  }
+  const bs = buildStructure(preset, state), kg = mass(preset, m => bs.members[preset.members.indexOf(m)]);
+  const tools = [['move', 'Move & inspect'], ['draw', 'Draw'], ['supports', 'Supports'], ['delete', 'Delete']];
+  bar.innerHTML = `<div class="chips" role="radiogroup" aria-label="Building tool">${tools.map(([id, n]) => `<button type="button" role="radio" data-tool="${id}" aria-checked="${tool === id}">${n}</button>`).join('')}</div>
+    <div class="chips" role="radiogroup" aria-label="Joints for new members"><button type="button" role="radio" data-joint="frame" aria-checked="${jointType === 'frame'}">Rigid joints</button><button type="button" role="radio" data-joint="truss" aria-checked="${jointType === 'truss'}">Pin joints</button>
+    <button type="button" id="b-undo" ${undoStack.length ? '' : 'disabled'}>Undo</button><button type="button" id="b-clear">Clear</button></div>
+    <p class="mass">Material used <b id="b-mass">${fmt(kg, 0)} kg</b> · ${preset.members.length} members</p>`;
+  bar.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => { tool = b.dataset.tool; pending = null; draw(); paintBuildbar(); });
+  bar.querySelectorAll('[data-joint]').forEach(b => b.onclick = () => { jointType = b.dataset.joint; paintBuildbar(); });
+  $('b-undo').onclick = () => { const d = undoStack.pop(); if (!d) return; Object.assign(preset, { nodes: d.nodes, members: d.members, supports: d.supports }); update({ loads: d.loads, selected: null }); saveDesign(); };
+  $('b-clear').onclick = () => edit(d => ({ nodes: [], members: [], supports: [], loads: [] }));
+}
+
+function editCopy() {
+  const src = preset, xs = src.nodes.map(n => n.x), ys = src.nodes.map(n => n.y);
+  const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys), pad = Math.max(w, h, 3000) * 0.12;
+  const copy = { ...clone(BUILD), ...clone(src), id: 'build', editable: true, name: `Your ${src.name.toLowerCase()}`,
+    question: 'Change anything: add, delete or move members, change supports. What makes it stronger, lighter, or collapse?',
+    view: { minX: Math.min(...xs) - pad, maxX: Math.max(...xs) + pad, minY: Math.min(...ys) - pad * 0.6, maxY: Math.max(...ys) + pad },
+    gap: src.setting === 'river' ? [Math.min(...xs), Math.max(...xs)] : BUILD.gap, setting: src.setting === 'river' ? 'gap' : 'site',
+    members: src.members.map(m => ({ ...m, tags: ['deck'] })), steps: BUILD.steps.slice(1), loads: state.loads, material: state.material, section: state.section };
+  openBuild(copy);
+}
+
+function openBuild(p) {
+  preset = p; undoStack = []; tool = 'move'; pending = null;
+  store.set('labs.preset', 'build');
+  state = { ...freshState(preset), loads: clone(p.loads || []), material: p.material, section: p.section };
+  guide = { step: 0, revealed: false };
+  $('title').textContent = preset.name; $('question').textContent = preset.question;
+  document.querySelectorAll('#objects button').forEach(b => b.setAttribute('aria-current', String(b.dataset.preset === 'build')));
+  if (location.hash !== '#build') window.history.replaceState(null, '', '#build');
+  update({}); saveDesign();
 }
 
 function setPreset(id) {
+  if (id === 'build') { openBuild(store.get('labs.design', null) || clone(BUILD)); return; }
   preset = PRESETS.find(p => p.id === id) || PRESETS[0];
   store.set('labs.preset', preset.id);
   state = freshState(preset);
@@ -329,7 +430,7 @@ function setPreset(id) {
 function setMode(m) {
   mode = m; store.set('labs.mode', m);
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === m)));
-  paintGuide();
+  paintGuide(); if (preset) paintBuildbar();
 }
 
 // ---------- interaction ----------
@@ -345,19 +446,46 @@ function nearestDeck(w) {
   });
   return best;
 }
+function nodeNear(e, px = 28) {
+  const w = pointer(e), k = findNode(preset, w, px / view.s);
+  return k;
+}
 svg.addEventListener('pointerdown', e => {
+  const hit = e.target.closest('.hit');
+  if (preset.editable && tool !== 'move') {
+    e.preventDefault();
+    const w = pointer(e);
+    if (tool === 'draw') {
+      const k = nodeNear(e), p = k >= 0 ? preset.nodes[k] : { x: snap(w.x), y: snap(w.y) };
+      if (!pending) { pending = p; hover = w; draw(); }
+      else { const a = pending; pending = null; edit(d => addMember(d, a, p, jointType)); draw(); }
+    } else if (tool === 'supports') {
+      const k = nodeNear(e); if (k >= 0) edit(d => cycleSupport(d, k));
+    } else if (tool === 'delete' && hit) edit(d => deleteMember(d, +hit.dataset.member));
+    return;
+  }
   const g = e.target.closest('.load.draggable');
   if (g) { drag = +g.dataset.load; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
-  const hit = e.target.closest('.hit');
+  const nd = e.target.closest('.node');
+  if (nd && preset.editable) { nodeDrag = { k: +nd.dataset.node, before: clone(design()) }; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
   if (hit) update({ selected: +hit.dataset.member });
 });
 svg.addEventListener('pointermove', e => {
+  if (pending) { hover = pointer(e); draw(); return; }
+  if (nodeDrag) {
+    const d = moveNode(design(), nodeDrag.k, pointer(e));
+    if (d.nodes !== preset.nodes) { preset.nodes = d.nodes; update({ selected: state.selected }); }
+    return;
+  }
   if (drag === null) return;
   const n = nearestDeck(pointer(e));
   if (!n) return;
   update({ loads: state.loads.map((l, k) => (k === drag ? { ...l, member: n.member, at: +n.at.toFixed(3) } : l)), selected: state.selected });
 });
-const endDrag = () => { if (drag !== null) { drag = null; paintGuide(); } };
+const endDrag = () => {
+  if (nodeDrag) { undoStack.push(nodeDrag.before); nodeDrag = null; saveDesign(); paintBuildbar(); }
+  if (drag !== null) { drag = null; paintGuide(); saveDesign(); }
+};
 svg.addEventListener('pointerup', endDrag); svg.addEventListener('pointercancel', endDrag);
 svg.addEventListener('keydown', e => { const hit = e.target.closest?.('.hit'); if (hit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); update({ selected: +hit.dataset.member }); } });
 $('t-forces').onclick = () => update({ forces: !state.forces });
@@ -365,9 +493,11 @@ $('t-shape').onclick = () => update({ exaggerate: !state.exaggerate });
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 new ResizeObserver(() => { if (preset) draw(); }).observe(svg);
 
-$('objects').innerHTML = PRESETS.map(p => `<button type="button" data-preset="${p.id}">${p.name}</button>`).join('');
+$('objects').innerHTML = PRESETS.map(p => `<button type="button" data-preset="${p.id}">${p.name}</button>`).join('') + '<button type="button" data-preset="build" class="buildbtn">+ Build your own</button>';
 $('objects').querySelectorAll('button').forEach(b => b.onclick = () => { setPreset(b.dataset.preset); location.hash = b.dataset.preset; });
 setMode(mode);
 setPreset(location.hash.slice(1) || store.get('labs.preset', 'footbridge'));
 window.addEventListener('hashchange', () => { if (location.hash.slice(1) !== preset.id) setPreset(location.hash.slice(1)); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && pending) { pending = null; draw(); } });
+window.__labs = { toScreen: (x, y) => ({ x: view.X(x), y: view.Y(y) }) }; // used by browser tests
 document.body.dataset.ready = 'true';

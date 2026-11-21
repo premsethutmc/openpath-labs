@@ -118,3 +118,11 @@ test('a structure that can move is reported, not solved', () => {
   const r = solve(beam(2000, [{ node: 0, type: 'roller' }], { loads: [{ node: 1, fy: -100 }] }));
   assert.equal(r.ok, false);
 });
+
+test('a pin-ended member loaded between its ends still bends like a simple beam (PL/4)', () => {
+  const L = 4000, P = 8000, rod = section({ shape: 'tube', d: 60, t: 4 });
+  const s = { nodes: [{ x: 0, y: 0 }, { x: L, y: 0 }], members: [{ i: 0, j: 1, material: steel, section: rod, type: 'truss' }],
+    supports: [{ node: 0, type: 'pin' }, { node: 1, type: 'roller' }], memberLoads: [{ member: 0, at: 0.5, py: -P }] };
+  const r = solve(s);
+  near(internalAt(r, r.members[0], 0.5).M, P * L / 4);
+});

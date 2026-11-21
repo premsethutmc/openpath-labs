@@ -148,7 +148,7 @@ export function internalAt(res, mr, t) {
   let N = -Xi, V = Yi, M = -Mi + Yi * x;
   for (const { a, p, q } of mr.loads.point) if (a < x) { N -= q; V += p; M += p * (x - a); }
   for (const { w, wa } of mr.loads.uniform) { N -= wa * x; V += w * x; M += w * x * x / 2; }
-  if (mr.type === 'truss') { V = 0; M = 0; }
+  // Pin-ended (truss) members still bend between their ends if loaded along their length: fef gives simple-beam reactions.
   return { N, V, M };
 }
 
