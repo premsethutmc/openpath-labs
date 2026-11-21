@@ -111,3 +111,20 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 **Caveat:** the runner effect is a model prediction; the K12M bench is fitted at one torque point and checked at one power point, which does not validate the full curve or runner sensitivity.
 
 **Evidence used for explanations.** Runner-side pressure averaged (lift-weighted) over the late intake event, 520° to IVC. Across 34 → 24 cm at 2500, 4500, 6000 and 7000 rpm and 34 → 50 cm at 4500 and 6000 rpm, its change has the same sign as the change in volumetric efficiency. Pressure at a single angle (BDC) does not: with 34 → 50 cm at 6000 rpm it is unchanged, 1.22 bar, while torque falls 14.7 %. The whole-event average does not either: with 34 → 24 cm at 6000 rpm it moves 0.862 → 0.861 bar while filling rises 11.4 points. This is an observation about this model at these points, not a general law, so the lab accepts "inconclusive" whenever the evidence is mixed.
+
+## Strength of materials — The Mount That Didn't Break (`mount/`)
+
+Model: the support is an elastic Euler–Bernoulli beam between two bolts 600 mm apart (pin + roller), with a 2.5 kN point load at the machine mount. It is solved with the existing frame solver (direct stiffness). Units are mm, N and MPa.
+
+| Check against independent hand calculation | Result |
+|---|---|
+| Reactions R₁ = Pb/L, R₂ = Pa/L | to 1e-9 (three designs × four load positions) |
+| Deflection under the load Pa²b²/(3EIL), and at 50, 150, 300, 500 mm | to 1e-9 |
+| Moment Pab/L, stress Mc/I, strain σ/E | to 1e-9 |
+| Worked units: aluminium 40 × 30 at 200 mm | δ = 1.431 mm, σ = 55.6 MPa (hand: 2500·200²·400²/(3·69 000·90 000·600); 333 333·15/90 000) |
+| Stiffness vs strength | aluminium → steel: deflection ÷ (E_steel/E_al), stress unchanged; depth × 2: deflection ÷ 8, stress ÷ 4 |
+| Trade-offs exist | aluminium 50×60×4 hollow: strong and light, 0.316 mm (fails alignment); steel 50×60 solid: 0.049 mm but 14.1 kg; steel I 50×80 (3/3) and aluminium I 50×80 (3/8) meet every limit |
+| Transfer case (load at 300 mm) | some guided winners fail (alignment), others pass — the material or size alone does not decide |
+| Self-weight neglected | ≤ 1 % of the load for any design inside the mass limit |
+
+**Not modelled:** bolt slip and real end fixity, stress concentrations, fatigue, local buckling (walls ≥ 3 mm enforced), lateral-torsional buckling, dynamic load, temperature, shear deformation. It is a teaching model, not a design certification.

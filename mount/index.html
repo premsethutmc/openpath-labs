@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Mount That Didn’t Break · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <link rel="stylesheet" href="./mount.css">
+</head>
+<body data-mode="learn">
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Strength of materials · investigation</span>
+</header>
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1>The mount that didn’t break</h1><p>The machine drifts out of alignment under load. Nothing has yielded. Find out why, then fix it.</p></div>
+    <div class="instrument">
+      <svg id="rig" viewBox="0 0 400 230" role="img" aria-labelledby="rig-t"><title id="rig-t">Test stand: support beam bolted at both ends, machine at the mount</title></svg>
+      <span id="status" class="status idle">UNLOADED</span>
+    </div>
+    <dl class="readings">
+      <div><dt>Load</dt><dd id="r-load">0 N</dd></div>
+      <div><dt>Dial gauge</dt><dd id="r-dial">–</dd></div>
+      <div><dt>Strain gauge</dt><dd id="r-strain">–</dd></div>
+      <div><dt>Support mass</dt><dd id="r-mass">–</dd></div>
+    </dl>
+  </section>
+  <section class="side">
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module mission" data-module="mission" data-title="Mission" id="mission" aria-live="polite"></section>
+
+    <section class="module" data-module="stand" data-title="Test stand">
+      <h2>Test stand</h2>
+      <div class="row"><button type="button" id="load-on">Apply operating load</button><button type="button" id="load-off">Remove load</button></div>
+      <label class="range sel">Dial gauge position (from the left bolt) <select id="dial-x"></select></label>
+      <label class="range sel">Strain gauge position (bottom face) <select id="strain-x"></select></label>
+      <div class="row"><button type="button" class="primary" id="take">Take a reading</button></div>
+      <p class="note" id="stand-note">A reading saves the gauge values with the current design, load and positions. Strain gauges read strain; stress = E · strain.</p>
+    </section>
+
+    <section class="module" data-module="design" data-title="Design">
+      <h2>Support design</h2>
+      <p class="note" id="design-lock" hidden></p>
+      <p class="label">Material</p><div class="chips" id="mat" role="radiogroup" aria-label="Material"></div>
+      <p class="label">Section</p><div class="chips" id="shape" role="radiogroup" aria-label="Section shape"></div>
+      <div id="dims"></div>
+      <div id="secprops" class="note"></div>
+    </section>
+
+    <section class="module" data-module="runs" data-title="Runs">
+      <h2>Saved readings</h2>
+      <div id="runs" class="tbl"></div>
+      <h2 style="margin-top:14px">Compare two readings</h2>
+      <div class="row"><select id="cmp-a" aria-label="First reading"></select><select id="cmp-b" aria-label="Second reading"></select></div>
+      <div id="cmp" class="tbl"></div>
+    </section>
+
+    <section class="module about" data-module="about" data-title="Model">
+      <h2>What is modelled, and what is not</h2>
+      <p><b>Model:</b> the support is an elastic beam (Euler–Bernoulli, small deflection) between two bolts 600 mm apart, treated as a pin and a roller, solved with OpenPath’s frame solver (direct stiffness method). The machine’s operating load is a single static 2.5 kN point load at its mount. Checked against hand calculations for reactions, deflection along the span, bending moment and stress.</p>
+      <p><b>Stiffness is not strength.</b> Deflection depends on E·I — the material’s elastic modulus and the section’s second moment of area. Bending stress σ = M·c/I depends on geometry, not on E. Yield strength sets when the metal stops springing back; it has no say in how far it bends before that.</p>
+      <p><b>Not modelled:</b> bolt slip and the real fixity of bolted ends; stress concentrations at holes and corners; fatigue under repeated load; local buckling of thin walls (walls must be ≥ 3 mm); lateral-torsional buckling; dynamic or impact load; temperature; shear deformation (a few % for the deepest sections); the support’s own weight (≤ 1 % of the load). This is a teaching model, not a design certification.</p>
+    </section>
+  </section>
+</main>
+<script type="module" src="./mount.mjs"></script>
+</body>
+</html>
