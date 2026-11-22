@@ -173,6 +173,29 @@ test('runner: a secure diagnosis skips teaching; a missed check can go back to t
   assert.equal(R.view().status, 'independent-after-help');
 });
 
+test('runner: help on a prerequisite is kept apart from the unaided check on the target; the trail words say where evidence came from', async () => {
+  const ctx = await setup();
+  const R = createRunner(spec, ctx.deps); R.start(); R.stuck();
+  let guard = 0;
+  while (!R.view().result && guard++ < 5) { R.answer(R.view().item.competency === 'FIX.lever' || R.view().item.competency === 'FIX.product' ? { dontKnow: true } : right(ctx, R)); R.next(); }
+  assert.deepEqual(R.view().result.gaps.map(g => g.id), ['FIX.product']);
+  R.next();
+  assert.equal(R.view().competency.id, 'FIX.product'); R.next();
+  R.showSolution(); R.answer(right(ctx, R)); R.next();                // help on the prerequisite
+  assert.equal(R.view().competency.id, 'FIX.lever'); R.next();
+  while (R.view().phase === 'teach') { if (R.view().item) R.answer(right(ctx, R)); R.next(); }   // the target's practice, unaided but guided
+  while (R.view().phase === 'apply') { if (R.view().item) R.answer(right(ctx, R)); R.next(); }
+  R.answer(right(ctx, R)); R.next();
+  assert.equal(R.view().status, 'independent-after-help'); assert.equal(R.view().statusText, 'Solved on your own after help');
+  const tr = R.portfolio().trail;
+  assert.deepEqual([tr.status['FIX.product'].status, tr.status['FIX.product'].role, tr.status['FIX.product'].basis], ['helped', 'prerequisite', null]);
+  assert.equal(tr.status['FIX.product'].text, 'Practised with help; no unaided question since', 'the prerequisite is never claimed as checked alone');
+  assert.deepEqual([tr.status['FIX.lever'].role, tr.status['FIX.lever'].basis], ['target', { provenance: 'check', result: 'correct' }]);
+  const pe = tr.events.filter(e => e.competency === 'FIX.product');
+  assert.deepEqual(pe.map(e => `${e.kind}/${e.provenance}`), ['evidence/diagnostic', 'shown_solution/practice', 'assisted_response/practice']);
+  assert.ok(tr.events.filter(e => e.provenance === 'check').every(e => e.competency === 'FIX.lever' && e.kind === 'evidence'), 'the check assesses only the target');
+});
+
 test('runner files contain no journey-specific words', () => {
   const files = ['core/journey.mjs', 'core/ledger.mjs', 'core/diagnostic.mjs', 'core/graph.mjs', ...readdirSync(new URL('../journeys/', import.meta.url)).map(f => `journeys/${f}`)];
   const words = /support|pipe|moment|mount|statics|fluids/i, hits = [];

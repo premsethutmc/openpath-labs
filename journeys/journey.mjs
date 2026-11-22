@@ -5,7 +5,7 @@
 import { JOURNEYS } from '../content/journeys/index.mjs';
 import { listJourneys, loadJourney } from './load.mjs';
 import { createRunner } from '../core/journey.mjs';
-import { openLedger } from '../core/ledger.mjs';
+import { openLedger, describeStatus } from '../core/ledger.mjs';
 import * as P from '../core/project.mjs';
 
 const $ = id => document.getElementById(id);
@@ -75,7 +75,9 @@ const fields = () => Object.fromEntries([...app.querySelectorAll('[data-field]')
 const message = () => (flash?.text ? `<p class="msg" role="alert">${esc(flash.text)}</p>` : '');
 const scoredTable = (rows, caption) => `<table class="tbl scored"><caption>${esc(caption)}</caption><thead><tr><th>Quantity</th><th>You</th><th>Engine</th><th></th></tr></thead><tbody>${rows.map(s => `<tr><th>${esc(s.prompt)}</th><td>${num(s.predicted ?? s.answer)} ${esc(s.unit)}</td><td>${num(s.truth)} ${esc(s.unit)}</td><td class="res-${s.result}">${s.result === 'correct' ? 'close' : 'off'}</td></tr>`).join('')}</tbody></table>`;
 const DIAG = { secure: 'already secure', concept: 'a concept gap', procedure: 'a method gap', recall: 'a recall gap', transfer: 'a transfer gap', prerequisite: 'a missing prerequisite', misconception: 'a known mix-up', 'insufficient-evidence': 'not enough evidence to name one cause' };
-const STATUS = { 'independent-after-help': 'Solved on your own after help', independent: 'Solved on your own', helped: 'Right only with help so far', 'not-yet': 'Not yet on your own', 'not-seen': 'Not seen yet' };
+// status words come from core/ledger.mjs describeStatus: they say where the evidence came from (diagnostic, check) and name help as help
+const plural = (k, one) => `${k} ${one}${k === 1 ? '' : 's'}`;
+const evidenceLine = s => [`${s.unaided.right}/${s.unaided.total} right on fresh questions alone`, s.practice?.total ? `${s.practice.right}/${s.practice.total} in practice alone` : '', s.assisted.total ? `${plural(s.assisted.total, 'answer')} with help` : '', plural(s.help, 'help event')].filter(Boolean).join(', ');
 
 function itemCard(it, { allowDontKnow = false } = {}) {
   const fb = it.feedback;
@@ -124,6 +126,8 @@ function render() {
 }
 const on = (sel, f) => { const el = app.querySelector(sel); if (el) el.onclick = f; };
 
+// after Revision 2 is saved the learner can always go back to the design in the project (it may be a later, untested edit)
+const benchLink = v => (v.bench ? `<div class="card"><p class="quiet">Your design stays editable on the bench. Changes you make there now are not part of ${esc(runner.state.revisionLabels?.[1] ?? 'the saved revision')}.</p><div class="actions"><a class="button" id="bench" href="${esc(v.bench)}">Open my design on the bench</a></div></div>` : '');
 const PHASE = {
   brief: v => `<div><p class="eyebrow">${esc([v.journey.course, v.journey.semester ? `Semester ${v.journey.semester}` : ''].filter(Boolean).join(' · '))}</p><h1>${esc(v.journey.title)}</h1></div>
     <div class="card"><h2>The task</h2><p class="lead">${esc(v.brief)}</p></div>
@@ -153,7 +157,7 @@ const PHASE = {
       ${v.transfer ? `<div class="actions"><a class="button" id="transfer" href="${esc(v.transfer.href)}">Open it on the bench</a></div>` : ''}
       <div class="actions"><button type="button" class="primary" data-do="next">Continue to the check</button></div></div>`
     : `<div><h2>Apply it on your own</h2><p class="quiet">Question ${v.done + 1} of ${v.of}. Fresh numbers, no hints.</p></div>${message()}${itemCard(v.item)}`,
-  check: v => v.stage === 'result' ? `<div class="card"><h2>Check on your own</h2><p class="lead status-${esc(v.status)}" id="status">${esc(STATUS[v.status] ?? v.status)}.</p>
+  check: v => v.stage === 'result' ? `<div class="card"><h2>Check on your own</h2><p class="lead status-${esc(v.status)}" id="status">${esc(v.statusText ?? describeStatus({ status: v.status }))}.</p>
       ${['independent-after-help', 'independent'].includes(v.status) ? '<p class="quiet">Recorded with your help kept apart. A later check will strengthen this.</p><div class="actions"><button type="button" class="primary" id="design">Back to my design</button></div>'
         : '<div class="actions"><button type="button" class="primary" id="reteach">Learn it again</button><button type="button" id="design">Go to my design anyway</button></div>'}</div>`
     : `<div><h2>One fresh question, on your own</h2><p class="quiet">No hints. This is the evidence that you can do it alone.</p></div>${message()}${itemCard(v.item)}`,
@@ -174,7 +178,7 @@ const PHASE = {
       : `<div class="card" id="choose"><h2>Save the revision</h2>${message() || `<p class="quiet">${R2} must be a design you predicted and ran. Your current design has not been run since you changed it.</p>`}
       <div class="actions"><button type="button" class="primary" id="predict-current">Predict and run this design</button>${lt ? `<button type="button" id="save-tested">Save the last tested design as ${R2}</button>` : ''}</div>
       ${lt ? `<p class="quiet">The second choice saves the setup of run ${esc(lt.run)} as ${R2}. Your current edits stay in the project on the bench, but are not part of ${R2}.</p>` : ''}</div>`}`; },
-  decide: v => `${v.message ? `<p class="notice" role="status" id="saved-note">${esc(v.message)}</p>` : ''}<div class="card"><h2>Your decision</h2><p class="quiet">From ${esc(v.from)} to ${esc(v.to)}${v.tested ? ` (tested in run ${esc(v.tested)})` : ''}: ${v.changed.length ? changedNames(v.setup, v.changed).map(esc).join(', ') : 'no change to the design'}.</p>
+  decide: v => `${v.message ? `<p class="notice" role="status" id="saved-note">${esc(v.message)}</p>` : ''}${benchLink(v)}<div class="card"><h2>Your decision</h2><p class="quiet" id="decide-design">From ${esc(v.from)} to ${esc(v.to)}${v.tested ? ` (tested in run ${esc(v.tested)})` : ''}: ${v.changed.length ? changedNames(v.setup, v.changed).map(esc).join(', ') : 'no change to the design'}.</p>
       <label class="field">What did you decide, and why?<textarea id="claim" data-focus>${esc(runner.state.decision?.claim ?? '')}</textarea>${err('claim', flash?.errors)}</label>
       <fieldset class="checks"><legend class="field">Which runs show it?</legend>${v.runs.map(r => `<label><input type="checkbox" value="${esc(r.id)}" ${r.id === v.to ? 'checked' : ''}> ${esc(r.id)} · ${esc(r.name)}</label>`).join('')}${err('runs', flash?.errors)}</fieldset>
       <label class="field">What did you consider and reject? (one per line)<textarea id="rejected"></textarea></label>
@@ -185,15 +189,15 @@ const PHASE = {
       <div class="actions"><button type="button" class="primary" id="defend">Submit</button></div></div>`,
   summary: v => { const p = v.portfolio, d = p.design;
     return `<div><p class="eyebrow">Portfolio entry</p><h1>${esc(p.journey.title)}</h1></div>
-    <div class="card"><h2>Design ${esc(d.from.label)} → ${esc(d.to?.label ?? '–')}</h2>${d.to ? setupList(d.to.setup, d.changed) : ''}
+    <div class="card"><h2>Design ${esc(d.from.label)} → ${esc(d.to?.label ?? '–')}</h2>${d.to ? `<p class="quiet" id="r2-run">${esc(d.to.label)} is run ${esc(d.to.run)}${d.to.tested ? `, the design you predicted and ran in run ${esc(d.to.tested)}` : ''}.</p>${setupList(d.to.setup, d.changed)}` : ''}
       <table class="tbl"><thead><tr><th></th><th>${esc(d.from.label)}</th><th>${esc(d.to?.label ?? '')}</th></tr></thead><tbody>${Object.entries(d.from.outputs).map(([k, o]) => `<tr><th>${esc(o.label)}${o.unit ? ` (${esc(o.unit)})` : ''}</th><td>${num(o.value)}</td><td>${num(d.to?.outputs[k]?.value)}</td></tr>`).join('')}</tbody></table></div>
     ${p.decision ? `<div class="card"><h2>Decision</h2><p class="lead" id="claim-text">${esc(p.decision.claim)}</p><p class="quiet">Runs: ${p.decision.runs.map(esc).join(', ')}${p.decision.rejected.length ? ` · Rejected: ${p.decision.rejected.map(esc).join('; ')}` : ''}</p>
       ${p.decision.defence.length ? scoredTable(p.decision.defence, 'Defence') : ''}</div>` : ''}
     <div class="card"><h2>Prerequisite trail</h2>
       <p class="quiet">${p.trail.skipped ? 'Predictions held; no detour.' : `Blocked at: ${p.trail.stuck.outcome === 'stuck' ? 'asked for help' : 'a missed prediction'}. Diagnosis: ${esc(DIAG[p.trail.diagnosis?.result] ?? p.trail.diagnosis?.result ?? '–')}.`}</p>
-      <ul class="list trail">${Object.entries(p.trail.status).map(([id, s]) => `<li class="quiet"><b>${esc(s.title)}</b> · ${esc(STATUS[s.status] ?? s.status)} · ${s.unaided.right}/${s.unaided.total} right alone, ${s.help} help event${s.help === 1 ? '' : 's'}</li>`).join('')}</ul></div>
+      <ul class="list trail">${Object.entries(p.trail.status).map(([id, s]) => `<li class="quiet" data-competency="${esc(id)}" data-status="${esc(s.status)}" data-role="${esc(s.role ?? '')}"><b>${esc(s.title)}</b> · <span class="st">${esc(s.text ?? describeStatus(s))}</span> · ${esc(evidenceLine(s))}</li>`).join('')}</ul></div>
     <div class="card"><h2>Runs</h2><ul class="list">${p.runs.map(r => `<li class="quiet">${esc(r.name)} <span class="eyebrow">run ${esc(r.id)}</span> · ${r.reproduced ? '<span class="okmsg">reproduced from its saved setup</span>' : '<span class="badmsg">does not reproduce</span>'}</li>`).join('')}</ul>
-      <div class="actions"><button type="button" class="primary" id="export">Export portfolio (JSON)</button><button type="button" id="export-project">Export project file</button></div></div>`; },
+      <div class="actions"><button type="button" class="primary" id="export">Export portfolio (JSON)</button><button type="button" id="export-project">Export project file</button></div></div>${benchLink(v)}`; },
 };
 
 const download = (name, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; a.click(); URL.revokeObjectURL(a.href); };

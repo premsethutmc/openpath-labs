@@ -340,7 +340,9 @@ $('cmp-a').onchange = paintCompare; $('cmp-b').onchange = paintCompare;
 // Opened from a journey (?project=current): no guided mission; the current project's latest saved design is on the bench
 // and the design is free to change. The mount position stays the one the learner saved.
 if (new URLSearchParams(location.search).get('project') === 'current') {
-  const p = nb.project(), last = p.runs[p.runs.length - 1], s0 = clone(last ? last.setup : p.setup);
+  // the project's current design (p.setup, saved with every reading), not the latest run: a journey may save an earlier
+  // tested design as a later run (Revision 2) while the learner's newer edit stays the current design
+  const p = nb.project(), last = p.runs[p.runs.length - 1], s0 = clone(p.setup?.design ? p.setup : last?.setup);
   S.stage = 'free'; document.body.dataset.stage = 'free'; WB.open('design');
   if (s0?.design) { S.design = s0.design; S.dialX = s0.dialX ?? S.dialX; S.strainX = s0.strainX ?? S.strainX; S.mount = s0.mount ?? S.mount; }
   $('dial-x').value = S.dialX; $('strain-x').value = S.strainX;

@@ -10,7 +10,7 @@
 //     nonce    integer that makes this learner's items fresh       state  a saved runner.state to resume
 //   runner.state is plain JSON (save it anywhere); runner.view() describes the one thing to show now.
 import * as P from './project.mjs';
-import { checkResponse, checkNumber, readNumber, within } from './ledger.mjs';
+import { checkResponse, checkNumber, readNumber, within, describeStatus } from './ledger.mjs';
 import { diagnose, DIAGNOSIS_TEXT } from './diagnostic.mjs';
 
 export const PHASES = ['brief', 'stuck', 'diagnose', 'teach', 'apply', 'check', 'return', 'decide', 'defend', 'summary'];
@@ -118,7 +118,7 @@ export function createRunner(spec, deps, saved) {
   function nextCheckItem() {
     const C = S.check, as = aspectsOf(target);
     if (C.done < C.count && as.length) { S.item = newItem(target, as.includes('procedure') ? 'procedure' : as[0], 'check'); return; }
-    S.item = null; C.stage = 'result'; C.status = ledger.status(target).status;
+    S.item = null; C.stage = 'result'; const st = ledger.status(target); C.status = st.status; C.statusText = describeStatus(st);
   }
 
   // ---------- the item in front of the learner ----------
@@ -308,7 +308,7 @@ export function createRunner(spec, deps, saved) {
         const A = S.apply, t = spec.apply?.transfer;
         return { ...base, done: A.done, of: A.count, stage: A.stage, item: itemView(), transfer: t ? { href: withPreset(t.page, t.preset), page: t.page, preset: t.preset ?? null, prompt: t.prompt ?? null } : null };
       }
-      case 'check': { const C = S.check; return { ...base, done: C.done, of: C.count, stage: C.stage, item: itemView(), results: [...C.results], status: C.status ?? null }; }
+      case 'check': { const C = S.check; return { ...base, done: C.done, of: C.count, stage: C.stage, item: itemView(), results: [...C.results], status: C.status ?? null, statusText: C.statusText ?? (C.status ? describeStatus({ status: C.status }) : null) }; }
       case 'return': {
         const r1 = p && runOf(p, S.r1);
         return { ...base, missing: !p, bench: spec.bench.page, setup: p ? clone(p.setup) : null, r1: r1 ? clone(r1.setup) : null, changed: p && r1 ? P.setupDiff(r1.setup, p.setup) : [],
@@ -317,9 +317,9 @@ export function createRunner(spec, deps, saved) {
           ...(() => { const last = lastTested(p), cur = currentTested(p);
             return { lastTested: last ? { run: last.run, setup: clone(last.setup) } : null, currentTested: cur ? cur.run : null, sinceTested: last && p ? P.setupDiff(last.setup, p.setup) : [] }; })() };
       }
-      case 'decide': return { ...base, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, tested: S.r2Tested ?? null, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [], setup: p ? clone(runOf(p, S.r2).setup) : null };
+      case 'decide': return { ...base, bench: spec.bench.page, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, tested: S.r2Tested ?? null, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [], setup: p ? clone(runOf(p, S.r2).setup) : null };
       case 'defend': return { ...base, questions: S.defend.questions.map(q => ({ prompt: q.prompt, unit: q.unit, label: q.label })) };
-      case 'summary': return { ...base, portfolio: portfolio() };
+      case 'summary': return { ...base, bench: spec.bench.page, portfolio: portfolio() };
     }
     throw new JourneyError(`unknown phase ${S.phase}`);
   }
@@ -344,7 +344,7 @@ export function createRunner(spec, deps, saved) {
         diagnosis: S.diag?.result ? { result: S.diag.result.result, confidence: S.diag.result.confidence, gaps: S.diag.result.gaps, misconceptions: S.diag.result.misconceptions, policy: S.diag.result.policy } : null,
         taught: [...(S.trail.taught || [])], skipped: !!S.trail.skipped,
         returned: clone(S.ret?.rounds ?? []),
-        status: Object.fromEntries(trail.map(c => [c, { title: titleOf(c), ...ledger.status(c) }])),
+        status: Object.fromEntries(trail.map(c => { const st = ledger.status(c); return [c, { title: titleOf(c), role: c === target ? 'target' : 'prerequisite', ...st, text: describeStatus(st) }]; })),
         events,
       },
     };
