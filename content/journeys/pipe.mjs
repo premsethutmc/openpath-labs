@@ -3,6 +3,7 @@
 // Bench: the fluid line bench (circuit/, domain 'fluids-line'). Every truth and every defence answer comes from the
 // bench's own evaluation (circuit/model.mjs ADAPTER, or evaluate(), which ADAPTER wraps); nothing is hard-coded.
 import { ADAPTER, evaluate, fromPreset, addPart, setParam, PARTS } from '../../circuit/model.mjs';
+import { describe } from '../../circuit/learn.mjs';
 
 const clone = v => JSON.parse(JSON.stringify(v));
 const flowOf = s => { const r = ADAPTER.evaluate(s); return r.ok ? r.outputs.flow.value : NaN; };
@@ -46,22 +47,8 @@ export function patchElbows(s, n = 2) {
 const mm = D => +(D * 1000).toFixed(1);
 const anchor = fromPreset('farm');
 
-// The design in words for the journey page: every part of the line in order, with its settings and units (from the bench's
-// own part table), then the target and gauges.
-const fmt = n => String(+(+n).toPrecision(4));
-function describe(setup) {
-  const out = [];
-  setup.chain.forEach((part, i) => {
-    const P = PARTS[part.type]; if (!P) return;
-    const bits = Object.entries(P.params ?? {}).filter(([k]) => part[k] !== undefined).map(([k, d]) => {
-      const v = part[k], o = d.options?.[v] ?? (Array.isArray(d.options) ? d.options.find(x => x.value === v)?.label : undefined);
-      return o ? `${d.label.toLowerCase()} ${o}` : `${d.label.toLowerCase()} ${fmt(v * (d.scale ?? 1))}${d.unit ? ` ${d.unit}` : ''}`;
-    });
-    out.push({ label: `${i + 1}. ${P.name}`, value: bits.length ? bits.join(', ') : '—', paths: [`chain.${i}`] });
-  });
-  out.push({ label: 'Target flow', value: `${fmt(setup.requiredFlow)} L/s`, paths: ['requiredFlow'] });
-  return out;
-}
+// The design in words for the journey page: the fluid line bench's own describer (circuit/learn.mjs), one implementation
+// for this worked example and for the open loop on any line.
 
 export default {
   describe,

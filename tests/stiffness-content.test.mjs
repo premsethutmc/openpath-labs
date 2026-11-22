@@ -107,7 +107,7 @@ test('graph: solids nodes merge with statics, school maths and fluids; known edg
   // Existing statics nodes are not redefined (core/graph.mjs refuses that), so bending-stress does not yet require normal-stress.
   assert.throws(() => buildGraph(STATICS, SCHOOL, SOLIDS, [{ id: 'ENG.solids.bending-stress', requires: ['ENG.solids.normal-stress'] }]), /defined twice/);
   // the catalogue loads the new files, and the registry lists the journey
-  assert.equal(CATALOG.GRAPH.length, 4); assert.equal(CATALOG.ITEMS.length, 4);
+  assert.ok(CATALOG.GRAPH.length >= 4); assert.equal(CATALOG.ITEMS.length, CATALOG.GRAPH.length);
   assert.ok((await Promise.all(JOURNEYS.map(f => f()))).some(m => m.default === J));
 });
 

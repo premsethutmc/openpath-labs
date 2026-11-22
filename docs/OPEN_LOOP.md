@@ -32,6 +32,7 @@ export const LEARN = {
 
 - Every `competency` must exist in `content/graph/` and have an item generator. A test checks this.
 - Output keys must be the adapter's real output keys, as dynamic as needed. A gauge key like `gauge:p5` is described by the bench.
+- Fluids, machine and thermal benches (`circuit/learn.mjs`, `machine/learn.mjs`, `thermal/learn.mjs`) also give `output(key, setup)` → `{ label, unit, competency, what } | null` for any key, fixed or dynamic (`gauge:<partId>`, `R:<bearingId>`, `T:<at>`), `outputsFor(setup)` → the predictable outputs this setup really produces, and `applyLever(setup, path, value)` → a new setup changed through the bench's own edit function. Each lever carries `values`: alternatives the bench accepts and solves. Outputs a bench does not map are listed in its header and checked in `tests/learn-descriptors.test.mjs`.
 - A bench registers itself in `content/benches.mjs`: `export const BENCHES = [() => import('../circuit/learn.mjs'), …]`.
 
 ## Owners for this change
