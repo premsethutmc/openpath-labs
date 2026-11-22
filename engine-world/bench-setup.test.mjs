@@ -70,3 +70,16 @@ test('intake-event evidence: guided lesson and a longer runner are judged from t
   const flipped = JSON.parse(JSON.stringify(g45)); flipped.B.trace.runner = flipped.A.trace.runner.map(p => p + 0.1e5);
   assert.equal(judge([flipped, g60]).verdict, 'inconclusive');
 });
+
+test('valve airflow: signed flow integrates to the solver’s own air count, mass balances through the exhaust, and locates the change', async () => {
+  const { airShift } = await import('./bench-setup.mjs');
+  for (const rpm of [2500, 4500, 6000]) {
+    const r = runPoint(BENCH_STOCK, rpm);
+    near(r.air.net, r.air.solverNet, 1e-9, `${rpm}: ∫ signed intake flow = solver air count`);
+    near(r.air.exhaust, r.air.net * (1 + 1 / 14.7), 0.01, `${rpm}: exhaust mass = air + fuel (λ = 1)`);
+    assert.ok(r.air.fwd > r.air.net && r.air.backEarly > 0, 'some gas flows back into the runner during overlap');
+    assert.equal(r.trace.mIn.length, 720);
+  }
+  // guided lesson: at both speeds the change is mostly in the forward flow, not in backflow
+  for (const rpm of [4500, 6000]) assert.equal(airShift(runPoint(BENCH_STOCK, rpm), runPoint(setupForRunner(0.24), rpm)).where, 'forward');
+});

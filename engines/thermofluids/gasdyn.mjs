@@ -223,7 +223,7 @@ export function simulate(rpm, opts = {}) {
   const cyc = cyls.map(() => ({ trapped: 0, fuel: 0, work: 0, pIVC: 1e5, VIVC: cylVolume(180, e), TIVC: 300, airIn: 0, airThisCycle: 0 }));
   let theta = 0, cycles = 0, last = null, history = [];
   const maxCycles = opts.maxCycles ?? 14;
-  const traces = { cyl: [], runner: [], theta: [], V: [], liftI: [], liftE: [] };   // cylinder 1, last converged cycle
+  const traces = { cyl: [], runner: [], theta: [], V: [], liftI: [], liftE: [], mIn: [], mEx: [], dt: [] };   // cylinder 1, last converged cycle
   let lastWorks = null;
   const dxMin = Math.min(...pipes.map(p => p.dx));
   // per-cycle accumulators
@@ -301,6 +301,8 @@ export function simulate(rpm, opts = {}) {
       if (k === 0) {
         traces.theta.push(ph2); traces.cyl.push(c.p); traces.V.push(V2); const [, , pr] = prim(runners[0].U[runners[0].n - 2], 1.4); traces.runner.push(pr);
         traces.liftI.push(valveLift(ph2 % 720, ivo, e.intake.duration, e.intake.lift)); traces.liftE.push(valveLift(ph2 % 720, evo, e.exhaust.duration, e.exhaust.lift));
+        // signed mass flow through the valves this step (kg/s): intake + into the cylinder, exhaust + out of the cylinder
+        traces.mIn.push(-bflMass(bfl, runners[0])); traces.mEx.push(bfl.get(prims[0].name + 'left')[0] * prims[0].A); traces.dt.push(dt);
       }
     }
     for (const v of [plenum, coll, airbox, cat, muff]) { v.U += v.dU * dt; v.m += v.dm * dt; v.m = Math.max(v.m, 1e-7); volState(v); }
@@ -323,7 +325,7 @@ export function simulate(rpm, opts = {}) {
   const bmep = last.imep - fmep;
   const torque = bmep * Vd * e.cylinders / (4 * Math.PI);
   // works: net indicated work of each cylinder over the last full cycle (J); Vd: swept volume per cylinder (m³)
-  return { rpm, ve: last.ve, imep: last.imep, fmep, bmep, torque, power: torque * w, cycles, converged: done(), history, traces, works: lastWorks, Vd, cylinders: e.cylinders, valves: { ivo, ivc, evo, evc: evo + e.exhaust.duration } };
+  return { rpm, ve: last.ve, imep: last.imep, fmep, bmep, torque, power: torque * w, cycles, converged: done(), history, traces, works: lastWorks, airs: cyc.map(s => s.airIn), Vd, cylinders: e.cylinders, valves: { ivo, ivc, evo, evc: evo + e.exhaust.duration } };
 }
 function bflMass(bfl, runner) { return bfl.get(runner.name + 'right')[0] * runner.A; } // + = into the runner from the cylinder
 

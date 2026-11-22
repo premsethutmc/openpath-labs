@@ -55,14 +55,18 @@ export function runPoint(setup, rpm, opts = {}) {
   const th = t.theta.map(v => (v >= 720 ? v - 720 : v));
   const order = th.map((v, i) => i).sort((a, b) => th[a] - th[b]);
   const xs = order.map(i => th[i]), pick = key => order.map(i => t[key][i]);
-  const cols = { p: pick('cyl'), V: pick('V'), liftI: pick('liftI'), liftE: pick('liftE'), runner: pick('runner') };
+  const cols = { p: pick('cyl'), V: pick('V'), liftI: pick('liftI'), liftE: pick('liftE'), runner: pick('runner'), mIn: pick('mIn') };
   const trace = { theta: deg };
   for (const [k, ys] of Object.entries(cols)) trace[k] = deg.map(x => interp(xs, ys, x));
+  // signed airflow through cylinder 1's intake valve, integrated at the solver's own time steps (mg per cycle)
+  let fwd = 0, backEarly = 0, backLate = 0, exhaust = 0;
+  t.mIn.forEach((m, i) => { const q = m * t.dt[i], th = t.theta[i] % 720; if (q > 0) fwd += q; else if (th < 540) backEarly -= q; else backLate -= q; exhaust += t.mEx[i] * t.dt[i]; });
+  const air = { fwd, backEarly, backLate, net: fwd - backEarly - backLate, solverNet: r.airs[0], exhaust };
   const ivc = r.valves.ivc % 720;
   const nearIVC = deg.filter(x => x > ivc - 60 && x <= ivc).map(x => interp(xs, cols.runner, x));
   return {
     ...base, valid: true, ve: r.ve, works: r.works, Wloop, Vd: r.Vd, cylinders: r.cylinders, valves: r.valves,
-    ...c, solverTorque: r.torque, solverPower: r.power,
+    ...c, solverTorque: r.torque, solverPower: r.power, air,
     runnerBeforeIVC: nearIVC.reduce((a, b) => a + b, 0) / nearIVC.length, trace,
   };
 }
@@ -106,4 +110,12 @@ export function judge(pairs) {
     return { rpm: A.rpm, a, b, dLate, dWhole, dVE, dW, dT, agree: clear && s(dLate) === s(dVE) && s(dVE) === s(dW) && s(dW) === s(dT), wholeAgrees: s(dWhole) === s(dVE) && Math.abs(dWhole) >= CLEAR_BAR };
   });
   return { rows, verdict: rows.every(r => r.agree) ? 'wave' : 'inconclusive' };
+}
+
+// Where did Run B gain or lose air relative to Run A? Compares the change in forward flow with the change in air
+// pushed back into the runner. "both" when neither dominates by a factor of two.
+export function airShift(A, B) {
+  const dF = B.air.fwd - A.air.fwd, dBack = (B.air.backEarly + B.air.backLate) - (A.air.backEarly + A.air.backLate);
+  const where = Math.abs(dF) >= 2 * Math.abs(dBack) ? 'forward' : Math.abs(dBack) >= 2 * Math.abs(dF) ? 'backflow' : 'both';
+  return { dF, dBack, dNet: B.air.net - A.air.net, where };
 }
