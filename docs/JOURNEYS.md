@@ -11,6 +11,7 @@ A **journey** is a module that exports data and pure functions (no DOM). One **r
 | Runner, ledger, diagnostic, decisions, page | `core/journey.mjs`, `core/ledger.mjs`, `core/diagnostic.mjs`, `core/graph.mjs`, `core/project.mjs` (decisions), `journeys/` (page), `tests/journeys*.e2e.mjs` | Agent A |
 | Journey 1, support design | `content/journeys/support.mjs`, `content/graph/statics.mjs`, `content/graph/school-math.mjs`, `content/items/statics.mjs`, `content/items/school-math.mjs`, moment view in `playground/` | Agent B |
 | Journey 2, pipe sizing | `content/journeys/pipe.mjs`, `content/graph/fluids.mjs`, `content/items/fluids.mjs`, any small additions to `circuit/` or `pumpset/` | Agent C |
+| Journey 3, stiffness vs strength | `content/journeys/stiffness.mjs`, `content/graph/solids.mjs`, `content/items/solids.mjs` | Agent B |
 
 Agents B and C may add school-maths nodes and items, but only in their own files (`school-math.mjs` belongs to B; C puts its own in `fluids.mjs` with `MATH.*` ids).
 
@@ -103,7 +104,7 @@ Revisions are labelled `Revision 1` and `Revision 2` (from `spec.anchor.revision
 
 ## Bench pages
 
-A journey's `bench.page` opens the learner's own design. The fluid line bench opens the current project; with `?preset=<id>`, as "Explore on the bench" links it, it opens a scratch bench on that preset that never changes the saved projects (Pump House `?preset=` opens the named lesson). The Mount lab needs `?project=current` (free design, no guided mission, the project's current design on the stand); its mission shows a “Back to the journey” link built from the project's `journey:<id>` origin. `tests/journey-support-visible.e2e.mjs` and `tests/journey-pipe-visible.e2e.mjs` play the two journeys through visible controls only, each with two different valid designs. `tests/journey-r2-bench.e2e.mjs` plays Journey 1 on the real Mount bench with an edit after the tested run and a reload, in both ways out (save the last tested design, or predict and run the edit), with help on a prerequisite kept apart from the check; the Journey 1 learner's hand calculations are shared in `tests/support-hand.mjs`.
+A journey's `bench.page` opens the learner's own design. The fluid line bench opens the current project; with `?preset=<id>`, as "Explore on the bench" links it, it opens a scratch bench on that preset that never changes the saved projects (Pump House `?preset=` opens the named lesson). The Mount lab needs `?project=current` (free design, no guided mission, the project's current design on the stand); its mission shows a “Back to the journey” link built from the project's `journey:<id>` origin. `tests/journey-support-visible.e2e.mjs`, `tests/journey-pipe-visible.e2e.mjs` and `tests/journey-stiffness-visible.e2e.mjs` play the three journeys through visible controls only, each with two different valid designs (shared helpers: `tests/visible-helpers.mjs`). `tests/journey-r2-bench.e2e.mjs` plays Journey 1 on the real Mount bench with an edit after the tested run and a reload, in both ways out (save the last tested design, or predict and run the edit), with help on a prerequisite kept apart from the check; the Journey 1 learner's hand calculations are shared in `tests/support-hand.mjs`.
 
 ## Acceptance (the whole proof)
 
