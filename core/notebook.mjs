@@ -18,8 +18,15 @@ const VERDICT = { pass: 'yes', fail: 'no', 'cannot-assess': 'cannot assess', 'no
 export function notebook(el, { adapter, getSetup, applySetup, storage, learn }) {
   const shared = !storage || storage === globalThis.localStorage;
   const store = P.openStore(adapter.domain, storage);
-  let project = store.current();
-  if (!project) { project = store.put(P.createProject({ domain: adapter.domain, name: `${adapter.title} 1`, setup: getSetup() })); store.open(project.id); }
+  // ?project=<id> opens exactly that project (how a saved design and the learning loop return to the bench). If it is
+  // not in this browser any more, the page says so and offers a picker; it never opens a different saved project in its
+  // place. (?project=current keeps the older meaning: whatever project was opened last.)
+  const asked = shared && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('project') : null;
+  let missing = null, project = null;
+  if (asked && asked !== 'current') { project = store.get(asked); if (project) store.open(project.id); else missing = asked; }
+  if (!project && !missing) project = store.current();
+  if (!project) { project = store.put(P.createProject({ domain: adapter.domain, name: missing ? `${adapter.title} (new)` : `${adapter.title} 1`, setup: getSetup() })); store.open(project.id); }
+  if (missing) missingNotice(missing);
   let compare = [], msg = null;
 
   const sync = () => { project.setup = getSetup(); store.put(project); };
@@ -62,5 +69,19 @@ export function notebook(el, { adapter, getSetup, applySetup, storage, learn }) 
     $('.nb-export').onclick = () => { sync(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([P.serialize(project)], { type: 'application/json' })); a.download = `${project.name.replace(/[^\w-]+/g, '-')}.json`; a.click(); URL.revokeObjectURL(a.href); };
     $('.nb-import input').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const p = P.deserialize(await f.text(), adapter.domain); p.id = null; open(store.put(p)); say(`Imported “${p.name}” with ${p.runs.length} runs.`, true); } catch (err) { say(err.message); } };
   }
-  return { sync, render, project: () => project };
+  // A banner at the top of the page: the design asked for is gone; choose one of this bench's projects instead.
+  function missingNotice(id) {
+    if (typeof document === 'undefined') return;
+    document.body.dataset.missingProject = id;
+    const box = document.createElement('div');
+    box.className = 'nb-missing'; box.setAttribute('role', 'alert');
+    box.style.cssText = 'margin:8px;padding:12px 14px;border:1px solid #b3541e;border-radius:10px;background:#fff4ec;color:#5a2a0e;font:14px/1.4 system-ui,sans-serif';
+    const others = store.list().filter(p => p.id !== project.id);
+    box.innerHTML = `<b>That design is not saved in this browser any more.</b> The bench is showing a new, empty project instead, not one of your other designs.
+      ${others.length ? `<div style="margin-top:8px">Open one of your designs: <select class="nb-pick" aria-label="Pick a project"><option value="">Choose…</option>${others.map(p => `<option value="${esc(p.id)}">${esc(p.name)} · ${p.runs} runs</option>`).join('')}</select></div>` : '<div style="margin-top:8px">You have no other saved designs on this bench.</div>'}`;
+    document.body.prepend(box);
+    const pick = box.querySelector('.nb-pick');
+    if (pick) pick.onchange = () => { if (!pick.value) return; const u = new URL(location.href); u.searchParams.set('project', pick.value); location.assign(u.href); };
+  }
+  return { sync, render, project: () => project, missing: () => missing };
 }

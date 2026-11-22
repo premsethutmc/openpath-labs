@@ -104,7 +104,7 @@ for (const [label, vp, mine, revised] of [
       // 6. apply on their own (no help), then the same idea on their own design, then the unaided check
       assert.equal(await K.phase(), 'apply');
       for (let k = 0; k < 3; k++) { assert.equal(await btn('Show the solution').count(), 0); await answer(true); await tap(btn('Next')); }
-      assert.equal(await app.locator('#transfer').getAttribute('href'), '../tests/fixtures/bench/');
+      assert.equal(await app.locator('#transfer').getAttribute('href'), '../tests/fixtures/bench/?project=P1');
       await tap(btn('Continue to the check'));
       await answer(true); await tap(btn('Next'));
       assert.equal(await app.locator('#status').innerText(), 'Solved on your own after help.');
@@ -114,7 +114,7 @@ for (const [label, vp, mine, revised] of [
       // 7. back to THEIR project on the bench: it opens their design; change it there and come back
       assert.equal(await K.phase(), 'return');
       await tap(app.getByRole('link', { name: 'Change it on the bench' }));
-      await page.waitForURL(/\/tests\/fixtures\/bench\/$/);
+      await page.waitForURL(/\/tests\/fixtures\/bench\/\?project=P1$/);
       await page.locator('body[data-ready="true"]').waitFor();
       assert.equal(await page.locator('#h').inputValue(), String(mine.h), 'their own project is open on the bench');
       assert.match(await page.locator('#experiments .nb-open option:checked').innerText(), /^Fixture stand 1 · 1 run/);
@@ -159,15 +159,16 @@ for (const [label, vp, mine, revised] of [
       assert.equal(await app.locator('.badmsg').count(), 0, 'every run reproduces');
       await noOverflow('summary'); await shot('summary');
 
-      // 10. the journeys list: their project under "Start from your own design", the fixed journeys as worked examples.
+      // 10. the journeys list: their project under "Your designs", the fixed journeys as worked examples.
       // The fixture bench is registered for this page only (the registry module is served with it added).
       await page.route('**/content/benches.mjs', r => r.fulfill({ contentType: 'text/javascript', body: "export const BENCHES = [() => import('../tests/fixtures/bench/learn.mjs'), () => import('./no-such-bench.mjs')];" }));
       await page.goto(server.origin + '/journeys/');
       await page.locator('body[data-ready="true"]').waitFor();
-      assert.match(await page.locator('main').innerText(), /Start from your own design[\s\S]*Fixture stand 1[\s\S]*Predict and learn[\s\S]*Worked examples/);
+      assert.match(await page.locator('main').innerText(), /Open benches[\s\S]*Your designs[\s\S]*Fixture stand 1[\s\S]*Open design[\s\S]*Predict and learn[\s\S]*Worked examples/);
       for (const a of await page.locator('#list a').all()) assert.match(await a.getAttribute('href'), /^\.\/journey\.html\?j=/);
-      const own = page.locator('#own a');
-      assert.equal(await own.count(), 1);
+      assert.equal(await page.locator('#own li.design').count(), 1);
+      assert.equal(await page.locator('#own a[data-act="open"]').getAttribute('href'), '../tests/fixtures/bench/?project=P1');   // Open design: the exact project
+      const own = page.locator('#own a[data-act="learn"]');
       assert.equal(await own.getAttribute('href'), './journey.html?open=fixture-stand&project=P1');
       await noOverflow('list');
       // the bench is found by its domain in the registry: the same loop resumes at the portfolio
@@ -191,7 +192,7 @@ test('Predict and learn on a bench that has no learn descriptor, and on a projec
     await page.goto(server.origin + '/journeys/journey.html?open=fixture-stand&project=P9&learn=../tests/fixtures/bench/learn.mjs');
     await page.locator('body[data-ready="error"]').waitFor();
     assert.match(await page.locator('#app').innerText(), /Project not found[\s\S]*not saved in this browser/);
-    assert.equal(await page.locator('#bench').getAttribute('href'), '../tests/fixtures/bench/');
+    assert.equal(await page.locator('#bench').getAttribute('href'), '../tests/fixtures/bench/?project=P9');   // the bench says P9 is gone and offers a picker
     assert.deepEqual(errors, []);
   } finally { await browser.close(); server.close(); }
 });

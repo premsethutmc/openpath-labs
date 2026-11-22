@@ -51,3 +51,11 @@ button.link{background:none;border:0;color:var(--acc);padding:0;min-height:44px;
 .tested{margin:0;font-size:.88rem;padding:6px 10px;border-left:3px solid var(--muted);background:#0d151b;border-radius:0 8px 8px 0;overflow-wrap:anywhere}
 .tested.yes{border-color:var(--ok)}.tested.no{border-color:var(--warn)}
 .notice{margin:0;padding:10px 12px;border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:0 10px 10px 0;background:var(--panel);font-size:.9rem}
+
+/* saved designs: the design opens on its bench; learning from it is a separate, optional action */
+.designs li.design{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.designs li.design .what b{font:800 1.05rem Archivo,Inter,system-ui,sans-serif}.designs li.design .what span{display:block;color:var(--muted);font-size:.88rem}
+.designs li.design .acts{display:flex;flex-wrap:wrap;gap:8px}
+.designs li.design .acts a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;background:transparent}
+.designs li.design .acts a.main{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.backline{margin:0}.backline a{display:inline-flex;align-items:center;min-height:44px;font-weight:600;color:var(--ink)}

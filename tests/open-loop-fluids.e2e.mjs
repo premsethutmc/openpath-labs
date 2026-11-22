@@ -268,7 +268,7 @@ for (const V of VIEWPORTS) {
           if (await has('Check')) { assert.equal(await btn('Hint').count() + await btn('Show the solution').count(), 0, 'no help when applying'); await answer(); }
           else await press(btn('Next'));
         } else {
-          assert.equal(await app.locator('#transfer').getAttribute('href'), '../circuit/');
+          assert.match(await app.locator('#transfer').getAttribute('href'), /^\.\.\/circuit\/\?project=P\d+$/);
           await press(btn('Continue to the check'));
         }
       }
@@ -283,7 +283,7 @@ for (const V of VIEWPORTS) {
       assert.equal(await phase(), 'return');
       assert.match(await app.innerText(), /As saved in Revision 1\./);
       await press(app.getByRole('link', { name: 'Change it on the bench' }));
-      await page.waitForURL(/\/circuit\/$/); await ready();
+      await page.waitForURL(/\/circuit\/\?project=P\d+$/); await ready();
       assert.deepEqual(await B.listed(), N.listed, 'their own line is open on the bench');
       assert.match(await page.locator('#m-experiments .nb-open option:checked').innerText(), new RegExp(`^${projectName} · 2 runs`));
       for (const [prefix, fields] of N.revise) await B.edit(prefix, fields);
@@ -340,7 +340,7 @@ for (const V of VIEWPORTS) {
           else if (/#3 Centrifugal pump: speed went back to its Revision 1 value \(2900 rpm instead of 2600 rpm\)/.test(q)) { back = ['#3 Centrifugal pump', { Speed: 2900 }]; again = ['#3 Centrifugal pump', { Speed: 2600 }]; }
           else assert.fail(`no method for: ${q}`);
           await press(app.getByRole('link', { name: 'Open my design on the bench' }));
-          await page.waitForURL(/\/circuit\/$/); await ready();
+          await page.waitForURL(/\/circuit\/\?project=P\d+$/); await ready();
           await B.edit(...back);
           const r = await B.read(), d = { ...d2, ...(back[0] === '#5 Pipe' ? { main: 0.04 } : { rpm: 2900 }) };
           handCheck(r, d, `defence variant ${i + 1}`);
@@ -381,9 +381,9 @@ for (const V of VIEWPORTS) {
       const dec = proj.decisions[0], r2 = proj.runs.find(r => r.id === dec.to), cited = proj.runs.find(r => r.id === benchRun);
       assert.ok(dec.runs.includes(benchRun)); assert.deepEqual(r2.setup, cited.setup, 'Revision 2 is exactly the line saved on the bench');
 
-      // the journeys list offers their line under "Start from your own design"; it resumes at the portfolio
+      // the journeys list offers their line under "Your designs"; it resumes at the portfolio
       await page.goto(`${server.origin}/journeys/`); await ready();
-      const own = page.locator('#own a').filter({ hasText: 'Predict and learn' });
+      const own = page.locator('#own a[data-act="learn"]');
       assert.match(await page.locator('#own').innerText(), new RegExp(projectName));
       assert.match(await own.first().getAttribute('href'), /^\.\/journey\.html\?open=fluids-line&project=/);
       await press(own.first());

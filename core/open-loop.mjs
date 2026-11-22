@@ -105,7 +105,7 @@ export function defendFrom(learn, setup, { from, picked = [], adapter } = {}, ou
 }
 
 // Teach entries for every competency a picked output could point to, and its mandatory prerequisites that have items.
-function teachFrom(learn, outs, setup, graph, items) {
+function teachFrom(learn, outs, setup, graph, items, page = learn.page) {
   if (!graph) return {};
   const seeds = [...new Set([...Object.values(outs).map(o => o.competency), ...(typeof learn.concepts === 'function' ? learn.concepts(clone(setup), clone(outs)) || [] : [])])].filter(c => graph.has(c));
   const teach = {};
@@ -113,7 +113,7 @@ function teachFrom(learn, outs, setup, graph, items) {
     const n = graph.node(c), gen = n.items && items?.has(n.items) ? n.items : null;
     let steps = Array.isArray(n.steps) ? [...n.steps] : [];
     if (!steps.length && gen) { try { const it = items.make(gen, 1, items.generators[gen].aspects.includes('procedure') ? 'procedure' : items.generators[gen].aspects[0]); steps = [`Worked example: ${it.prompt}`, ...(it.solution || [])]; } catch {} }
-    return { steps, ...(gen ? { items: gen } : {}), ...(own && learn.page ? { explore: { page: learn.page } } : {}) };
+    return { steps, ...(gen ? { items: gen } : {}), ...(own && page ? { explore: { page } } : {}) };
   };
   for (const c of seeds) {
     teach[c] ??= entry(c, true);
@@ -122,13 +122,22 @@ function teachFrom(learn, outs, setup, graph, items) {
   return teach;
 }
 
+// A bench page that opens exactly this project: `project=<id>` replaces any `project=` the page already carries
+// (never `project=current`, which follows whatever another tab opened last).
+export function pageFor(page, id) {
+  if (!page) return page;
+  const [path, query = ''] = page.split('?'), q = new URLSearchParams(query);
+  q.set('project', id);
+  return `${path}?${q}`;
+}
+
 export function openSpec({ learn, project, picked = null, graph = null, items = null, results = null }) {
   if (!learn?.domain) throw new Error('a bench needs a LEARN descriptor with a domain');
   if (!project?.id) throw new Error('open a saved project first');
   if (project.domain !== learn.domain) throw new Error(`this project belongs to ${project.domain}, not ${learn.domain}`);
   const outs = outputsOf(learn, project.setup, results), keys = Object.keys(outs);
   if (!keys.length) throw new Error('This bench has nothing to predict yet.');
-  const max = Math.min(MAX_PICK, keys.length);
+  const max = Math.min(MAX_PICK, keys.length), page = pageFor(learn.page, project.id);
   const chosen = picked ? [...new Set(picked)].filter(k => outs[k]).slice(0, max) : null;
   if (picked && !chosen.length) throw new Error('none of the picked outputs can be predicted on this design');
   // later designs may have other dynamic outputs: read the label from the run when the bench no longer lists it
@@ -136,7 +145,7 @@ export function openSpec({ learn, project, picked = null, graph = null, items = 
   const predictions = ids => ids.filter(k => outs[k]).map(prediction);
   return {
     id: `open:${learn.domain}:${project.id}`, title: 'Your design', course: project.name, semester: null,
-    bench: { page: learn.page, domain: learn.domain, adapter: learn.adapter },
+    bench: { page, domain: learn.domain, adapter: learn.adapter },
     ...(learn.content ? { content: learn.content } : {}),
     ...(typeof learn.describe === 'function' ? { describe: learn.describe } : {}),
     ...(learn.labels ? { labels: learn.labels } : {}),
@@ -144,8 +153,8 @@ export function openSpec({ learn, project, picked = null, graph = null, items = 
     anchor: { project: project.id, setup: clone(project.setup), revision: 'Revision 1' },
     stuck: { choose: { options: keys.map(k => ({ id: k, prompt: outs[k].label, unit: outs[k].unit ?? '' })), min: 1, max, ...(chosen ? { picked: chosen } : {}) }, predictions },
     target: ({ scored, picked: ids }) => outs[mostMissed(scored, ids)]?.competency ?? outs[ids?.[0] ?? keys[0]].competency,
-    teach: teachFrom(learn, outs, project.setup, graph, items),
-    apply: { count: 3, ...(learn.page ? { transfer: { page: learn.page, prompt: 'Try the same idea on your own design: change one thing on the bench and say what should move before you look.' } } : {}) },
+    teach: teachFrom(learn, outs, project.setup, graph, items, page),
+    apply: { count: 3, ...(page ? { transfer: { page, prompt: 'Try the same idea on your own design: change one thing on the bench and say what should move before you look.' } } : {}) },
     check: { count: 1 },
     return: { predictions, decision: true },
     defend: (setup, _outputs, ctx = {}) => defendFrom(learn, setup, ctx, outputsOf(learn, setup)),

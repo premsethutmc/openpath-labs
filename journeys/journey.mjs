@@ -8,7 +8,7 @@ import { JOURNEYS } from '../content/journeys/index.mjs';
 import { BENCHES } from '../content/benches.mjs';
 import { listJourneys, loadJourney, loadContent, listBenches } from './load.mjs';
 import { createRunner } from '../core/journey.mjs';
-import { openSpec } from '../core/open-loop.mjs';
+import { openSpec, pageFor } from '../core/open-loop.mjs';
 import { openLedger, describeStatus } from '../core/ledger.mjs';
 import * as P from '../core/project.mjs';
 
@@ -25,11 +25,11 @@ async function openOwn(q) {
   const domain = q.get('open'), id = q.get('project'), src = q.get('learn');
   const learn = src ? (await import(modulePath(src))).LEARN : (await listBenches(BENCHES)).find(l => l.domain === domain);
   if (!learn || learn.domain !== domain) throw new OpenError('Predict and learn is not ready for this bench yet. Your project is safe on the bench; the worked examples on the journeys page show how the loop goes.', { title: 'Not ready for this bench yet' });
-  const store = P.openStore(domain), project = id ? store.get(id) : store.current();
-  if (!project) throw new OpenError('This project is not saved in this browser. Open it on the bench, then press Predict and learn again.', { title: 'Project not found', bench: learn.page });
+  const store = P.openStore(domain), project = id && id !== 'current' ? store.get(id) : null;   // only the named project, never whichever was opened last
+  if (!project) throw new OpenError('This project is not saved in this browser. Open it on the bench, then press Predict and learn again.', { title: 'Project not found', bench: id ? pageFor(learn.page, id) : learn.page });
   const [adapter, content] = await Promise.all([learn.adapter(), loadContent({ content: learn.content })]);
   const r = adapter.evaluate(JSON.parse(JSON.stringify(project.setup)));
-  if (!r.ok) throw new OpenError(`Your design cannot be run yet: ${r.reason} Change it on the bench, then come back.`, { title: 'Your design cannot run yet', bench: learn.page });
+  if (!r.ok) throw new OpenError(`Your design cannot be run yet: ${r.reason} Change it on the bench, then come back.`, { title: 'Your design cannot run yet', bench: pageFor(learn.page, project.id) });
   const spec = openSpec({ learn, project, graph: content.graph, items: content.items, results: r.outputs });
   return { spec, loaded: { adapter, ...content } };
 }
@@ -136,8 +136,10 @@ function render() {
   const i = v.phases.indexOf(v.phase);
   $('restart').hidden = v.phase === 'brief';
   const head = `<div class="progress"><ol aria-hidden="true">${v.phases.map((p, k) => `<li class="${k < i ? 'done' : k === i ? 'now' : ''}"></li>`).join('')}</ol><p>Step ${i + 1} of ${v.phases.length} · ${esc(v.titles[v.phase])}</p></div>`;
+  // learning from the learner's own project is optional: the way back to that exact project is always one tap away
+  const back = spec.anchor?.project != null && spec.bench?.page ? `<p class="backline"><a id="to-design" href="${esc(spec.bench.page)}">← Back to my design on the bench</a></p>` : '';
   const body = PHASE[v.phase](v);
-  app.innerHTML = head + body;
+  app.innerHTML = head + back + body;
   document.body.dataset.phase = v.phase;
   WIRE[v.phase]?.(v);
   wireItem();

@@ -9,7 +9,7 @@
 //    pin at joint 1, roller at joint 3, a car on its first member; a run saved → Experiments: Predict and learn →
 //    "Your design" in words → predict both support reactions (dynamic keys) and miss → the target is the competency of
 //    the reaction missed most → find the block (a prerequisite gap), learn with help on that prerequisite only, apply,
-//    an unaided check on the target → Change it on the bench opens THEIR project (?project=current keeps it) → lighter
+//    an unaided check on the target → Change it on the bench opens THEIR project (?project=<id> names it) → lighter
 //    tubes (section), run saved → back, reload: the changed design is shown → predict and run → Revision 2 → decide,
 //    citing the tested run and the bench run → defend (the reaction with the old tubes, by hand) → portfolio on their
 //    project: every run reproduces, check evidence only on the target.
@@ -205,12 +205,12 @@ test('open loop on the Force Playground: own truss, phone, visible controls only
     // ---------- back to THEIR project on the bench; lighter tubes; a run saved ----------
     assert.deepEqual(await setupShown(), described(TUBE.big));
     await tap(app.getByRole('link', { name: 'Change it on the bench' }));
-    await page.waitForURL(/\/playground\/\?project=current$/);
+    await page.waitForURL(/\/playground\/\?project=P\d+$/);
     await page.locator('body[data-ready="true"]').waitFor();
     assert.match(await page.locator('.mass').textContent(), /7 members/, 'their own truss is on the bench');
     near(n(await page.locator('#b-mass').textContent()), T1.kg, 0, 'their tubes', 0.5);
     await tab('experiments');
-    assert.equal((await page.locator('#experiments .nb-open option:checked').innerText()).trim(), 'Structure 1 · 2 runs', '?project=current opened their project and kept it');
+    assert.equal((await page.locator('#experiments .nb-open option:checked').innerText()).trim(), 'Structure 1 · 2 runs', '?project=<id> opened their project and kept it');
     assert.match(await page.locator('#experiments .nb-learn').getAttribute('href'), new RegExp(`project=${pid}$`));
     await tab('material');
     await tap(page.getByRole('radio', { name: TUBE.small.label }));
@@ -269,7 +269,7 @@ test('open loop on the Force Playground: own truss, phone, visible controls only
     assert.deepEqual(pf.design.to.setup.object.nodes.map(q => [q.x, q.y]), J, 'Revision 2 is their own truss');
     // their bench still opens on their project, with the change
     await tap(app.locator('#bench').last());
-    await page.waitForURL(/\/playground\/\?project=current$/);
+    await page.waitForURL(/\/playground\/\?project=P\d+$/);
     await page.locator('body[data-ready="true"]').waitFor();
     near(n(await page.locator('#b-mass').textContent()), T2.kg, 0, 'the current design', 0.5);
     await tab('experiments');
@@ -367,7 +367,7 @@ test('open loop on the opened Mount lab: own timber cantilever, desktop, visible
     // ---------- back to THEIR project: bamboo, an I-section, the machine nearer the wall; a reading ----------
     assert.deepEqual(await setupShown(), described(B1));
     await tap(app.getByRole('link', { name: 'Change it on the bench' }));
-    await page.waitForURL(/\/mount\/\?project=current$/);
+    await page.waitForURL(/\/mount\/\?project=P\d+$/);
     await page.locator('body[data-ready="true"][data-stage="free"]').waitFor();
     await tab('stand');
     assert.deepEqual([await page.locator('#ob-supports').inputValue(), await page.locator('#ob-span').inputValue(), await page.locator('#ob-load').inputValue(), await page.locator('#mount-x').inputValue()],

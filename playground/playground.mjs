@@ -584,7 +584,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && pending) {
 nb = notebook($('experiments'), { adapter: SOLIDS_ADAPTER, getSetup, applySetup });
 // ?project=current (how the learning loop returns the student to their own project): put the open project's setup on
 // the bench instead of overwriting it with the last preset viewed.
-if (QUERY.get('project') === 'current' && nb.project().setup?.object?.members) applySetup(clone(nb.project().setup));
+if (QUERY.get('project') && !nb.missing() && nb.project().setup?.object?.members) applySetup(clone(nb.project().setup));
 nb.sync(); nb.render();
 if (QUERY.get('view') === 'moment') setMoments(true);
 window.__labs = { toScreen: (x, y) => ({ x: view.X(x), y: view.Y(y) }), moments: () => mview.result && JSON.parse(JSON.stringify(mview.result)) }; // used by browser tests

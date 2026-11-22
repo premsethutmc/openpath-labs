@@ -486,12 +486,17 @@ $('ss-cmp-a').onchange = paintSplitCompare; $('ss-cmp-b').onchange = paintSplitC
 document.addEventListener('module', e => { if (e.detail === 'split') paintSplitCompare(); });
 // Opened from a journey (?project=current): no guided mission; the current project's latest saved design is on the bench
 // and the design is free to change. The mount position stays the one the learner saved.
-if (QUERY.get('project') === 'current' || OPEN_LAB) {
+// ?project=<id> (a saved design or the learning loop returning to exactly that project) opens the same free bench.
+if (QUERY.get('project') || OPEN_LAB) {
   // the project's current design (p.setup, saved with every reading), not the latest run: a journey may save an earlier
   // tested design as a later run (Revision 2) while the learner's newer edit stays the current design
   const p = nb.project(), last = p.runs[p.runs.length - 1], s0 = clone(p.setup?.design ? p.setup : last?.setup);
   S.stage = 'free'; document.body.dataset.stage = 'free'; WB.open('design');
   if (s0?.design) { S.design = s0.design; S.dialX = s0.dialX ?? S.dialX; S.strainX = s0.strainX ?? S.strainX; S.mount = s0.mount ?? S.mount; }
+  // its own load state and last reading come back too, so a reopened project is the one that was left, not a mix
+  if (s0?.design && !OPEN_LAB) S.loaded = !!s0.loaded;
+  const lastReading = [...p.runs].reverse().find(r => r.outputs?.deflection && r.outputs?.strain);
+  if (lastReading) { $('r-dial').textContent = `${f(lastReading.outputs.deflection.value, 3)} mm @ ${lastReading.setup.dialX}`; $('r-strain').textContent = `${f(lastReading.outputs.strain.value, 0)} µε @ ${lastReading.setup.strainX}`; }
   S.bench = s0?.bench ? clone(s0.bench) : OPEN_LAB ? defaultBench() : null;
   if (OPEN_LAB) { S.loaded = false; WB.open('stand'); }
   document.querySelector('.wb-title h1').textContent = 'Open bench: your own support';

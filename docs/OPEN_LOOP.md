@@ -14,7 +14,7 @@
    - **Teach, apply, check:** as in the runner, from the graph and items for that target.
    - **Return:** back to their own project on their own bench page. They revise freely; Revision 2 must be a tested design.
    - **Defend:** generated from the bench's levers. For each lever the student changed between Revision 1 and Revision 2, ask "what would <output> be if <lever> went back to its Revision 1 value?", answered by `adapter.evaluate` on that patched setup. If they changed none, ask about the first two levers at ±20 % or the next option, keeping only valid setups.
-4. Nothing is fixed: no preset brief, no fixed load, span, material list or network. Any valid design is accepted. The bench judges validity and the student's own limits, never a preferred design.
+4. Nothing is fixed: no preset brief, no fixed load, span, material list or line. Any valid design is accepted. The bench judges validity and the student's own limits, never a preferred design.
 
 ## What each bench provides (`<bench>/learn.mjs`, no DOM imports)
 
@@ -43,9 +43,18 @@ export const LEARN = {
 | Solids benches | `playground/learn.mjs` (move the solids adapter into a DOM-free module if needed), `mount/` (open: free span, load, support type, every material in `core/materials.mjs`; old runs must still reproduce), `content/graph/statics.mjs` / `solids.mjs` and items if a mapped concept lacks items, `tests/open-solids*.e2e.mjs` | Agent 2 |
 | Fluids and machine benches | `circuit/learn.mjs`, `machine/learn.mjs`, `thermal/learn.mjs` (where graph nodes exist; otherwise map no outputs and say so), `content/graph/fluids.mjs` and items if needed, `tests/open-fluids*.e2e.mjs` | Agent 3 |
 
+## Returning to the exact project
+
+- **Journeys page:** each saved design's main action is **Open design**, which opens that exact project on its editable bench (`<bench>/?project=<id>`). **Predict and learn** is a separate, optional action. The open benches stay listed even when the student has saved designs.
+- **Learning pages:** every link from the optional learning back to the bench carries the originating project id: Explore, Apply, Change it on the bench, Defend and the persistent "← Back to my design on the bench" link. None of them uses `project=current`, which follows whatever another tab opened last.
+- **On the bench:** `core/notebook.mjs` opens exactly the project named by `?project=<id>`. If that project is gone, a banner says so and offers a picker of the bench's other projects. The bench shows a new, empty project, never another saved one in its place.
+- **Mount lab:** reopening a project restores its load state and last reading as well as its settings.
+- **Guided examples:** the fixed journeys and their locks are unchanged.
+- **Proof:** `tests/open-return.e2e.mjs`, on the Mount lab at phone width and on the fluid line bench at desktop width.
+
 ## Acceptance
 
-1. A student builds a design from an empty or edited bench that no journey describes, such as their own truss in the Force Playground or their own pipe network. They start the loop from it, miss a prediction, are taught the prerequisite, pass an unaided check, return to *their* project, revise, test, decide and defend. This is shown through visible controls at phone and desktop widths, with answers computed independently in the test.
+1. A student builds a design from an empty or edited bench that no journey describes, such as their own truss in the Force Playground or their own single fluid line (the fluid line bench edits one line in series — source, pipes, fittings, one pump, receiving tank — not branched or looped networks). They start the loop from it, miss a prediction, are taught the prerequisite, pass an unaided check, return to *their* project, revise, test, decide and defend. This is shown through visible controls at phone and desktop widths, with answers computed independently in the test.
 2. The runner and page still contain no journey or bench words (the existing grep test, extended to `core/open-loop.mjs`).
 3. Old saved runs on every bench still reproduce, and existing journeys and tests still pass.
 4. No AI calls, and no network beyond the static files.

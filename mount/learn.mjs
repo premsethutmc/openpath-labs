@@ -97,6 +97,7 @@ export function levers(setup) {
 export const LEARN = {
   domain: 'mount-stand',
   page: '../mount/?project=current',
+  openPage: '../mount/?mode=open',   // the open bench, from the journeys page
   adapter: () => import('./model.mjs').then(m => m.READING_ADAPTER),
   describe,
   outputs: OUTPUTS,

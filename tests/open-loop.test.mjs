@@ -2,7 +2,7 @@
 // (tests/fixtures/bench/learn.mjs: the Mount test stand's physics under the domain 'fixture-stand', fixture concepts).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openSpec, mostMissed, defendFrom, relError, patchAt, outputsOf, DEFAULT_TOL } from '../core/open-loop.mjs';
+import { openSpec, mostMissed, defendFrom, relError, patchAt, outputsOf, DEFAULT_TOL, pageFor } from '../core/open-loop.mjs';
 import { createRunner, applyPatch, JourneyError } from '../core/journey.mjs';
 import { openLedger } from '../core/ledger.mjs';
 import * as P from '../core/project.mjs';
@@ -32,7 +32,7 @@ test('openSpec: brief, anchor and choices come from the learner\'s own project a
   const ctx = await setup(), spec = openSpec({ learn: LEARN, project: ctx.project, graph: ctx.graph, items: ctx.items, results: truth(MINE) });
   assert.equal(spec.id, `open:fixture-stand:${ctx.project.id}`);
   assert.deepEqual([spec.title, spec.course], ['Your design', 'My bracket']);
-  assert.deepEqual(spec.bench, { page: LEARN.page, domain: LEARN.domain, adapter: LEARN.adapter });
+  assert.deepEqual(spec.bench, { page: pageFor(LEARN.page, ctx.project.id), domain: LEARN.domain, adapter: LEARN.adapter });   // the exact project, never project=current
   assert.deepEqual(spec.anchor, { project: ctx.project.id, setup: MINE, revision: 'Revision 1' });
   assert.equal(spec.describe, LEARN.describe);
   assert.deepEqual(spec.stuck.choose, { options: [{ id: 'deflection', prompt: 'Dial reading', unit: 'mm' }, { id: 'stress', prompt: 'Stress at the gauge', unit: 'MPa' }, { id: 'mass', prompt: 'Mass', unit: 'kg' }], min: 1, max: 3 });
@@ -43,7 +43,7 @@ test('openSpec: brief, anchor and choices come from the learner\'s own project a
   // teach entries: every output's concept and its mandatory prerequisites that have items, with a worked example
   assert.deepEqual(Object.keys(spec.teach).sort(), ['FIX.lever', 'FIX.product', 'FIX.ratio']);
   assert.equal(spec.teach['FIX.lever'].items, 'fix.lever');
-  assert.equal(spec.teach['FIX.lever'].explore.page, LEARN.page);
+  assert.equal(spec.teach['FIX.lever'].explore.page, pageFor(LEARN.page, ctx.project.id));
   assert.match(spec.teach['FIX.lever'].steps[0], /^Worked example: /);
   assert.equal(spec.apply.count, 3); assert.equal(spec.check.count, 1); assert.equal(spec.return.decision, true);
   // picked in advance; unknown picks dropped; at most three
@@ -137,7 +137,7 @@ test('the open loop end to end in the runner: miss → teach → check → retur
   R.next();
   for (let g = 0; R.view().phase === 'teach' && g < 20; g++) { const v = R.view(); if (v.stage === 'lesson') { R.next(); continue; } R.showSolution(); R.answer(right(ctx, R)); R.next(); }
   assert.equal(R.view().phase, 'apply');
-  while (R.view().phase === 'apply') { if (R.view().stage === 'transfer') { assert.equal(R.view().transfer.href, LEARN.page); R.next(); break; } R.answer(right(ctx, R)); R.next(); }
+  while (R.view().phase === 'apply') { if (R.view().stage === 'transfer') { assert.match(R.view().transfer.href, /\?project=P\d+$/); R.next(); break; } R.answer(right(ctx, R)); R.next(); }
   R.answer(right(ctx, R)); R.next();
   assert.equal(R.view().status, 'independent-after-help');
   R.toDesign();
@@ -181,4 +181,10 @@ test('every registered bench names concepts that exist in the graph and have ite
       assert.ok(gen && it.has(gen), `${learn.domain}.${k}: ${o.competency} has no item generator`);
     }
   }
+});
+
+test('pageFor: every return to the bench names the exact project, never project=current', () => {
+  assert.equal(pageFor('../mount/?project=current', 'P7'), '../mount/?project=P7');
+  assert.equal(pageFor('../circuit/', 'P2'), '../circuit/?project=P2');
+  assert.equal(pageFor('../x/?view=moment&project=current', 'P3'), '../x/?view=moment&project=P3');
 });
