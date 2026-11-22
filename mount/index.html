@@ -48,6 +48,28 @@
       <p class="label">Section</p><div class="chips" id="shape" role="radiogroup" aria-label="Section shape"></div>
       <div id="dims"></div>
       <div id="secprops" class="note"></div>
+      <section class="ss" id="ss-readout" aria-labelledby="ss-h">
+        <h3 id="ss-h">Stiffness vs strength</h3>
+        <p class="ss-cond" id="ss-cond"></p>
+        <p class="note" id="ss-hidden" hidden></p>
+        <div class="ss-bars" id="ss-bars">
+          <div class="ss-g" id="ss-defl"><p class="ss-k">Stiffness · deflection at the mount</p><div class="ss-track" id="ss-defl-bar" role="meter" aria-label="Deflection at the mount against the alignment limit"></div><p class="ss-v"><span id="ss-defl-val"></span> <b id="ss-defl-verdict"></b></p><p class="ss-gov">follows <span id="ss-ei"></span></p></div>
+          <div class="ss-g" id="ss-stress"><p class="ss-k">Strength · stress at the mount</p><div class="ss-track" id="ss-stress-bar" role="meter" aria-label="Bending stress at the mount against yield ÷ 2"></div><p class="ss-v"><span id="ss-stress-val"></span> <b id="ss-stress-verdict"></b></p><p class="ss-gov">follows load and <span id="ss-z"></span>, not E</p></div>
+        </div>
+        <p class="ss-fos" id="ss-fos"></p>
+      </section>
+    </section>
+
+    <section class="module" data-module="split" data-title="Stiffness vs strength" id="split">
+      <h2>Stress–strain of the material under test</h2>
+      <p class="note" id="ss-chart-hidden" hidden></p>
+      <svg id="ss-chart" class="chart" viewBox="0 0 320 190" role="img" aria-labelledby="ss-chart-t"><title id="ss-chart-t">Stress against strain</title></svg>
+      <p class="ss-pt" id="ss-point" aria-live="polite"></p>
+      <p class="ss-flag" id="ss-beyond" role="alert" hidden></p>
+      <p class="note" id="ss-model"><b>Linear-elastic model.</b> σ = E·ε holds only up to yield. What happens past yield (plastic flow, hardening, fracture) is not modelled: that region is left blank, not predicted.</p>
+      <h2 class="ss-h2">Two readings: stiffness or strength?</h2>
+      <div class="row"><select id="ss-cmp-a" aria-label="Reading A"></select><select id="ss-cmp-b" aria-label="Reading B"></select></div>
+      <div id="ss-cmp"></div>
     </section>
 
     <section class="module" data-module="runs" data-title="Runs">

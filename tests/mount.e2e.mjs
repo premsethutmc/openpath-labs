@@ -59,6 +59,9 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
 
       // 2 · redesign: the trade-offs are real
       await mission.getByRole('button', { name: 'Start the redesign' }).click();
+      // after the diagnosis the stiffness-vs-strength readout opens on the original design: too flexible, strong enough
+      assert.equal(await page.locator('#ss-defl-val').innerText(), '1.431 mm vs 0.15 mm limit'); assert.equal(await page.locator('#ss-defl-verdict').innerText(), 'FAIL');
+      assert.equal(await page.locator('#ss-stress-verdict').innerText(), 'PASS'); assert.equal(await page.locator('#ss-fos-val').innerText(), (276 / (1e6 / 3 / 6000)).toFixed(2));
       await design('Aluminium 6061-T6', 'Hollow rectangle', { b: 50, h: 60, t: 4 }); await reading({ load: true, dial: 200, strain: 200 });
       r = await last(); assert.ok(r.d > 0.15 && r.s < 138 && r.m < 2.5, 'strong and light, but too flexible');
       await design('Structural steel', 'Solid rectangle', { b: 50, h: 60 }); await reading({ load: true, dial: 200, strain: 200 });
@@ -90,6 +93,7 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
       t = await mission.innerText();
       assert.match(t, /The machine moves to mid-span[\s\S]*2500 N at 300 mm/); assert.doesNotMatch(t, /^hints$/im, 'no hints section in the new case');
       await design('Structural steel', 'I-section', { b: 40, h: 70, tw: 3, tf: 3 });   // also meets every guided limit
+      assert.match(await page.locator('#ss-hidden').innerText(), /Hidden in the new case/); assert.equal(await page.locator('#ss-bars').isVisible(), false, 'no model answers before the attempt is scored');
       // shortcut 1: load and read before locking — blocked, even if the button is forced
       await tab('Test stand');
       assert.ok(await page.getByRole('button', { name: 'Apply operating load' }).isDisabled(), 'no load before the lock');
