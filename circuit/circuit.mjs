@@ -137,7 +137,16 @@ function render() {
 }
 
 const bench = workbench('circuit', { initial: 'build' });
-const nb = notebook($('m-experiments'), { adapter: C.ADAPTER, getSetup: () => clone(setup), applySetup: s => { setup = s; selected = null; msg = {}; explainPick = { from: null, to: null }; render(); } });
-setup = clone(nb.project().setup);
+// ?preset=<id> (how a journey's "Explore on the bench" opens it): a scratch bench on that preset, kept in memory, so
+// exploring never changes the learner's saved projects or which one is open. Without it: the learner's current project.
+const explore = C.presetFromQuery(location.search);
+const memory = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); } }; };
+const nb = notebook($('m-experiments'), { adapter: C.ADAPTER, storage: explore ? memory() : undefined,
+  getSetup: () => clone(setup), applySetup: s => { setup = s; selected = null; msg = {}; explainPick = { from: null, to: null }; render(); } });
+if (explore) {
+  setup = C.fromPreset(explore.id); nb.project().name = `Exploring: ${explore.name}`; nb.sync();
+  $('explore').hidden = false;
+  $('explore').innerHTML = `Exploring the preset “${esc(explore.name)}”. Your saved projects are not changed, and runs saved here are not kept. <a href="./">Open my project</a>`;
+} else setup = clone(nb.project().setup);
 render();
 document.body.dataset.ready = 'true';

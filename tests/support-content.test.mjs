@@ -173,7 +173,7 @@ test('journey: contract shape, bench adapter, anchor R1 is the original design a
   assert.deepEqual({ page: J.bench.page, domain: J.bench.domain }, { page: '../mount/?project=current', domain: 'mount-stand' });
   assert.equal(await J.bench.adapter(), READING_ADAPTER);
   for (const k of ['2,500 N', '600 mm', '50 × 80 mm', '0.15 mm', 'yield ÷ 2', '2.5 kg']) assert.ok(J.brief.includes(k), k);
-  assert.equal(J.anchor.revision, 'R1'); assert.deepEqual(J.anchor.setup.design, ORIGINAL); assert.equal(J.anchor.setup, ANCHOR_SETUP);
+  assert.equal(J.anchor.revision, 'Revision 1'); assert.deepEqual(J.anchor.setup.design, ORIGINAL); assert.equal(J.anchor.setup, ANCHOR_SETUP);
   const r = READING_ADAPTER.evaluate(J.anchor.setup);
   assert.ok(r.ok); assert.equal(r.verdicts.alignment.value, 'fail', 'the original support fails alignment: the reason to redesign');
   assert.ok(BY[J.target]); assert.equal(J.target, 'ENG.statics.moment-about-point');
@@ -229,4 +229,10 @@ test('journey: defence questions are valid patched setups, answered by adapter.e
   // Same answers whether the evaluate call goes through the adapter or the model directly.
   const s = setupsFor(ORIGINAL)[1], q = J.defend(s, {})[0];
   assert.deepEqual(READING_ADAPTER.evaluate({ ...s, ...q.change }), evaluateReading({ ...s, ...q.change }));
+});
+
+test('journey: every part of a saved setup has a label the page can show (anchor and every section shape)', () => {
+  const flat = (o, pre = '') => (o && typeof o === 'object' ? Object.entries(o).flatMap(([k, v]) => flat(v, pre ? `${pre}.${k}` : k)) : [pre]);
+  const shapes = [ANCHOR_SETUP, { ...ANCHOR_SETUP, design: { material: 'steel', shape: 'rhs', b: 40, h: 50, t: 3 } }, { ...ANCHOR_SETUP, design: { material: 'steel', shape: 'I', b: 40, h: 60, tw: 3, tf: 4 } }];
+  for (const s of shapes) for (const k of flat(s)) assert.ok(typeof J.labels[k] === 'string' && J.labels[k].length, `label for ${k}`);
 });

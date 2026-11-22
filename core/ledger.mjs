@@ -102,25 +102,48 @@ export function checkResponse(item, response) {
 
 // ---------- derived status (pure) ----------
 const HELP = new Set(['hint', 'shown_solution', 'assisted_response']);
-// statusOf(events, competency) → { status, unaided: { right, total }, assisted: { right, total }, help, delayed }
-//   not-seen                no resolved event          not-yet   answered alone, no help, latest answer wrong
+// statusOf(events, competency) → { status, basis, unaided: { right, total }, practice: { right, total }, assisted: { right, total }, help, delayed }
+// Only a FRESH UNAIDED item on this exact competency can show what the learner does alone: an 'evidence' event with
+// provenance diagnostic, check or retention. Teach practice is always help (assisted_response); an unaided answer in
+// practice (the apply phase) is counted in `practice` and never decides the status.
+//   not-seen                no resolved event          not-yet   answered alone, no help, latest fresh answer wrong
 //   helped                  help received, and the latest fresh unaided answer since the latest help (if any) is wrong
 //   independent-after-help  the latest fresh unaided answer after the latest help is right
-//   independent             latest unaided answer right, never helped on this competency
-// delayed: the latest retention check ('none' | 'passed' | 'failed'); it strengthens the evidence and is never "mastered".
+//   independent             latest fresh unaided answer right, never helped on this competency
+// basis: the fresh unaided answer the status rests on, { provenance, result } (null when none: not-seen, or helped with
+// no fresh answer since the help). delayed: the latest retention check ('none' | 'passed' | 'failed'); it strengthens
+// the evidence and is never "mastered".
+export const FRESH = new Set(['diagnostic', 'check', 'retention']);
+const isFresh = e => e.kind === 'evidence' && FRESH.has(e.provenance);
 export function statusOf(events, competency) {
   const mine = events.filter(e => e.competency === competency && e.result !== 'unresolved');
-  const unaided = mine.filter(e => e.kind === 'evidence'), assisted = mine.filter(e => e.kind === 'assisted_response');
+  const unaided = mine.filter(isFresh), practice = mine.filter(e => e.kind === 'evidence' && !FRESH.has(e.provenance)), assisted = mine.filter(e => e.kind === 'assisted_response');
   const lastHelp = mine.reduce((i, e, k) => (HELP.has(e.kind) ? k : i), -1);
   const ret = unaided.filter(e => e.provenance === 'retention').at(-1);
-  const out = { unaided: { right: unaided.filter(e => e.result === 'correct').length, total: unaided.length },
-    assisted: { right: assisted.filter(e => e.result === 'correct').length, total: assisted.length },
+  const count = list => ({ right: list.filter(e => e.result === 'correct').length, total: list.length });
+  const out = { unaided: count(unaided), practice: count(practice), assisted: count(assisted),
     help: mine.filter(e => HELP.has(e.kind)).length, delayed: ret ? (ret.result === 'correct' ? 'passed' : 'failed') : 'none' };
-  let status;
-  if (!mine.length) status = 'not-seen';
-  else if (lastHelp >= 0) status = mine.slice(lastHelp + 1).filter(e => e.kind === 'evidence').at(-1)?.result === 'correct' ? 'independent-after-help' : 'helped';
-  else status = unaided.at(-1)?.result === 'correct' ? 'independent' : 'not-yet';
-  return { status, ...out };
+  const basisOf = e => (e ? { provenance: e.provenance, result: e.result } : null);
+  let status, basis;
+  if (!mine.length) { status = 'not-seen'; basis = null; }
+  else if (lastHelp >= 0) { const e = mine.slice(lastHelp + 1).filter(isFresh).at(-1); status = e?.result === 'correct' ? 'independent-after-help' : 'helped'; basis = basisOf(e); }
+  else { const e = unaided.at(-1); status = e?.result === 'correct' ? 'independent' : 'not-yet'; basis = basisOf(e); }
+  return { status, basis, ...out };
+}
+
+// describeStatus(s) → the learner-facing words for a statusOf result. It says where the evidence came from, so a
+// prerequisite answered right in the diagnostic never reads like the journey's own unaided check, and help is named as help.
+const WHERE = { diagnostic: 'in the diagnostic', check: 'in the check', retention: 'in a later check' };
+export function describeStatus(s) {
+  const at = s?.basis ? WHERE[s.basis.provenance] ?? '' : '';
+  switch (s?.status) {
+    case 'independent': return s.basis?.provenance === 'diagnostic' ? 'Answered right in the diagnostic (unaided)' : `Solved on your own ${at}`.trim();
+    case 'independent-after-help': return s.basis?.provenance === 'diagnostic' ? 'Practised with help, then answered right in a diagnostic (unaided)' : 'Solved on your own after help';
+    case 'helped': return s.basis ? `Practised with help; not yet right on your own ${at}`.trim() : 'Practised with help; no unaided question since';
+    case 'not-yet': return s.basis?.provenance === 'diagnostic' ? 'Not right in the diagnostic (unaided)' : 'Not yet on your own';
+    case 'not-seen': return 'Not seen yet';
+  }
+  return String(s?.status ?? '');
 }
 
 // ---------- the browser ledger ----------

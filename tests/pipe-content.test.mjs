@@ -174,7 +174,7 @@ test('journey spec: shape, bench, graph links, teach entries', async () => {
   assert.equal(J.id, 'pipe'); assert.equal(J.semester, 4); assert.match(J.course, /^CE25C12 /);
   assert.equal(J.bench.page, '../circuit/'); assert.equal(J.bench.domain, 'fluids-line');
   const ad = await J.bench.adapter(); assert.equal(ad, C.ADAPTER); assert.equal(ad.domain, 'fluids-line');
-  assert.ok(J.brief.length > 50); assert.equal(J.anchor.revision, 'R1');
+  assert.ok(J.brief.length > 50); assert.equal(J.anchor.revision, 'Revision 1');
   const ids = new Set(NODES.map(n => n.id)), presets = { '../circuit/': C.PRESETS.map(p => p.id), '../pumps/': MISSIONS.map(m => m.id) };
   assert.ok(ids.has(J.target)); assert.ok(J.teach[J.target]);
   for (const [comp, t] of Object.entries(J.teach)) {
@@ -244,4 +244,14 @@ test('defend: 2–3 what-ifs on the learner\'s own setup, answered by the bench 
   // on the anchor: bigger bore → more flow, longer → less, elbows → slightly less
   const qs = J.defend(J.anchor.setup), base = evalJ(J.anchor.setup).outputs.flow.value, f = q => evalJ({ ...J.anchor.setup, ...q.change }).outputs.flow.value;
   assert.equal(qs.length, 3); assert.ok(f(qs[0]) > base * (1 + qs[0].tol)); assert.ok(f(qs[1]) < base * (1 - qs[1].tol)); assert.ok(f(qs[2]) < base && f(qs[2]) > f(qs[1]));
+});
+
+test('every "Explore on the bench" and transfer link names a preset its bench opens', () => {
+  const links = [...Object.values(J.teach).map(t => t.explore).filter(Boolean), J.apply.transfer];
+  assert.ok(links.length >= 8);
+  for (const { page, preset } of links) {
+    if (page === '../circuit/') assert.ok(C.presetFromQuery(`?preset=${preset}`), `circuit preset ${preset}`);
+    else if (page === '../pumps/') assert.ok(MISSIONS.some(m => m.id === preset), `Pump House mission ${preset}`);
+    else assert.fail(`unknown bench ${page}`);
+  }
 });

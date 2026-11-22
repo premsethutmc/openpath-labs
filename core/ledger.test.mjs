@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkResponse, checkNumber, readNumber, convert, statusOf, openLedger, LedgerError } from './ledger.mjs';
+import { checkResponse, checkNumber, readNumber, convert, statusOf, describeStatus, openLedger, LedgerError } from './ledger.mjs';
 
 const memory = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v) }; };
 const num = { id: 'i', answer: { kind: 'number', value: 1250, unit: 'N·m', tol: 0.01 }, misconceptions: [{ id: 'slant', value: 1500, label: 'slant' }] };
@@ -54,6 +54,35 @@ test('statusOf: not-seen, not-yet, helped, independent-after-help, independent; 
   assert.equal(s.status, 'independent-after-help'); assert.equal(s.delayed, 'passed');
   assert.ok(!JSON.stringify(s).includes('master'));
   assert.equal(statusOf(after, 'other').status, 'not-seen');
+});
+
+test('statusOf: only a fresh unaided item (diagnostic, check, retention) on that exact competency shows what was done alone', () => {
+  const E = (kind, result, provenance = 'practice', c = 'C') => ({ competency: c, kind, result, provenance });
+  // teach practice is help: right answers with a hint or a shown solution never read "on your own"
+  const taught = [E('evidence', 'incorrect', 'diagnostic'), E('shown_solution'), E('assisted_response', 'correct'), E('assisted_response', 'correct')];
+  let s = statusOf(taught, 'C');
+  assert.deepEqual([s.status, s.basis, s.assisted, s.help], ['helped', null, { right: 2, total: 2 }, 3]);
+  assert.equal(describeStatus(s), 'Practised with help; no unaided question since');
+  // an unaided answer in practice (apply) is counted apart and never decides the status
+  s = statusOf([...taught, E('evidence', 'correct', 'practice')], 'C');
+  assert.equal(s.status, 'helped'); assert.deepEqual(s.practice, { right: 1, total: 1 }); assert.deepEqual(s.unaided, { right: 0, total: 1 });
+  assert.equal(statusOf([E('evidence', 'correct', 'practice')], 'C').status, 'not-yet', 'practice alone is not a fresh unaided item');
+  // the fresh check after help decides, and says so
+  s = statusOf([...taught, E('evidence', 'correct', 'practice'), E('evidence', 'correct', 'check')], 'C');
+  assert.deepEqual([s.status, s.basis], ['independent-after-help', { provenance: 'check', result: 'correct' }]);
+  assert.equal(describeStatus(s), 'Solved on your own after help');
+  s = statusOf([...taught, E('evidence', 'incorrect', 'check')], 'C');
+  assert.equal(describeStatus(s), 'Practised with help; not yet right on your own in the check');
+  // help or a check on another competency (the journey's target) never changes a prerequisite, and the reverse
+  const pre = [E('evidence', 'correct', 'diagnostic', 'PRE'), E('hint', undefined, 'practice', 'T'), E('assisted_response', 'correct', 'practice', 'T'), E('evidence', 'correct', 'check', 'T')];
+  const sp = statusOf(pre, 'PRE'), st = statusOf(pre, 'T');
+  assert.deepEqual([sp.status, sp.basis, sp.help], ['independent', { provenance: 'diagnostic', result: 'correct' }, 0]);
+  assert.equal(describeStatus(sp), 'Answered right in the diagnostic (unaided)', 'a diagnostic answer never reads like the check');
+  assert.deepEqual([st.status, st.basis.provenance], ['independent-after-help', 'check']);
+  assert.equal(describeStatus(statusOf([E('evidence', 'correct', 'check')], 'C')), 'Solved on your own in the check');
+  assert.equal(describeStatus(statusOf([E('evidence', 'incorrect', 'diagnostic')], 'C')), 'Not right in the diagnostic (unaided)');
+  assert.equal(describeStatus(statusOf([], 'C')), 'Not seen yet');
+  for (const k of ['independent', 'independent-after-help', 'helped', 'not-yet', 'not-seen']) assert.ok(!/master/i.test(describeStatus({ status: k })));
 });
 
 test('ledger: pseudonymous learner, validated events, export → import gives the same ledger', () => {

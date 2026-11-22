@@ -76,3 +76,9 @@ test('evidence from the fluid bench uses the shared project record', () => {
   const back = P.deserialize(P.serialize(proj), 'fluids-line');
   for (const r of back.runs) assert.ok(P.reproduceRun(r, C.ADAPTER).ok);
 });
+
+test('?preset=<id> names a preset to explore; anything else opens the learner\'s project', () => {
+  assert.deepEqual(C.presetFromQuery('?preset=gravity'), { id: 'gravity', name: C.PRESETS.find(p => p.id === 'gravity').name });
+  assert.equal(C.presetFromQuery('?preset=farm-twin&x=1').id, 'farm-twin');
+  for (const q of ['', '?', '?preset=', '?preset=nope', '?project=current', null]) assert.equal(C.presetFromQuery(q), null, String(q));
+});

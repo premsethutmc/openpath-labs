@@ -46,7 +46,25 @@ export function patchElbows(s, n = 2) {
 const mm = D => +(D * 1000).toFixed(1);
 const anchor = fromPreset('farm');
 
+// The design in words for the journey page: every part of the line in order, with its settings and units (from the bench's
+// own part table), then the target and gauges.
+const fmt = n => String(+(+n).toPrecision(4));
+function describe(setup) {
+  const out = [];
+  setup.chain.forEach((part, i) => {
+    const P = PARTS[part.type]; if (!P) return;
+    const bits = Object.entries(P.params ?? {}).filter(([k]) => part[k] !== undefined).map(([k, d]) => {
+      const v = part[k], o = d.options?.[v] ?? (Array.isArray(d.options) ? d.options.find(x => x.value === v)?.label : undefined);
+      return o ? `${d.label.toLowerCase()} ${o}` : `${d.label.toLowerCase()} ${fmt(v * (d.scale ?? 1))}${d.unit ? ` ${d.unit}` : ''}`;
+    });
+    out.push({ label: `${i + 1}. ${P.name}`, value: bits.length ? bits.join(', ') : '—', paths: [`chain.${i}`] });
+  });
+  out.push({ label: 'Target flow', value: `${fmt(setup.requiredFlow)} L/s`, paths: ['requiredFlow'] });
+  return out;
+}
+
 export default {
+  describe,
   id: 'pipe',
   title: 'Pipe sizing: friction losses and the pump operating point',
   semester: 4,
@@ -55,7 +73,7 @@ export default {
   brief: 'A farm pumps water from a sump to an overhead tank 12 m above the pump, 80 m away. The pump and its 1.5 kW motor are '
     + 'already bought. The tank must get at least 2.5 L/s, and the motor must not be overloaded. The first pipe run, a 32 mm main, '
     + 'falls short. Choose the pipe bore, the route length and the fittings so the line delivers 2.5 L/s within the motor\'s rating.',
-  anchor: { setup: anchor, revision: 'R1' },
+  anchor: { setup: anchor, revision: 'Revision 1' },
   stuck: { predictions: [
     { id: 'flow', prompt: 'Before you run it: what flow will this line deliver to the tank?', unit: 'L/s', tol: 0.1,
       truth: (setup, results) => results.flow.value },
