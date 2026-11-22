@@ -143,7 +143,7 @@ for (const [label, vp, mine, revised] of [
       const order = ['material', 'h', 'b'].filter(k => changed.includes(k));
       for (const [i, k] of order.entries()) {
         const read = reads[i % 2];
-        assert.match(prompts[i], new RegExp(`^What would the ${LABEL[read].toLowerCase()} be if ${NAME[k]} went back to its Revision 1 value`));   // read as a sentence (1c2df9e)
+        assert.match(prompts[i], new RegExp(`^What would ${LABEL[read].toLowerCase()} be if ${NAME[k]} went back to its Revision 1 value`));   // read as a sentence (1c2df9e)
         const t = engine({ ...revised, [k]: mine[k] })[read].value;
         await app.locator(`[data-field="${i}"]`).fill(t.toPrecision(5));
       }

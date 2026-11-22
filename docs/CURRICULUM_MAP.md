@@ -111,6 +111,21 @@ Not yet: 3D CAD or 3D finite-element stress analysis, a general multi-physics so
 
 *Solids benches opened (`feat/ol-2`):* the Mount lab's open bench (`mount/?mode=open`, and `?project=current` from the loop) lets the student set span (200–3000 mm), load (100–50,000 N), machine position, supports (pinned–roller, fixed–fixed, propped cantilever, cantilever), any material in `core/materials.mjs` and their own deflection, factor-of-safety and mass limits; the guided mission and Journeys 1 and 3 are unchanged. `mount/learn.mjs` and `playground/learn.mjs` describe the student's design, map its outputs to graph competencies (reactions, bending moment, bending and normal stress, stiffness, factor of safety, second moment of area, strain) and list its levers. Runs saved before still reproduce: new outputs (support reactions, peak moment and stress, factor of safety) appear only on setups that carry the open-bench fields (`bench` on the Mount lab, `v: 2` on the Force Playground).
 
+*Open loop as built (draft PR, branch `feat/open-loop`):*
+
+- **Predict and learn:** every bench's Experiments panel has the link. It runs the loop on the student's own project: they pick what to predict, the most-missed output sets the target, they are taught and checked unaided, then return to their own project, revise (Revision 2 must be tested), decide and defend. The defence questions come from what they actually changed.
+- **Benches with a LEARN descriptor:** Force Playground (any frame or truss, with per-joint reactions), Mount lab (opened up), fluid line bench (any network, with per-gauge pressures), shaft bench and thermal bench.
+- **The journeys page** leads with "Start from your own design"; the fixed journeys are worked examples.
+- **Proved through visible controls at phone and desktop widths,** with answers computed independently:
+  - two student-built pipe networks: a pumped line and a gravity line (`tests/open-loop-fluids.e2e.mjs`);
+  - a student-built truss and an opened-Mount timber cantilever revised to bamboo (`tests/open-loop-solids.e2e.mjs`).
+- **Not yet proved:**
+  - the full loop on the shaft and thermal benches (their outputs and items are checked, the loop is not);
+  - factor of safety and movement predicted on the Force Playground;
+  - "Save the last tested design" on these benches;
+  - the defence when nothing changed;
+  - a lever for the source water level.
+
 ## Four-year journey (planning pass, 22 Nov 2026)
 
 Planning only: no new simulator, merge or deployment. One branch, Mechanical Engineering. The branch table above stays as the subject-coverage map; this section is the student's path through the degree.
@@ -231,6 +246,7 @@ Four levels, each stricter than the one before:
 | Statics and solids (sem II–III) | 13 | reactions, bending moment, stress, deflection (Mount lab, Force Playground, frame solver) | 6 in Journey 1, plus 2 school-maths nodes | 1: moment about a point (the Journey 1 check) |
 | Fluids (sem IV) | 12 | flow, losses, operating point, shaft power, NPSH (fluid line bench, Pump House) | 9 in Journey 2, plus 2 school-maths nodes | 1: Darcy–Weisbach head loss (the Journey 2 check) |
 | Stress, strain, stiffness vs strength (sem I PH25C01, sem III CE25C11) | 6 | Mount bench: deflection and stress side by side against their limits, factor of safety, E·I and I/c; stress–strain chart linear up to yield, beyond yield marked "not modelled"; two-reading comparison (`mount/split.mjs`) | 8 in Journey 3 (6 new nodes plus bending stress and beam stiffness), plus 1 school-maths node | 1: stiffness vs strength (the Journey 3 check), on branch `feat/journey-stress` |
+| Machine design (sem V) and heat transfer (sem VI) | 4 + 3 (torque from power, torsion and combined stress, critical speed; conduction, convection and series resistances) | shaft bench, thermal bench | through the open loop on the student's own project | 0 proved through visible controls; open-loop checks run on the fluid and solids benches only |
 | School maths underneath | 16 | — | 5 | 0 |
 | The other courses in the eight-semester map | course level only | see the map | 0 | 0 |
 
@@ -294,3 +310,4 @@ Totals at c3ca460: 155 unit tests and 37 browser tests passing. At #16: 192 unit
 | 2026-11-22 | — | 0f4c684 | Home page links to the student journeys | tests/*.e2e.mjs (home) |
 | 2026-11-22 | #17 (draft) | — not merged | Revision 2 must be a tested design; both journeys proved through visible controls only (phone and desktop, two valid designs each); revisions labelled "Revision 1/2", designs shown in words; fluid line bench and Pump House open `?preset=` without touching saved projects; Mount free bench has a way back; evidence ladder and the next capability; real-bench edit after the tested run proved through a reload in both ways out; the Mount lab opens the project's current design, not the latest run (a saved older Revision 2 had replaced the learner's edit on the stand); status words say where evidence came from (a prerequisite right in the diagnostic no longer reads "Solved on your own"); bench link after Revision 2 | core/journey.test.mjs (loophole, red before the fix), tests/journeys.e2e.mjs, tests/journey-support-visible.e2e.mjs, tests/journey-pipe-visible.e2e.mjs, tests/pipe-hand.test.mjs, tests/journey-r2-bench.e2e.mjs, core/ledger.test.mjs (status rule) |
 | 2026-11-22 | draft, `feat/journey-stress` (stacked on #17) | — not merged | Journey 3: stress, strain, Hooke's law, yield, factor of safety, stiffness vs strength; Mount bench stiffness-vs-strength readout, stress–strain chart (beyond yield not modelled), two-reading comparison; beam nodes require the new nodes | tests/stiffness-content.test.mjs, mount/split.test.mjs, tests/journey-stiffness-visible.e2e.mjs, tests/mount-stiffness.e2e.mjs |
+| 2026-11-22 | draft, `feat/open-loop` (stacked on #18) | — not merged | Open sandbox loop: Predict and learn on the student's own project on any bench; LEARN descriptors for Force Playground, Mount (opened: span, load, supports, any material, own limits), fluid line, shaft, thermal; machine and thermal graph nodes; old runs reproduce | tests/open-loop.test.mjs, tests/learn-descriptors.test.mjs, tests/open-solids.test.mjs, tests/machine-thermal-content.test.mjs, tests/open-loop.e2e.mjs, tests/open-loop-fluids.e2e.mjs, tests/open-loop-solids.e2e.mjs, tests/open-solids.e2e.mjs, tests/open-fluids.e2e.mjs |
