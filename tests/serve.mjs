@@ -9,8 +9,9 @@ export function serve() {
     let path = normalize(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
     if (path.endsWith('/')) path += 'index.html';
     if (!path.startsWith(root)) return res.writeHead(403).end();
-    try { res.writeHead(200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream' }).end(await readFile(path)); }
-    catch { res.writeHead(404).end(); }
+    let body;
+    try { body = await readFile(path); } catch { return res.writeHead(404).end(); }   // read first, then send headers once
+    res.writeHead(200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream' }).end(body);
   });
   return new Promise(ok => server.listen(0, '127.0.0.1', () => ok({ origin: `http://127.0.0.1:${server.address().port}`, close: () => server.close() })));
 }

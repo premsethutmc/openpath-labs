@@ -137,3 +137,20 @@ Fixture: Pump House model pump and pipe models, cooling-loop water at 32 °C, ba
 | Pump House stock operating point | unchanged (bit-identical) |
 | Displayed static lift vs solver static head (header − basin) | identical in all four cases (8, 2, 8, 12 m) |
 | Interface before a gauge is placed | identical DOM, data attributes and journal for both faults |
+
+## Strength of materials — The Mount That Didn't Break (`mount/`)
+
+Model: the support is an elastic Euler–Bernoulli beam between two bolts 600 mm apart (pin + roller), with a 2.5 kN point load at the machine mount. It is solved with the existing frame solver (direct stiffness). Units are mm, N and MPa.
+
+| Check against independent hand calculation | Result |
+|---|---|
+| Reactions R₁ = Pb/L, R₂ = Pa/L | to 1e-9 (three designs × four load positions) |
+| Deflection under the load Pa²b²/(3EIL), and at 50, 150, 300, 500 mm | to 1e-9 |
+| Moment Pab/L, stress Mc/I, strain σ/E | to 1e-9 |
+| Worked units: aluminium 40 × 30 at 200 mm | δ = 1.431 mm, σ = 55.6 MPa (hand: 2500·200²·400²/(3·69 000·90 000·600); 333 333·15/90 000) |
+| Stiffness vs strength | aluminium → steel: deflection ÷ (E_steel/E_al), stress unchanged; depth × 2: deflection ÷ 8, stress ÷ 4 |
+| Trade-offs exist | aluminium 50×60×4 hollow: strong and light, 0.316 mm (fails alignment); steel 50×60 solid: 0.049 mm but 14.1 kg; steel I 50×80 (3/3) and aluminium I 50×80 (3/8) meet every limit |
+| Transfer case (load at 300 mm) | some guided winners fail (alignment), others pass — the material or size alone does not decide |
+| Self-weight neglected | ≤ 1 % of the load for any design inside the mass limit |
+
+**Not modelled:** bolt slip and real end fixity, stress concentrations, fatigue, local buckling (walls ≥ 3 mm enforced), lateral-torsional buckling, dynamic load, temperature, shear deformation. It is a teaching model, not a design certification.
