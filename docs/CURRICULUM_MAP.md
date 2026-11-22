@@ -183,7 +183,7 @@ Uses only what exists, apart from the gaps listed after it.
 5. **No return-and-defend step.** The record holds runs, not decisions. It needs a decision entry (claim, linked runs, alternatives rejected) and "what if" questions generated from the learner's own design and checked by the engine.
 6. **The moment is not visible as a moment.** The Force Playground shows reactions and the bending diagram, but no lever arm, perpendicular distance or ΣM about a chosen point. Teaching step 3 needs this view; it is a view on an existing engine, not a new simulator.
 
-**Status (22 Nov 2026, PR #16):** both journeys play end to end for a student in one runner (`journeys/`). Gaps 1, 2, 5 and 6 are closed for these two topics: statics and fluids graphs (13 + 12 nodes, 17 school-maths nodes), item generators keyed by the engines, decisions and defence on the record, and the moment view in the Force Playground. Gap 4 is closed by porting the school engine's diagnostic@1 into `core/diagnostic.mjs`, not by a vendored bundle. Gap 3 is half closed: Labs keeps a local pseudonymous ledger using the school engine's evidence semantics, but there is no sync with OpenPath accounts yet, and school-maths gaps are practised in Labs with no link to the school engine's lessons (`learnUrl` is null).
+**Status (22 Nov 2026, PR #16):** both journeys play end to end for a student in one runner (`journeys/`). Gaps 1, 2, 5 and 6 are closed for these two topics: statics and fluids graphs (13 + 12 nodes, 16 school-maths nodes), item generators keyed by the engines, decisions and defence on the record, and the moment view in the Force Playground. Gap 4 is closed by porting the school engine's diagnostic@1 into `core/diagnostic.mjs`, not by a vendored bundle. Gap 3 is half closed: Labs keeps a local pseudonymous ledger using the school engine's evidence semantics, but there is no sync with OpenPath accounts yet, and school-maths gaps are practised in Labs with no link to the school engine's lessons (`learnUrl` is null).
 
 Not blocking this journey, but on the path: a versioned public schema and portfolio export (portability); drawing, projection and CAD (all of semester I); unit-level reading of the semester III–VIII syllabi.
 
@@ -213,6 +213,32 @@ Acceptance tests:
 
 Blocking for test 3: gaps 1–6 above. Tests 1, 2 and 4 need only gaps 2 and 6, plus the journey spec, the runner and the deck generator.
 
+## Evidence ladder and the next capability (22 Nov 2026, PR #17)
+
+Four levels, each stricter than the one before:
+
+- **Mapped:** the capability is in the eight-semester map or is a node in the competency graph (`content/graph/`).
+- **Simulated:** a bench computes it, and its runs reproduce on the project record.
+- **Taught:** a journey's teach step covers it, with items, help that is recorded, and practice.
+- **Independently checked:** a fresh unaided item on it is answered and recorded as evidence, and a browser test proves this through visible controls only. The test has no access to page internals or answer keys and never writes to the record.
+
+| | Mapped (graph nodes) | Simulated | Taught | Independently checked |
+|---|---|---|---|---|
+| Statics and solids (sem II–III) | 13 | reactions, bending moment, stress, deflection (Mount lab, Force Playground, frame solver) | 6 in Journey 1, plus 2 school-maths nodes | 1: moment about a point (the Journey 1 check) |
+| Fluids (sem IV) | 12 | flow, losses, operating point, shaft power, NPSH (fluid line bench, Pump House) | 9 in Journey 2, plus 2 school-maths nodes | 1: Darcy–Weisbach head loss (the Journey 2 check) |
+| School maths underneath | 16 | — | 4 | 0 |
+| The other courses in the eight-semester map | course level only | see the map | 0 | 0 |
+
+The rest of the degree is mapped only. Only the two journey targets are independently checked.
+
+**Next capability: axial stress, strain and Hooke's law, through yield and allowable stress (factor of safety).** Syllabus: PH25C01 Applied Physics I, semester I, *Properties of matter: elasticity, Young's modulus*; CE25C11 Strength of Materials, semester III, which has a laboratory (its unit text was not read in this pass).
+
+Why it comes next:
+
+1. **It is a gap inside the journey we just proved.** Journey 1 judges every design by "stress ≤ yield ÷ 2" and by E·I. The Mount lab measures strain and reports stress = E·ε. But the graph has no node for stress, strain, E, yield or factor of safety: `ENG.solids.bending-stress` and `ENG.solids.beam-stiffness` use them without teaching them. A student who doesn't know what yield ÷ 2 means can pass the journey without understanding its acceptance test.
+2. **It sits underneath the most later courses:** bending and torsion (CE25C11, semester III), fatigue, shafts and bearings in Design of Machine Elements (semester V), transmission systems and FEM (semester VI), and materials testing (ME25C08, semester III).
+3. **It needs no new simulator.** The Mount lab's strain gauge, `core/materials.mjs` (E, yield) and the frame solver's axial members already compute it, so the step is content and teaching: graph nodes, items and a journey. This PR does not build it.
+
 ## Sources
 
 - Anna University B.E. Mechanical Engineering, Regulations 2021, curriculum and syllabi (non-autonomous affiliated colleges), as published by [K.G. Institute of Technology](https://www.kgkite.ac.in/wp-content/uploads/2023/12/B.E.Mechanical-Engineering-R2021-Syllabus.pdf).
@@ -239,3 +265,4 @@ Run all tests: `node --test --test-concurrency=1 tests/*.test.mjs engines/**/*.t
 Totals at c3ca460: 155 unit tests and 37 browser tests passing. At #16: 192 unit and 44 browser.
 | 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps; product shape (journey, deck) and two-topic proof spec. No code | Docs only; tests unchanged |
 | 2026-11-22 | #16 | cbb3941 | Student journeys: one runner, local ledger, ported diagnostic, decisions on the record; Journey 1 support design, Journey 2 pipe sizing; moment view; Mount opens the learner's own design | core/journey.test.mjs (no journey words in the runner), tests/support-content.test.mjs, tests/pipe-content.test.mjs, playground/moments.test.mjs, tests/journeys.e2e.mjs, tests/journeys-real.e2e.mjs, tests/moments.e2e.mjs |
+| 2026-11-22 | — | 0f4c684 | Home page links to the student journeys | tests/*.e2e.mjs (home) |
