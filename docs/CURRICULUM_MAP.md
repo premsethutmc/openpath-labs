@@ -107,6 +107,8 @@ Not yet: 3D CAD or 3D finite-element stress analysis, a general multi-physics so
 
 **Decided (21 Nov 2026):** pump set first; the full curriculum stays the goal; every bench stays independently usable.
 
+**Direction correction (22 Nov 2026):** the product is an open-ended sandbox. The learning loop attaches to the student's own project on any open bench (`docs/OPEN_LOOP.md`). The fixed journeys below (support, pipe, stiffness) are optional worked examples, not the product, and benches such as the Mount lab are opened up rather than kept as fixed scenarios.
+
 ## Four-year journey (planning pass, 22 Nov 2026)
 
 Planning only: no new simulator, merge or deployment. One branch, Mechanical Engineering. The branch table above stays as the subject-coverage map; this section is the student's path through the degree.
