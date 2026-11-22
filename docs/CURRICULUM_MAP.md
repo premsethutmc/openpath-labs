@@ -185,6 +185,32 @@ Uses only what exists, apart from the gaps listed after it.
 
 Not blocking this journey, but on the path: a versioned public schema and portfolio export (portability); drawing, projection and CAD (all of semester I); unit-level reading of the semester III–VIII syllabi.
 
+### Product shape and the first proof (decided 22 Nov 2026)
+
+OpenPath does the assembly a bright student could do with AI (a tutorial, a simulator, a project), does it once, checks that it works, and makes it available to every student and professor.
+
+- **Curriculum = where to enter:** a semester, a concept the student is stuck on, or a design they want to try. The prerequisite graph says what matters and where to go next.
+- **Journey = the unit of product:** a problem, an editable starting setup on a bench, what to observe, predictions to lock, how to help when the student is stuck (the loop above), a fresh problem to check learning, and "what if" questions to defend a design. A professor opens **Journey N**, runs it live, pauses for predictions, and sends the same starting setup to the class (a shareable project file or link, no server). Students then take it in their own direction.
+- **Deck = a view of the journey:** slides generated on demand (20-minute demo or full class) from the journey's verified text, bench snapshots and engine results, then editable by the professor. A template does the generating, with no AI. AI may later reword the presentation, but it never changes the physics, the numbers or the objective. Checking a deck means checking its journey once.
+- **Cost at scale:** AI helps author and adapt material. Routine simulation, checking and progression run in tested code, so most learning actions are not token calls.
+
+**First proof: two Mechanical topics in one system.**
+
+| Journey | Topic | Bench (exists) | Prerequisite chain |
+|---|---|---|---|
+| 1 | Support design: moments, reactions, bending (sem II, ME25C02) | Mount lab + Force Playground | moment → perpendicular distance, components, cross product, two equations (school engine) |
+| 2 | Pipe sizing: friction losses and the pump operating point (sem IV, CE25C12, which includes a pipe-friction lab) | Fluid line bench + drive check | head loss → Darcy–Weisbach, Reynolds number, energy equation → unit conversion, ratios |
+
+The two journeys use different engines on purpose: solids and hydraulics.
+
+Acceptance tests:
+1. A journey is a data file (a spec): anchor bench and setup, observations, predictions, items, help, defence questions. One shared runner plays any journey. **Journey 2 adds a spec and content only, with zero changes to the runner, the deck generator or the app shell** (checked by diff).
+2. A professor can open either journey, run the demo, and get a deck. Every number on a slide is reproduced from an engine run in the test suite.
+3. A student can open the same journey, get stuck, be sent to a prerequisite, pass a fresh unaided check, and return to their own saved design, revise it and defend it. The revision and the evidence land on the project record.
+4. A shared starting setup opens identically on another device (same project file, same results).
+
+Blocking for test 3: gaps 1–6 above. Tests 1, 2 and 4 need only gaps 2 and 6, plus the journey spec, the runner and the deck generator.
+
 ## Sources
 
 - Anna University B.E. Mechanical Engineering, Regulations 2021, curriculum and syllabi (non-autonomous affiliated colleges), as published by [K.G. Institute of Technology](https://www.kgkite.ac.in/wp-content/uploads/2023/12/B.E.Mechanical-Engineering-R2021-Syllabus.pdf).
@@ -209,4 +235,4 @@ Run all tests: `node --test --test-concurrency=1 tests/*.test.mjs engines/**/*.t
 | 2026-11-22 | #13 | c3ca460 | Stage 3 started: thermal bench | engines/thermal/thermal.test.mjs, thermal/model.test.mjs, tests/thermal.e2e.mjs |
 
 Totals at c3ca460: 155 unit tests and 37 browser tests passing.
-| 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps. No code | Docs only; tests unchanged |
+| 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps; product shape (journey, deck) and two-topic proof spec. No code | Docs only; tests unchanged |
