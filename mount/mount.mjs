@@ -1,7 +1,7 @@
 // "The Mount That Didn't Break" — UI. Model: ./model.mjs (Solids engine). Shared: ../core/workbench.mjs (layout),
 // ../core/protocol.mjs (predictions locked before results, feedback gates) and ../core/project.mjs via
 // ../core/notebook.mjs (every test-stand reading is a reproducible run on the shared experiment record).
-import { SPEC, ORIGINAL, MATERIAL_IDS, GAUGE_POSITIONS, stand, verdict, check, sectionOf, massOf, READING_ADAPTER, READING_LABELS } from './model.mjs';
+import { SPEC, ORIGINAL, MATERIAL_IDS, GAUGE_POSITIONS, DIMS, DEFAULT_DIMS, SUPPORTS, OPEN_RANGE, stand, verdict, check, sectionOf, massOf, benchOf, defaultBench, stations, checkBench, strengthOf, strengthWord, READING_ADAPTER, READING_LABELS } from './model.mjs';
 import { MATERIALS } from '../core/materials.mjs';
 import { workbench } from '../core/workbench.mjs';
 import { Protocol, checkAnswers } from '../core/protocol.mjs';
@@ -15,14 +15,18 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const J = new Protocol();
 const WB = workbench('mount', { initial: 'mission' });
 const ALLOW = m => MATERIALS[m].yield / SPEC.yieldFactor;
+// Open bench: S.bench is null on the guided mission (and on a journey's design until the student changes a bench setting);
+// otherwise { span, load, supports, limits }. B() is the bench in force: the mission's SPEC when S.bench is null.
+const B = () => benchOf(S.bench ? { bench: S.bench } : {});
+const standNow = (loaded = S.loaded, design = S.design) => { const b = B(); return S.bench ? stand(design, { mount: S.mount, loaded, span: b.span, load: b.load, supports: b.supports }) : stand(design, { mount: S.mount, loaded }); };
+const strengthNow = d => (S.bench ? strengthOf(MATERIALS[d.material]) : MATERIALS[d.material].yield);
+const positions = () => (S.bench ? stations(B()) : GAUGE_POSITIONS);
 const SHAPES = { rect: 'Solid rectangle', rhs: 'Hollow rectangle', I: 'I-section' };
-const DIMS = { rect: [['b', 'Width b', 10, 50], ['h', 'Depth h', 10, 80]], rhs: [['b', 'Width b', 20, 50], ['h', 'Depth h', 20, 80], ['t', 'Wall t', 3, 10]], I: [['b', 'Flange width b', 20, 50], ['h', 'Depth h', 20, 80], ['tw', 'Web tw', 3, 10], ['tf', 'Flange tf', 3, 12]] };
-const DEFAULT_DIMS = { rect: { b: 40, h: 30 }, rhs: { b: 40, h: 50, t: 3 }, I: { b: 40, h: 60, tw: 3, tf: 4 } };
 const NOT_MODELLED = { bolts: 'Bolt slip and the real fixity of bolted ends', holes: 'Stress concentrations at bolt holes and corners', fatigue: 'Fatigue under repeated loading', local: 'Local buckling of thin walls', dynamic: 'Dynamic or impact loading' };
 const MODELLED = { hooke: 'Elastic (Hooke’s law) bending of the beam', geometry: 'The section’s second moment of area' };
 const designKey = d => JSON.stringify(Object.fromEntries(['material', 'shape', ...DIMS[d.shape].map(x => x[0])].map(k => [k, d[k]])));
-const SHORT = { steel: 'Steel', aluminium: 'Aluminium' };
-const designLabel = d => `${SHORT[d.material]} ${d.shape === 'rect' ? `${d.b}×${d.h} solid` : d.shape === 'rhs' ? `${d.b}×${d.h}×${d.t} hollow` : `I ${d.b}×${d.h} (tw ${d.tw}, tf ${d.tf})`}`;
+const SHORT = { steel: 'Steel', aluminium: 'Aluminium', timber: 'Timber', bamboo: 'Bamboo', castIron: 'Cast iron' };
+const designLabel = d => `${SHORT[d.material] ?? MATERIALS[d.material].name} ${d.shape === 'rect' ? `${d.b}×${d.h} solid` : d.shape === 'rhs' ? `${d.b}×${d.h}×${d.t} hollow` : `I ${d.b}×${d.h} (tw ${d.tw}, tf ${d.tf})`}`;
 
 const S = {
   stage: 'investigate', design: clone(ORIGINAL), mount: SPEC.guidedMount, loaded: false, dialX: 100, strainX: 400,
@@ -34,13 +38,13 @@ const S = {
 
 // ---------- test stand ----------
 function takeReading() {
-  const st = stand(S.design, { mount: S.mount, loaded: S.loaded }), dd = st.at(S.dialX), ss = st.at(S.strainX);
+  const st = standNow(), dd = st.at(S.dialX), ss = st.at(S.strainX);
   if (S.loaded && standLocked()) return;   // unseen case: no loaded results before the prediction and design are locked
   // free bench: number on from the readings already on the project, so a second visit never repeats a name
   const k = S.stage === 'free' ? nb.project().runs.filter(x => /^Reading \d+ · /.test(x.name)).length + 1 : S.runs.length + 1;
   const r = { name: `${S.stage === 'free' ? 'Reading ' : 'R'}${k} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
     attempt: S.stage === 'transfer' || S.stage === 'finished' ? S.transfer.attempt : 0, afterLock: (S.stage === 'transfer' || S.stage === 'finished') && S.transfer.locked,
-    dialX: S.dialX, strainX: S.strainX, deflection: dd.deflection, strain: ss.strain * 1e6, stress: ss.strain * MATERIALS[S.design.material].E, mass: st.mass };
+    dialX: S.dialX, strainX: S.strainX, deflection: dd.deflection, strain: ss.strain * 1e6, stress: ss.strain * MATERIALS[S.design.material].E, mass: st.mass, bench: B(), strength: strengthNow(S.design) };
   // every reading goes onto the shared experiment record and is recomputed from its setup when reopened
   nb.sync();
   const run = P.saveRun(nb.project(), READING_ADAPTER, r.name);
@@ -68,11 +72,20 @@ const stressEvidence = (r, d, mount) => !!r && r.loaded && sameDesign(r, d) && r
 // ---------- drawing ----------
 const RAMP = [[0, [111, 135, 150]], [0.45, [150, 160, 150]], [0.65, [217, 164, 65]], [0.85, [224, 83, 31]], [1, [179, 20, 27]]];
 const ramp = u => { u = Math.max(0, Math.min(1, u)); for (let i = 1; i < RAMP.length; i++) if (u <= RAMP[i][0]) { const [a, ca] = RAMP[i - 1], [b, cb] = RAMP[i], t = (u - a) / (b - a); return `rgb(${ca.map((v, k) => Math.round(v + (cb[k] - v) * t)).join(',')})`; } return 'rgb(179,20,27)'; };
+// support at the end x (k = 0 left, 1 right): pin, roller, fixed (clamped in a wall) or none (free end)
+function supportGlyph(type, x, y0, k) {
+  const word = { pin: 'bolt (pin)', roller: 'bolt (roller)', fixed: 'clamped (fixed)' }[type];
+  if (!type) return `<text x="${x}" y="${y0 + 36}" class="t" text-anchor="middle">free end</text>`;
+  const g = type === 'fixed' ? `<rect x="${k ? x : x - 8}" y="${y0 - 22}" width="8" height="44" fill="url(#h)" stroke="#c9d6df"/>`
+    : type === 'pin' ? `<path d="M${x} ${y0 + 4}l-9 14h18z" fill="#0d151b" stroke="#c9d6df"/><rect x="${x - 14}" y="${y0 + 18}" width="28" height="5" fill="url(#h)"/>`
+    : `<path d="M${x} ${y0 + 4}l-9 12h18z" fill="#0d151b" stroke="#c9d6df"/><circle cx="${x - 5}" cy="${y0 + 20}" r="3" fill="#0d151b" stroke="#c9d6df"/><circle cx="${x + 5}" cy="${y0 + 20}" r="3" fill="#0d151b" stroke="#c9d6df"/>`;
+  return `${g}<text x="${x}" y="${y0 + 36}" class="t" text-anchor="middle">${word}</text>`;
+}
 function draw() {
-  const st = stand(S.design, { mount: S.mount, loaded: S.loaded }), X = x => 40 + x / SPEC.span * 320, y0 = 92;
+  const st = standNow(), b = B(), X = x => 40 + x / b.span * 320, y0 = 92;
   const maxD = Math.max(...st.defl.map(Math.abs)), raw = maxD > 0 ? 40 / maxD : 1;
   const scale = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000].filter(s => s <= raw).pop() || 1;
-  const Y = i => y0 + st.defl[i] * scale, sec = sectionOf(S.design), yieldS = MATERIALS[S.design.material].yield;
+  const Y = i => y0 + st.defl[i] * scale, sec = sectionOf(S.design), yieldS = strengthNow(S.design);
   let segs = '';
   for (let i = 0; i < st.defl.length - 1; i++) {
     const u = Math.max(Math.abs(st.M[i]), Math.abs(st.M[i + 1])) * sec.c / sec.I / yieldS;
@@ -91,22 +104,20 @@ function draw() {
     <defs><pattern id="g" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M12 0H0V12" fill="none" stroke="#16222b" stroke-width=".6"/></pattern>
     <pattern id="h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v6" stroke="#6d8796" stroke-width="1"/></pattern></defs>
     <rect width="400" height="230" fill="url(#g)"/>
-    <line x1="${X(0)}" x2="${X(SPEC.span)}" y1="${y0}" y2="${y0}" stroke="#2e4553" stroke-dasharray="3 3"/>
+    <line x1="${X(0)}" x2="${X(b.span)}" y1="${y0}" y2="${y0}" stroke="#2e4553" stroke-dasharray="3 3"/>
     ${segs}
-    <path d="M${X(0)} ${y0 + 4}l-9 14h18z" fill="#0d151b" stroke="#c9d6df"/><rect x="${X(0) - 14}" y="${y0 + 18}" width="28" height="5" fill="url(#h)"/>
-    <path d="M${X(SPEC.span)} ${y0 + 4}l-9 12h18z" fill="#0d151b" stroke="#c9d6df"/><circle cx="${X(SPEC.span) - 5}" cy="${y0 + 20}" r="3" fill="#0d151b" stroke="#c9d6df"/><circle cx="${X(SPEC.span) + 5}" cy="${y0 + 20}" r="3" fill="#0d151b" stroke="#c9d6df"/>
-    <text x="${X(0)}" y="${y0 + 36}" class="t" text-anchor="middle">bolt (pin)</text><text x="${X(SPEC.span)}" y="${y0 + 36}" class="t" text-anchor="middle">bolt (roller)</text>
+    ${SUPPORTS[b.supports].ends.map((t, k) => supportGlyph(t, X(k ? b.span : 0), y0, k)).join('')}
     <rect x="${mx - 22}" y="${my - 30}" width="44" height="22" rx="3" fill="#16222b" stroke="#e6eef3"/><text x="${mx}" y="${my - 16}" class="tl" text-anchor="middle">machine</text>
-    ${S.loaded ? `<line x1="${mx}" y1="${my - 58}" x2="${mx}" y2="${my - 34}" stroke="#ff8a3d" stroke-width="2"/><path d="M${mx - 5} ${my - 40}l5 7 5 -7z" fill="#ff8a3d"/><text x="${mx + 7}" y="${my - 50}" class="tl" fill="#ff8a3d">${f(SPEC.load / 1000, 1)} kN</text>` : ''}
+    ${S.loaded ? `<line x1="${mx}" y1="${my - 58}" x2="${mx}" y2="${my - 34}" stroke="#ff8a3d" stroke-width="2"/><path d="M${mx - 5} ${my - 40}l5 7 5 -7z" fill="#ff8a3d"/><text x="${mx + 7}" y="${my - 50}" class="tl" fill="#ff8a3d">${f(b.load / 1000, 1)} kN</text>` : ''}
     <g><line x1="${X(S.dialX)}" y1="${dialY + 4}" x2="${X(S.dialX)}" y2="${y0 + 46}" stroke="#4fc3f7"/><circle cx="${X(S.dialX)}" cy="${y0 + 54}" r="8" fill="#0d151b" stroke="#4fc3f7"/><text x="${X(S.dialX)}" y="${y0 + 70}" class="t" text-anchor="middle" fill="#4fc3f7">dial ${S.dialX}</text></g>
     <rect x="${X(S.strainX) - 4}" y="${strainY + 3}" width="8" height="4" fill="#ff8a3d"/><text x="${X(S.strainX)}" y="${strainY + 16}" class="t" text-anchor="middle" fill="#ff8a3d">ε ${S.strainX}</text>
     <text id="scale-label" x="40" y="196" class="t">${S.loaded ? `deflection drawn ×${scale}` : 'unloaded: straight'} · colour: stress ÷ yield</text>
-    <line x1="${X(0)}" x2="${X(SPEC.span)}" y1="${y0 - 60}" y2="${y0 - 60}" stroke="#2c3e4a"/><text x="${(X(0) + X(SPEC.span)) / 2}" y="${y0 - 63}" class="t" text-anchor="middle">${SPEC.span} mm between bolts · mount at ${S.mount} mm</text>
+    <line x1="${X(0)}" x2="${X(b.span)}" y1="${y0 - 60}" y2="${y0 - 60}" stroke="#2c3e4a"/><text id="span-label" x="${(X(0) + X(b.span)) / 2}" y="${y0 - 63}" class="t" text-anchor="middle">${b.span} mm ${b.supports === 'cantilever' ? 'from the wall' : 'between bolts'} · mount at ${S.mount} mm</text>
     ${sk}<text x="${sx}" y="${sy - 4}" class="t" text-anchor="middle">section (½ scale)</text>
-    <text x="40" y="210" class="t">${designLabel(S.design)} · E ${f(MATERIALS[S.design.material].E / 1000, 0)} GPa · yield ${MATERIALS[S.design.material].yield} MPa</text>`;
-  $('r-load').textContent = S.loaded ? `${SPEC.load} N` : '0 N';
-  $('r-mass').textContent = `${f(massOf(S.design), 2)} kg`;
-  $('status').textContent = S.loaded ? `LOADED · ${f(SPEC.load / 1000, 1)} kN at ${S.mount} mm` : 'UNLOADED';
+    <text x="40" y="210" class="t">${designLabel(S.design)} · E ${f(MATERIALS[S.design.material].E / 1000, 0)} GPa · ${strengthWord(MATERIALS[S.design.material])} ${yieldS} MPa</text>`;
+  $('r-load').textContent = S.loaded ? `${b.load} N` : '0 N';
+  $('r-mass').textContent = `${f(massOf(S.design, b.span), 2)} kg`;
+  $('status').textContent = S.loaded ? `LOADED · ${f(b.load / 1000, 1)} kN at ${S.mount} mm` : 'UNLOADED';
   $('status').className = 'status ' + (S.loaded ? 'warn' : 'idle');
   paintSplit();
 }
@@ -119,6 +130,7 @@ const splitHiddenWhy = () => S.stage === 'investigate' ? 'Shown after your diagn
 // Fixed log tracks in real units, so a bar moves only when the quantity moves: deflection 0.015–1.5 mm (limit at the centre),
 // stress 10–1000 MPa (the material's allowable and yield marked; they move with the material, the stress does not).
 const TRACKS = { defl: [SPEC.tolerance / 10, SPEC.tolerance * 10], stress: [10, 1000] };
+const tracks = () => (S.bench ? { defl: [B().limits.deflection / 10, B().limits.deflection * 10], stress: [1, 1000] } : TRACKS);
 const LOG = (v, [lo, hi]) => Math.max(0, Math.min(1, Math.log(v / lo) / Math.log(hi / lo)));
 const kNm2 = EI => `${f(EI / 1e9, 2)} kN·m²`, mm3 = Z => `${Math.round(Z).toLocaleString('en-IN')} mm³`, x3 = v => v === null ? '–' : `×${f(v, 3)}`;
 function track(el, value, range, ok, text, marks) {
@@ -131,43 +143,46 @@ function paintSplit() {
   $('ss-hidden').hidden = shown; $('ss-bars').hidden = !shown; $('ss-fos').hidden = !shown; $('ss-cond').hidden = !shown;
   $('ss-chart-hidden').hidden = shown; $('ss-chart').toggleAttribute('hidden', !shown); $('ss-point').hidden = !shown;   // SVG has no .hidden property
   if (!shown) { $('ss-hidden').textContent = $('ss-chart-hidden').textContent = splitHiddenWhy(); $('ss-beyond').hidden = true; return; }
-  if (!check(S.design).ok) {
+  if (!check(S.design, { open: !!S.bench }).ok) {
     $('ss-bars').hidden = $('ss-fos').hidden = $('ss-cond').hidden = $('ss-point').hidden = $('ss-beyond').hidden = true; $('ss-chart').toggleAttribute('hidden', true); $('ss-hidden').hidden = $('ss-chart-hidden').hidden = false;
     $('ss-hidden').textContent = $('ss-chart-hidden').textContent = 'This design is outside the model’s limits (see Design), so it is not evaluated.'; return;
   }
-  const r = splitReadout(S.design, S.mount), m = MATERIALS[S.design.material];
-  $('ss-cond').textContent = `Model: ${SPEC.load} N at ${S.mount} mm, both judged at the mount. Log bars: deflection ${TRACKS.defl.join('–')} mm, stress ${TRACKS.stress.join('–')} MPa.`;
-  const dv = `${f(r.deflection, 3)} mm vs ${SPEC.tolerance} mm limit`, sv = `${f(r.stress, 1)} MPa vs ${f(r.allowable, 0)} MPa (yield ÷ ${SPEC.yieldFactor})`;
-  track($('ss-defl-bar'), r.deflection, TRACKS.defl, r.stiff, `${dv}, ${r.stiff ? 'pass' : 'fail'}`, [[SPEC.tolerance, 'limit']]);
-  track($('ss-stress-bar'), r.stress, TRACKS.stress, r.strong, `${sv}, ${r.strong ? 'pass' : 'fail'}`, [[r.allowable, 'allow'], [r.yield, 'yield']]);
+  const r = splitReadout(S.design, S.mount, S.bench ?? undefined), m = MATERIALS[S.design.material], b = B(), T = tracks(), yw = S.bench ? strengthWord(m) : 'yield';
+  $('ss-cond').textContent = `Model: ${b.load} N at ${S.mount} mm, ${r.stressAt === S.mount ? 'both judged at the mount' : `deflection judged at the mount, stress where the bending moment is largest (${r.stressAt} mm from the left end)`}. Log bars: deflection ${T.defl.join('–')} mm, stress ${T.stress.join('–')} MPa.`;
+  const dv = `${f(r.deflection, 3)} mm vs ${b.limits.deflection} mm limit`, sv = `${f(r.stress, 1)} MPa vs ${f(r.allowable, 0)} MPa (${yw} ÷ ${b.limits.yieldFactor})`;
+  track($('ss-defl-bar'), r.deflection, T.defl, r.stiff, `${dv}, ${r.stiff ? 'pass' : 'fail'}`, [[b.limits.deflection, 'limit']]);
+  track($('ss-stress-bar'), r.stress, T.stress, r.strong, `${sv}, ${r.strong ? 'pass' : 'fail'}`, [[r.allowable, 'allow'], [r.yield, yw === 'yield' ? 'yield' : 'strength']]);
   $('ss-defl-val').textContent = dv; $('ss-stress-val').textContent = sv;
   for (const [id, ok] of [['ss-defl-verdict', r.stiff], ['ss-stress-verdict', r.strong]]) { $(id).textContent = ok ? 'PASS' : 'FAIL'; $(id).className = ok ? 'ok' : 'no'; }
   $('ss-ei').textContent = `E·I = ${kNm2(r.EI)}`; $('ss-z').textContent = `I/c = ${mm3(r.Z)}`;
-  $('ss-fos').innerHTML = `Factor of safety on yield <b id="ss-fos-val">${f(r.fos, 2)}</b> = ${m.yield} ÷ ${f(r.stress, 1)} MPa (needs ≥ ${SPEC.yieldFactor})${r.beyondYield ? ' · <b class="no">below 1: past yield, not modelled</b>' : ''}`;
-  paintStressStrain(m);
+  $('ss-fos').innerHTML = `Factor of safety on ${yw} <b id="ss-fos-val">${f(r.fos, 2)}</b> = ${r.yield} ÷ ${f(r.stress, 1)} MPa (needs ≥ ${b.limits.yieldFactor})${r.beyondYield ? ` · <b class="no">below 1: past ${yw}, not modelled</b>` : ''}`;
+  paintStressStrain({ ...m, yield: strengthNow(S.design) }, yw);
 }
-function paintStressStrain(m) {
-  const st = stand(S.design, { mount: S.mount, loaded: S.loaded }), g = stressStrainPoint(m, st.at(S.strainX).strain * 1e6), p = stressStrainPoint(m, Math.abs(g.strain));
+// yw: the strength the line runs to, in words: “yield” for ductile metals (and the mission), “failure strength” for brittle
+// or natural materials on the open bench (timber, cast iron, bamboo do not yield; they crack or crush).
+function paintStressStrain(m, yw = 'yield') {
+  const k = B().limits.yieldFactor, brittle = yw !== 'yield', st = standNow(), g = stressStrainPoint(m, st.at(S.strainX).strain * 1e6, k), p = stressStrainPoint(m, Math.abs(g.strain), k);
   const W = 320, H = 190, x0 = 46, y0 = 160, xm = 1.6 * p.yieldStrain, ym = 1.3 * m.yield, X = e => x0 + e / xm * (W - x0 - 10), Y = s => y0 - s / ym * (y0 - 14);
   const xy = X(p.yieldStrain), beyond = p.beyondYield, px = beyond ? W - 18 : X(p.strain), py = beyond ? 22 : Y(p.stress);
-  $('ss-chart-t').textContent = `${m.name}: stress against strain, linear to yield at ${m.yield} MPa (${f(p.yieldStrain, 0)} µε); past yield not modelled`;
+  $('ss-chart-t').textContent = `${m.name}: stress against strain, linear to ${yw} at ${m.yield} MPa (${f(p.yieldStrain, 0)} µε); past ${yw} not modelled`;
   $('ss-chart').innerHTML = `<title id="ss-chart-t">${$('ss-chart-t').textContent}</title>
     <defs><pattern id="ss-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v6" stroke="#22323d" stroke-width="2"/></pattern></defs>
     <rect x="${xy}" y="14" width="${W - 10 - xy}" height="${y0 - 14}" fill="url(#ss-hatch)"/>
-    <text x="${(xy + W - 10) / 2}" y="${y0 - 18}" text-anchor="middle">not modelled</text><text x="${(xy + W - 10) / 2}" y="${y0 - 7}" text-anchor="middle">beyond yield</text>
+    <text x="${(xy + W - 10) / 2}" y="${y0 - 18}" text-anchor="middle">not modelled</text><text x="${(xy + W - 10) / 2}" y="${y0 - 7}" text-anchor="middle">beyond ${yw}</text>
     <line class="ax" x1="${x0}" y1="${y0}" x2="${W - 10}" y2="${y0}"/><line class="ax" x1="${x0}" y1="${y0}" x2="${x0}" y2="14"/>
     <line x1="${x0}" y1="${y0}" x2="${xy}" y2="${Y(m.yield)}" stroke="#4fc3f7" stroke-width="2.5"/>
-    <line x1="${x0}" x2="${W - 10}" y1="${Y(m.yield)}" y2="${Y(m.yield)}" stroke="#ff5a4f" stroke-dasharray="4 3"/><text x="${x0 + 4}" y="${Y(m.yield) - 4}" fill="#ff5a4f">yield ${m.yield} MPa</text>
-    <line x1="${x0}" x2="${W - 10}" y1="${Y(p.allowable)}" y2="${Y(p.allowable)}" stroke="#f0b429" stroke-dasharray="4 3"/><text x="${X(p.yieldStrain / 2) + 8}" y="${Y(p.allowable) - 4}" fill="#f0b429">allowable ${f(p.allowable, 0)} MPa (yield ÷ ${SPEC.yieldFactor})</text>
+    <line x1="${x0}" x2="${W - 10}" y1="${Y(m.yield)}" y2="${Y(m.yield)}" stroke="#ff5a4f" stroke-dasharray="4 3"/><text x="${x0 + 4}" y="${Y(m.yield) - 4}" fill="#ff5a4f">${yw} ${m.yield} MPa</text>
+    <line x1="${x0}" x2="${W - 10}" y1="${Y(p.allowable)}" y2="${Y(p.allowable)}" stroke="#f0b429" stroke-dasharray="4 3"/><text x="${X(p.yieldStrain / 2) + 8}" y="${Y(p.allowable) - 4}" fill="#f0b429">allowable ${f(p.allowable, 0)} MPa (${yw} ÷ ${k})</text>
     <text x="${X(p.yieldStrain * 0.5) + 8}" y="${Y(m.yield * 0.5) + 16}" fill="#4fc3f7">σ = E·ε, E ${f(m.E / 1000, 0)} GPa</text>
     <line x1="${xy}" x2="${xy}" y1="${y0}" y2="${Y(m.yield)}" stroke="#4a5f6c" stroke-dasharray="2 3"/><text x="${xy}" y="${y0 + 12}" text-anchor="middle">${f(p.yieldStrain, 0)}</text>
     <text x="${x0}" y="${y0 + 12}" text-anchor="middle">0</text><text x="${W - 10}" y="${y0 + 24}" text-anchor="end">strain ε (µε)</text><text x="6" y="10">stress σ (MPa)</text>
     ${beyond ? `<path d="M${px - 6} ${py - 6}l12 12M${px + 6} ${py - 6}l-12 12" stroke="#ff5a4f" stroke-width="2.5"/><text x="${px - 8}" y="${py + 18}" text-anchor="end" fill="#ff5a4f">reading off the model</text>`
       : `<circle id="ss-dot" cx="${px}" cy="${py}" r="5" fill="#ff8a3d" stroke="#0b1117" stroke-width="1.5"/>`}`;
   $('ss-point').textContent = !S.loaded ? `Strain gauge at ${S.strainX} mm, load off: ε = 0 µε, σ = 0 MPa. Apply the load on the Test stand to move the point.`
-    : `Strain gauge at ${S.strainX} mm under load: ε = ${f(p.strain, 0)} µε → σ = E·ε = ${f(p.stress, 1)} MPa, ${f(p.fractionOfYield * 100, 0)} % of yield.`;
+    : `Strain gauge at ${S.strainX} mm under load: ε = ${f(p.strain, 0)} µε → σ = E·ε = ${f(p.stress, 1)} MPa, ${f(p.fractionOfYield * 100, 0)} % of ${yw}.`;
   $('ss-beyond').hidden = !beyond;
-  $('ss-beyond').textContent = beyond ? `Beyond yield: σ = E·ε would give ${f(p.stress, 0)} MPa, more than the ${m.yield} MPa yield strength. The linear model does not apply here; the real metal would yield and keep a permanent bend. That number is not a prediction.` : '';
+  $('ss-beyond').textContent = beyond ? brittle ? `Beyond its failure strength: σ = E·ε would give ${f(p.stress, 0)} MPa, more than the ${m.yield} MPa it can take. The linear model does not apply here; the real ${m.name.split(' (')[0].toLowerCase()} would crack or crush. That number is not a prediction.`
+    : `Beyond yield: σ = E·ε would give ${f(p.stress, 0)} MPa, more than the ${m.yield} MPa yield strength. The linear model does not apply here; the real metal would yield and keep a permanent bend. That number is not a prediction.` : '';
 }
 // Two saved readings as ratios B ÷ A: deflection against 1 ÷ (E·I change), stress against 1 ÷ (I/c change) and E.
 const splitRuns = () => nb.project().runs.filter(r => r.setup?.design && r.outputs?.deflection && r.outputs?.stress);
@@ -177,7 +192,7 @@ function paintSplitCompare() {
   const a = runs.find(r => r.id === $('ss-cmp-a').value), b = runs.find(r => r.id === $('ss-cmp-b').value);
   if (!a || !b) { $('ss-cmp').innerHTML = '<p class="note">Choose two saved readings, ideally with one change between them (material, or section), both under load with the gauges at the mount.</p>'; return; }
   const q = runRatios(a, b), same = (x, y) => x !== null && y !== null && Math.abs(x - y) <= 0.005 * Math.abs(y);
-  const pa = properties(a.setup.design), pb = properties(b.setup.design), v = (r, k, d) => f(r.outputs[k].value, d);
+  const pa = properties(a.setup.design, a.setup.bench), pb = properties(b.setup.design, b.setup.bench), v = (r, k, d) => f(r.outputs[k].value, d);
   const row = (id, label, A, B, ratio) => `<tr id="${id}"><th>${label}</th><td>${A}</td><td>${B}</td><td>${x3(ratio)}</td></tr>`;
   $('ss-cmp').innerHTML = `<table class="tbl ss-tbl"><thead><tr><th></th><th>A</th><th>B</th><th>B ÷ A</th></tr></thead><tbody>
     ${row('ss-r-defl', 'Deflection (mm)', v(a, 'deflection', 3), v(b, 'deflection', 3), q.deflection)}
@@ -191,19 +206,22 @@ function paintSplitCompare() {
 }
 
 // ---------- design module ----------
+function paintSecprops() {
+  const sec = sectionOf(S.design), ok = check(S.design, { open: !!S.bench }), m = MATERIALS[S.design.material], b = B();
+  $('secprops').innerHTML = `I = ${Math.round(sec.I).toLocaleString('en-IN')} mm⁴ · E·I = ${(m.E * sec.I / 1e9).toFixed(1)} kN·m² · c = ${f(sec.c, 0)} mm · mass ${f(massOf(S.design, b.span), 2)} kg (limit ${b.limits.mass} kg)${ok.ok ? '' : `<br><span class="badtext">Not allowed: ${ok.errors.join('; ')}.</span>`}`;
+  $('take').disabled = !ok.ok;
+}
 function paintDesign() {
   const locked = S.stage === 'investigate' || (S.stage === 'transfer' && S.transfer.locked);
   $('design-lock').hidden = !locked;
   $('design-lock').textContent = S.stage === 'investigate' ? 'Investigate the support as it is first. Redesign unlocks after your diagnosis.' : 'Design locked with your prediction.';
-  $('mat').innerHTML = MATERIAL_IDS.map(m => `<button type="button" role="radio" data-mat="${m}" aria-checked="${S.design.material === m}" ${locked ? 'disabled' : ''}>${MATERIALS[m].name}</button>`).join('');
+  $('mat').innerHTML = (S.stage === 'free' ? Object.keys(MATERIALS) : MATERIAL_IDS).map(m => `<button type="button" role="radio" data-mat="${m}" aria-checked="${S.design.material === m}" ${locked ? 'disabled' : ''}>${MATERIALS[m].name}</button>`).join('');
   $('shape').innerHTML = Object.entries(SHAPES).map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${S.design.shape === k}" ${locked ? 'disabled' : ''}>${n}</button>`).join('');
   $('dims').innerHTML = DIMS[S.design.shape].map(([k, l, lo, hi]) => `<label class="range">${l} <output id="d-${k}-out">${S.design[k]} mm</output><input type="range" data-dim="${k}" min="${lo}" max="${hi}" step="1" value="${S.design[k]}" ${locked ? 'disabled' : ''}></label>`).join('');
-  const sec = sectionOf(S.design), ok = check(S.design), m = MATERIALS[S.design.material];
-  $('secprops').innerHTML = `I = ${Math.round(sec.I).toLocaleString('en-IN')} mm⁴ · E·I = ${(m.E * sec.I / 1e9).toFixed(1)} kN·m² · c = ${f(sec.c, 0)} mm · mass ${f(massOf(S.design), 2)} kg (limit ${SPEC.massLimit} kg)${ok.ok ? '' : `<br><span class="badtext">Not allowed: ${ok.errors.join('; ')}.</span>`}`;
-  $('take').disabled = !ok.ok;
-  $('mat').querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { S.design.material = b.dataset.mat; refresh(); });
+  paintSecprops();
+  $('mat').querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { S.design.material = b.dataset.mat; if (!MATERIAL_IDS.includes(S.design.material)) openBench(); refresh(); });
   $('shape').querySelectorAll('[data-shape]').forEach(b => b.onclick = () => { S.design = { material: S.design.material, shape: b.dataset.shape, ...DEFAULT_DIMS[b.dataset.shape] }; refresh(); });
-  $('dims').querySelectorAll('[data-dim]').forEach(i => i.oninput = () => { S.design[i.dataset.dim] = +i.value; $(`d-${i.dataset.dim}-out`).textContent = `${i.value} mm`; draw(); const s = sectionOf(S.design), c = check(S.design); $('secprops').innerHTML = `I = ${Math.round(s.I).toLocaleString('en-IN')} mm⁴ · E·I = ${(MATERIALS[S.design.material].E * s.I / 1e9).toFixed(1)} kN·m² · c = ${f(s.c, 0)} mm · mass ${f(massOf(S.design), 2)} kg (limit ${SPEC.massLimit} kg)${c.ok ? '' : `<br><span class="badtext">Not allowed: ${c.errors.join('; ')}.</span>`}`; $('take').disabled = !c.ok; });
+  $('dims').querySelectorAll('[data-dim]').forEach(i => i.oninput = () => { S.design[i.dataset.dim] = +i.value; $(`d-${i.dataset.dim}-out`).textContent = `${i.value} mm`; draw(); paintSecprops(); });
   paintSplit();   // the readout's visibility follows the stage
 }
 
@@ -211,10 +229,10 @@ function paintDesign() {
 const cell = (ok, txt) => `<td class="${ok === null ? 'na' : ok ? 'ok' : 'no'}">${txt}</td>`;
 function paintRuns() {
   const rows = S.runs.map(r => {
-    const aOk = r.loaded && r.dialX === r.mount ? r.deflection <= SPEC.tolerance : null, yOk = r.loaded && r.strainX === r.mount ? r.stress <= ALLOW(r.design.material) : null;
-    return `<tr><th>${r.name}</th><td>${f(r.deflection, 3)} mm @${r.dialX}</td>${cell(aOk, aOk === null ? 'n/a' : aOk ? 'within' : 'outside')}<td>${f(r.strain, 0)} µε @${r.strainX}</td><td>${f(r.stress, 1)} MPa${Math.abs(r.stress) > MATERIALS[r.design.material].yield ? ' <b class="no">beyond yield: not modelled</b>' : ''}</td>${cell(yOk, yOk === null ? 'n/a' : yOk ? 'OK' : 'over')}${cell(r.mass <= SPEC.massLimit, `${f(r.mass, 2)} kg`)}</tr>`;
+    const L = r.bench.limits, aOk = r.loaded && r.dialX === r.mount ? r.deflection <= L.deflection : null, yOk = r.loaded && r.strainX === r.mount ? r.stress <= r.strength / L.yieldFactor : null;
+    return `<tr><th>${r.name}</th><td>${f(r.deflection, 3)} mm @${r.dialX}</td>${cell(aOk, aOk === null ? 'n/a' : aOk ? 'within' : 'outside')}<td>${f(r.strain, 0)} µε @${r.strainX}</td><td>${f(r.stress, 1)} MPa${Math.abs(r.stress) > r.strength ? ` <b class="no">beyond ${MATERIALS[r.design.material].ductile ? 'yield' : 'its failure strength'}: not modelled</b>` : ''}</td>${cell(yOk, yOk === null ? 'n/a' : yOk ? 'OK' : 'over')}${cell(r.mass <= L.mass, `${f(r.mass, 2)} kg`)}</tr>`;
   }).join('');
-  $('runs').innerHTML = S.runs.length ? `<table class="cmp"><thead><tr><th>Reading</th><th>Dial</th><th>Alignment ≤ ${SPEC.tolerance} mm</th><th>Strain</th><th>σ = E·ε</th><th>≤ yield ÷ ${SPEC.yieldFactor}</th><th>Mass ≤ ${SPEC.massLimit} kg</th></tr></thead><tbody>${rows}</tbody></table><p class="note">“n/a”: the gauge was not at the machine mount (or the load was off), so this reading cannot judge that limit.</p>` : '<p class="note">No readings yet.</p>';
+  $('runs').innerHTML = S.runs.length ? `<table class="cmp"><thead><tr><th>Reading</th><th>Dial</th><th>Alignment ≤ ${B().limits.deflection} mm</th><th>Strain</th><th>σ = E·ε</th><th>≤ ${S.bench ? 'strength' : 'yield'} ÷ ${B().limits.yieldFactor}</th><th>Mass ≤ ${B().limits.mass} kg</th></tr></thead><tbody>${rows}</tbody></table><p class="note">“n/a”: the gauge was not at the machine mount (or the load was off), so this reading cannot judge that limit.</p>` : '<p class="note">No readings yet.</p>';
   const opts = S.runs.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
   for (const id of ['cmp-a', 'cmp-b']) { const v = $(id).value; $(id).innerHTML = `<option value="">—</option>${opts}`; $(id).value = v; }
   paintCompare(); paintSplitCompare();
@@ -231,7 +249,7 @@ function paintCompare() {
 // ---------- mission ----------
 const opt = (group, value, text, pressed) => `<button type="button" data-${group}="${value}" aria-pressed="${pressed === value}">${text}</button>`;
 const runSelect = (id, value, filter = () => true) => `<select id="${id}"><option value="">— choose a saved reading —</option>${S.runs.filter(filter).map(r => `<option value="${r.name}" ${r.name === value ? 'selected' : ''}>${r.name}</option>`).join('')}</select>`;
-const limitsTable = mount => `<table class="cmp lim"><tbody><tr><th>Operating load</th><td>${SPEC.load} N at ${mount} mm from the left bolt</td></tr><tr><th>Alignment tolerance at the mount</th><td>deflection ≤ ${SPEC.tolerance} mm</td></tr><tr><th>Strength</th><td>bending stress ≤ yield ÷ ${SPEC.yieldFactor}</td></tr><tr><th>Mass</th><td>≤ ${SPEC.massLimit} kg</td></tr><tr><th>Mounting envelope</th><td>bolts ${SPEC.span} mm apart; section within ${SPEC.envelope.b} × ${SPEC.envelope.h} mm</td></tr></tbody></table>`;
+const limitsTable = mount => { const b = B(); return `<table class="cmp lim"><tbody><tr><th>Operating load</th><td>${b.load} N at ${mount} mm from the left ${b.supports === 'pin-roller' ? 'bolt' : 'end'}</td></tr><tr><th>Alignment tolerance at the mount</th><td>deflection ≤ ${b.limits.deflection} mm</td></tr><tr><th>Strength</th><td>bending stress ≤ ${S.bench ? 'strength' : 'yield'} ÷ ${b.limits.yieldFactor}</td></tr><tr><th>Mass</th><td>≤ ${b.limits.mass} kg</td></tr><tr><th>Mounting envelope</th><td>${S.bench ? `span ${b.span} mm, ${SUPPORTS[b.supports].label.toLowerCase()}` : `bolts ${SPEC.span} mm apart`}; section within ${SPEC.envelope.b} × ${SPEC.envelope.h} mm</td></tr></tbody></table>`; };
 
 function mission() {
   const el = $('mission'); let h = '';
@@ -260,7 +278,7 @@ function mission() {
   if (S.stage === 'free') {
     // the project remembers which journey made it (origin "journey:<id>"), so the learner has a visible way back
     const j = /^journey:([\w-]+)$/.exec(nb.project().origin ?? '')?.[1];
-    h = `<div class="mhead"><span>Your design</span></div><h2>Open bench</h2><p>You opened this support from a journey. Change the design in <b>Design</b>, load the stand and read both gauges at the machine position (${S.mount} mm) in <b>Test stand</b>; every reading is saved with its design. Then go back to the journey.</p>${limitsTable(S.mount)}
+    h = `<div class="mhead"><span>Your design</span></div><h2>Open bench</h2><p>${j ? 'You opened this support from a journey. ' : ''}Set the span, supports, load, machine position and your own limits in <b>Test stand</b>, and any material and section in <b>Design</b>. Load the stand and read both gauges; every reading is saved with its set-up.${j ? ' Then go back to the journey.' : ''}</p>${limitsTable(S.mount)}
       ${j ? `<div class="row"><a class="button primary" id="back-journey" href="../journeys/journey.html?j=${encodeURIComponent(j)}">Back to the journey</a></div>` : ''}`;
   }
   el.innerHTML = h; wireMission();
@@ -403,16 +421,61 @@ function wireMission() {
   const rt = $('tr-retry'); if (rt) rt.onclick = () => { const T = S.transfer; T.history.push(`<p class="step">Attempt ${T.attempt}: ${designLabel(T.lockedDesign)}</p>${T.result.replace(/<div class="row">[\s\S]*$/, '')}`); Object.assign(T, { attempt: T.attempt + 1, predA: null, predY: null, locked: false, verdictA: null, verdictY: null, result: null }); S.loaded = false; refresh(); };
 }
 
-function refresh() { paintStand(); draw(); paintDesign(); paintRuns(); mission(); }
+function refresh() { paintBench(); paintStand(); draw(); paintDesign(); paintRuns(); mission(); }
 // Experiments panel: the bench as it stands now. The load is only recorded as on when the stand allows it, and the
 // mount position stays with the mission stage, so the record cannot be used to get round the unseen case's lock.
+// ?mode=open: the open bench on the student's own project. If the open project is the guided mission's (no bench set-up
+// and readings on it), start a new project for the open bench rather than mixing the two.
+const QUERY = new URLSearchParams(location.search), OPEN_LAB = QUERY.get('mode') === 'open';
+if (OPEN_LAB) {
+  const store = P.openStore(READING_ADAPTER.domain), cur = store.current();
+  if (!cur || (!cur.setup?.bench && cur.runs.length)) {
+    const p = store.put(P.createProject({ domain: READING_ADAPTER.domain, name: `My support ${store.list().length + 1}`, origin: 'scratch',
+      setup: { design: clone(ORIGINAL), mount: 300, loaded: false, dialX: 300, strainX: 300, bench: defaultBench() } }));
+    store.open(p.id);
+  }
+}
 const nb = notebook($('experiments'), { adapter: READING_ADAPTER,
-  getSetup: () => ({ design: clone(S.design), mount: S.mount, loaded: S.loaded && !standLocked(), dialX: S.dialX, strainX: S.strainX }),
-  applySetup: s => { S.design = clone(s.design); S.dialX = s.dialX; S.strainX = s.strainX; S.loaded = false; refresh(); } });
+  getSetup: () => ({ design: clone(S.design), mount: S.mount, loaded: S.loaded && !standLocked(), dialX: S.dialX, strainX: S.strainX, ...(S.bench ? { bench: clone(S.bench) } : {}) }),
+  // on the open bench a loaded setup brings its own span, supports, load, limits and machine position
+  applySetup: s => { S.design = clone(s.design); S.dialX = s.dialX; S.strainX = s.strainX; S.loaded = false;
+    if (S.stage === 'free') { S.bench = s.bench ? clone(s.bench) : OPEN_LAB ? defaultBench() : null; S.mount = s.mount ?? S.mount; }
+    refresh(); } });
+// ---------- open bench: span, supports, load, machine position, limits (free stage only) ----------
+// The first change that the guided stand cannot express turns S.bench on; from then on readings carry it.
+function openBench() { if (!S.bench) S.bench = defaultBench(); }
+// keep the machine and gauges on the beam when the span or supports change: a position that is gone moves to the nearest station
+const nearest = (x, xs) => xs.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a));
+function fitPositions() { const xs = positions(); S.mount = nearest(S.mount, xs); S.dialX = nearest(S.dialX, xs); S.strainX = nearest(S.strainX, xs); }
+function paintPositions() {
+  const opts = positions().map(x => `<option value="${x}">${x} mm</option>`).join('');
+  for (const id of ['dial-x', 'strain-x', 'mount-x']) $(id).innerHTML = opts;
+  $('dial-x').value = S.dialX; $('strain-x').value = S.strainX; $('mount-x').value = S.mount;
+}
+function paintBench() {
+  const free = S.stage === 'free', b = B();
+  $('open-bench').hidden = !free;
+  if (!free) return;
+  $('ob-span').value = b.span; $('ob-load').value = b.load; $('ob-supports').value = b.supports;
+  $('ob-lim-defl').value = b.limits.deflection; $('ob-lim-fos').value = b.limits.yieldFactor; $('ob-lim-mass').value = b.limits.mass;
+  $('ob-note').textContent = `${SUPPORTS[b.supports].label}. Span ${OPEN_RANGE.span.join('–')} mm in ${SPEC.step} mm steps; load ${OPEN_RANGE.load.join('–')} N.`;
+}
+$('ob-supports').innerHTML = Object.entries(SUPPORTS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+const benchInput = (id, apply) => { $(id).onchange = e => { const v = id === 'ob-supports' ? e.target.value : +e.target.value; openBench(); const before = clone(S.bench); apply(v);
+  const errs = checkBench(B());
+  if (errs.length) S.bench = before;
+  $('ob-msg').textContent = errs.length ? `Not allowed: ${errs.join('; ')}.` : '';
+  fitPositions(); paintPositions(); refresh(); }; };
+benchInput('ob-span', v => { S.bench.span = Math.round(v / SPEC.step) * SPEC.step; });
+benchInput('ob-load', v => { S.bench.load = v; });
+benchInput('ob-supports', v => { S.bench.supports = v; });
+benchInput('ob-lim-defl', v => { S.bench.limits.deflection = v; });
+benchInput('ob-lim-fos', v => { S.bench.limits.yieldFactor = v; });
+benchInput('ob-lim-mass', v => { S.bench.limits.mass = v; });
+$('mount-x').onchange = e => { const x = +e.target.value; if (!S.bench && (x < SPEC.mountRange[0] || x > SPEC.mountRange[1])) openBench(); if (S.dialX === S.mount) S.dialX = x; if (S.strainX === S.mount) S.strainX = x; S.mount = x; paintPositions(); refresh(); };
+
 // ---------- test stand wiring ----------
-$('dial-x').innerHTML = GAUGE_POSITIONS.map(x => `<option value="${x}">${x} mm</option>`).join('');
-$('strain-x').innerHTML = $('dial-x').innerHTML;
-$('dial-x').value = S.dialX; $('strain-x').value = S.strainX;
+paintPositions();
 $('dial-x').onchange = e => { S.dialX = +e.target.value; draw(); };
 $('strain-x').onchange = e => { S.strainX = +e.target.value; draw(); };
 $('load-on').onclick = () => { if (standLocked()) return; S.loaded = true; draw(); };
@@ -423,13 +486,22 @@ $('ss-cmp-a').onchange = paintSplitCompare; $('ss-cmp-b').onchange = paintSplitC
 document.addEventListener('module', e => { if (e.detail === 'split') paintSplitCompare(); });
 // Opened from a journey (?project=current): no guided mission; the current project's latest saved design is on the bench
 // and the design is free to change. The mount position stays the one the learner saved.
-if (new URLSearchParams(location.search).get('project') === 'current') {
+// ?project=<id> (a saved design or the learning loop returning to exactly that project) opens the same free bench.
+if (QUERY.get('project') || OPEN_LAB) {
   // the project's current design (p.setup, saved with every reading), not the latest run: a journey may save an earlier
   // tested design as a later run (Revision 2) while the learner's newer edit stays the current design
   const p = nb.project(), last = p.runs[p.runs.length - 1], s0 = clone(p.setup?.design ? p.setup : last?.setup);
   S.stage = 'free'; document.body.dataset.stage = 'free'; WB.open('design');
   if (s0?.design) { S.design = s0.design; S.dialX = s0.dialX ?? S.dialX; S.strainX = s0.strainX ?? S.strainX; S.mount = s0.mount ?? S.mount; }
-  $('dial-x').value = S.dialX; $('strain-x').value = S.strainX;
+  // its own load state and last reading come back too, so a reopened project is the one that was left, not a mix
+  if (s0?.design && !OPEN_LAB) S.loaded = !!s0.loaded;
+  const lastReading = [...p.runs].reverse().find(r => r.outputs?.deflection && r.outputs?.strain);
+  if (lastReading) { $('r-dial').textContent = `${f(lastReading.outputs.deflection.value, 3)} mm @ ${lastReading.setup.dialX}`; $('r-strain').textContent = `${f(lastReading.outputs.strain.value, 0)} µε @ ${lastReading.setup.strainX}`; }
+  S.bench = s0?.bench ? clone(s0.bench) : OPEN_LAB ? defaultBench() : null;
+  if (OPEN_LAB) { S.loaded = false; WB.open('stand'); }
+  document.querySelector('.wb-title h1').textContent = 'Open bench: your own support';
+  document.querySelector('.wb-title p').textContent = 'Choose the span, supports, load, material and section, set your own limits, and test it.';
+  fitPositions(); paintPositions();
 }
 refresh();
 nb.render();

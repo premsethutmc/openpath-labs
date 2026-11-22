@@ -8,6 +8,7 @@ import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap, 
 import { momentsAbout, pickPoint, balanced } from './moments.mjs';
 import { workbench } from '../core/workbench.mjs';
 import { notebook } from '../core/notebook.mjs';
+import { SOLIDS_ADAPTER, SETUP_VERSION } from './model.mjs';
 
 const BUILD = {
   id: 'build', name: 'Build your own', setting: 'gap', editable: true, gap: [0, 8000], deckWidth: 3000,
@@ -564,21 +565,8 @@ new ResizeObserver(() => { if (preset) draw(); }).observe(svg);
 // ---------- experiments (shared project + evidence record, core/project.mjs) ----------
 const SETUP_KEYS = ['id', 'name', 'editable', 'copiedFrom', 'setting', 'gap', 'view', 'deckWidth', 'sideHeight', 'hang', 'question', 'nodes', 'members', 'supports', 'groups', 'materials', 'sections', 'loadChoices'];
 const getSetup = () => ({ object: Object.fromEntries(SETUP_KEYS.filter(k => preset[k] !== undefined).map(k => [k, clone(preset[k])])),
-  state: { material: state.material, section: state.section, scenario: state.scenario, loads: clone(state.loads) } });
-export const SOLIDS_ADAPTER = {
-  domain: 'solids-frame', title: 'Structure',
-  evaluate(setup) {
-    if (!setup.object.members.length) return { ok: false, reason: 'nothing is built yet' };
-    const st = buildStructure(setup.object, setup.state), a = analyze(st);
-    if (!a.ok) return { ok: false, reason: a.message || 'the structure is a mechanism: it can move freely' };
-    const kg = setup.state.loads.reduce((s, l) => s + LOAD_OBJECTS[l.obj].kg, 0);
-    const used = mass(setup.object, m => st.members[setup.object.members.indexOf(m)]);
-    return { ok: true,
-      outputs: { sf: { label: 'Safety factor', value: a.sf, unit: '', source: 'simulated' }, stress: { label: 'Highest stress', value: Math.max(...a.members.map(m => m.maxSigma)), unit: 'MPa', source: 'simulated' },
-        movement: { label: 'Biggest movement', value: a.maxDefl.d, unit: 'mm', source: 'simulated' }, load: { label: 'Load carried', value: kg, unit: 'kg', source: 'input' }, mass: { label: 'Material used', value: used, unit: 'kg', source: 'simulated' } },
-      verdicts: { holds: { label: 'Holds the load?', value: a.sf >= 1 ? 'pass' : 'fail', reason: `safety factor ${a.sf.toFixed(2)}` } } };
-  },
-};
+  state: { material: state.material, section: state.section, scenario: state.scenario, loads: clone(state.loads) }, v: SETUP_VERSION });
+export { SOLIDS_ADAPTER };   // the pure adapter lives in ./model.mjs (DOM-free, used by ./learn.mjs)
 function applySetup(setup) {
   if (setup.object.editable) openBuild({ ...clone(BUILD), ...setup.object, loads: setup.state.loads, material: setup.state.material, section: setup.state.section, scenario: setup.state.scenario });
   else { setPreset(setup.object.id); state = { ...state, ...setup.state }; }
@@ -594,6 +582,9 @@ setPreset(location.hash.slice(1) || QUERY.get('preset') || store.get('labs.prese
 window.addEventListener('hashchange', () => { if (location.hash.slice(1) !== preset.id) setPreset(location.hash.slice(1)); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && pending) { pending = null; draw(); } });
 nb = notebook($('experiments'), { adapter: SOLIDS_ADAPTER, getSetup, applySetup });
+// ?project=current (how the learning loop returns the student to their own project): put the open project's setup on
+// the bench instead of overwriting it with the last preset viewed.
+if (QUERY.get('project') && !nb.missing() && nb.project().setup?.object?.members) applySetup(clone(nb.project().setup));
 nb.sync(); nb.render();
 if (QUERY.get('view') === 'moment') setMoments(true);
 window.__labs = { toScreen: (x, y) => ({ x: view.X(x), y: view.Y(y) }), moments: () => mview.result && JSON.parse(JSON.stringify(mview.result)) }; // used by browser tests

@@ -119,12 +119,13 @@ export function learnerPage(page, { touch = false } = {}) {
 // honestly not known in the diagnostic. prereqDontKnow: also "I don't know" for the first prerequisite asked (so the
 // diagnosis names it as a gap and teaches it). help: 'first' (help on the first practice question only) or
 // 'prereq' (help on the first practice question of each prerequisite taught, none on the target).
-export async function playLoop(page, h, { target, prereqDontKnow = false, help = 'first' }) {
+// solver: the learner's hand solver (default: this file's Journey 1 learner; the open solids loop passes its own).
+export async function playLoop(page, h, { target, prereqDontKnow = false, help = 'first', solver = solve }) {
   const { app, phase, btn, has, tap, noOverflow } = h;
   const card = () => app.locator('.card.item');
   const answerShown = async () => {
     const prompt = await card().locator('p.lead').innerText(), options = await card().locator('fieldset.options label').allInnerTexts();
-    const s = solve(prompt, options.map(o => o.trim()));
+    const s = solver(prompt, options.map(o => o.trim()));
     if ('option' in s) await tap(card().locator('input[name="opt"]').nth(s.option)); else await card().locator('#answer').fill(s.text);
     await tap(btn('Check'));
     return prompt;

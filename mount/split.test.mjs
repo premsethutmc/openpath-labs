@@ -54,3 +54,20 @@ test('two-run ratios: deflection follows E·I, stress follows I/c, from saved re
   const off = { setup: { ...setup(ORIGINAL), loaded: false }, outputs: evaluateReading({ ...setup(ORIGINAL), loaded: false }).outputs };
   r = runRatios(off, a); assert.equal(r.deflection, null, 'no ratio from a zero reading'); assert.equal(r.comparable, false);
 });
+
+test('open bench readout: the stress is judged where the bending moment is largest (a support for a cantilever or a clamped end)', () => {
+  const bench = s => ({ span: 1200, load: 600, supports: s, limits: { deflection: 12, yieldFactor: 2, mass: 5 } });
+  const timber = { material: 'timber', shape: 'rect', b: 50, h: 80 }, Z = 50 * 80 ** 2 / 6;   // I/c = b·h²/6
+  // cantilever, 600 N at 900 mm: M = 0 under the machine, P·a = 540 000 N·mm at the wall; strength min(40, 30) = 30 MPa
+  const c = splitReadout(timber, 900, bench('cantilever'));
+  assert.equal(c.stressAt, 0);
+  near(c.stress, 540000 / Z, 1e-9, 'σ at the wall'); near(c.fos, 30 / (540000 / Z), 1e-9, 'FoS');
+  near(c.deflection, 600 * 900 ** 3 / (3 * 11000 * 50 * 80 ** 3 / 12), 1e-6, 'δ under the machine stays at the mount');
+  // fixed–fixed, a = 400, b = 800: left fixing moment P·a·b²/L² = 600·400·640 000/1 440 000 = 106 667 N·mm, under the load 2·P·a²·b²/L³ = 71 111
+  const f = splitReadout(timber, 400, bench('fixed-fixed'));
+  assert.equal(f.stressAt, 0); near(f.stress, 600 * 400 * 800 ** 2 / 1200 ** 2 / Z, 1e-6, 'σ at the left clamp');
+  // simply supported on the open bench: still under the machine
+  const s = splitReadout(timber, 400, bench('pin-roller'));
+  assert.equal(s.stressAt, 400); near(s.stress, 600 * 400 * 800 / 1200 / Z, 1e-9, 'σ under the machine');
+  assert.equal(splitReadout(ORIGINAL, 200).stressAt, 200);   // the mission: at the mount, as before
+});

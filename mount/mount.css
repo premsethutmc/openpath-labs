@@ -41,3 +41,8 @@ select{width:100%}
 .ss-line{font-size:.84rem;margin:6px 0 0}
 .ss-mark.up em{top:-16px}
 #ss-chart text{paint-order:stroke;stroke:#0d151b;stroke-width:4px;stroke-linejoin:round}
+/* open bench (free stage): span, supports, load, machine position, the student's own limits */
+.open-bench{border:1px solid #22323d;border-radius:8px;padding:8px 10px;margin:8px 0}
+.ob-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 10px}
+.ob-grid input,.ob-grid select{width:100%;box-sizing:border-box;min-height:36px}
+#ob-msg:empty{display:none}

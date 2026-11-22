@@ -13,6 +13,7 @@
 <header class="bar">
   <a class="back" href="../index.html">‹ Labs</a>
   <span class="crumb">Strength of materials · investigation</span>
+  <a class="back" id="to-open" href="./?mode=open">Open bench</a>
 </header>
 <main class="wb">
   <section class="wb-main">
@@ -35,6 +36,22 @@
     <section class="module" data-module="stand" data-title="Test stand">
       <h2>Test stand</h2>
       <div class="row"><button type="button" id="load-on">Apply operating load</button><button type="button" id="load-off">Remove load</button></div>
+      <div id="open-bench" class="open-bench" hidden>
+        <p class="label">Your set-up</p>
+        <div class="ob-grid">
+          <label class="range sel">Span (mm) <input type="number" id="ob-span" min="200" max="3000" step="50" inputmode="numeric"></label>
+          <label class="range sel">Supports <select id="ob-supports"></select></label>
+          <label class="range sel">Machine load (N) <input type="number" id="ob-load" min="100" max="50000" step="100" inputmode="numeric"></label>
+          <label class="range sel">Machine position (from the left end) <select id="mount-x"></select></label>
+        </div>
+        <p class="label">Your limits</p>
+        <div class="ob-grid">
+          <label class="range sel">Deflection limit at the machine (mm) <input type="number" id="ob-lim-defl" min="0.01" step="0.01" inputmode="decimal"></label>
+          <label class="range sel">Required factor of safety <input type="number" id="ob-lim-fos" min="1" step="0.1" inputmode="decimal"></label>
+          <label class="range sel">Mass limit (kg) <input type="number" id="ob-lim-mass" min="0.1" step="0.1" inputmode="decimal"></label>
+        </div>
+        <p class="note" id="ob-note"></p><p class="msg" id="ob-msg" role="alert"></p>
+      </div>
       <label class="range sel">Dial gauge position (from the left bolt) <select id="dial-x"></select></label>
       <label class="range sel">Strain gauge position (bottom face) <select id="strain-x"></select></label>
       <div class="row"><button type="button" class="primary" id="take">Take a reading</button></div>
@@ -85,6 +102,7 @@
       <h2>What is modelled, and what is not</h2>
       <p><b>Model:</b> the support is an elastic beam (Euler–Bernoulli, small deflection) between two bolts 600 mm apart, treated as a pin and a roller, solved with OpenPath’s frame solver (direct stiffness method). The machine’s operating load is a single static 2.5 kN point load at its mount. Checked against hand calculations for reactions, deflection along the span, bending moment and stress.</p>
       <p><b>Stiffness is not strength.</b> Deflection depends on E·I — the material’s elastic modulus and the section’s second moment of area. Bending stress σ = M·c/I depends on geometry, not on E. Yield strength sets when the metal stops springing back; it has no say in how far it bends before that.</p>
+      <p><b>Open bench</b> (<a href="./?mode=open">open it</a>): the same beam model with your own span, load, machine position and supports (pinned–roller, fixed–fixed, fixed–roller, or a cantilever clamped at the left), any material in the table, and your own limits. For timber, bamboo and cast iron the bending strength used is the lower of the tension and compression strengths.</p>
       <p><b>Not modelled:</b> bolt slip and the real fixity of bolted ends; stress concentrations at holes and corners; fatigue under repeated load; local buckling of thin walls (walls must be ≥ 3 mm); lateral-torsional buckling; dynamic or impact load; temperature; shear deformation (a few % for the deepest sections); the support’s own weight (≤ 1 % of the load). This is a teaching model, not a design certification.</p>
     </section>
   </section>

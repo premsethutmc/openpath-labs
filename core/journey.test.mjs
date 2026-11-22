@@ -117,6 +117,7 @@ test('runner: anchor → stuck → diagnose → teach → apply → check → re
   assert.equal(R.decide({ claim: '', runs: [] }).ok, false);
   assert.equal(R.decide({ claim: 'Steel and a deeper section bring the dial reading inside 0.15 mm.', runs: [R.state.r2, 'R3'], rejected: 'Aluminium 40 × 50\n' }).ok, true);
   v = R.view(); assert.equal(v.phase, 'defend'); assert.equal(v.questions.length, 2); assert.equal(v.questions[0].unit, 'mm');
+  assert.equal(v.bench, spec.bench.page, 'the bench stays one tap away while defending');
   const proj = ctx.store.get(R.state.projectId), r2 = proj.runs.find(r => r.id === R.state.r2);
   const t0 = ctx.adapter.evaluate(applyPatch(r2.setup, { design: { material: 'steel' } })).outputs.deflection.value;
   const t1 = readOutput(ctx.adapter.evaluate(applyPatch(r2.setup, { mount: 300, dialX: 300, strainX: 300 })).outputs, 'Stress from strain (E·ε)').value;
@@ -197,8 +198,8 @@ test('runner: help on a prerequisite is kept apart from the unaided check on the
 });
 
 test('runner files contain no journey-specific words', () => {
-  const files = ['core/journey.mjs', 'core/ledger.mjs', 'core/diagnostic.mjs', 'core/graph.mjs', ...readdirSync(new URL('../journeys/', import.meta.url)).map(f => `journeys/${f}`)];
-  const words = /support|pipe|moment|mount|statics|fluids/i, hits = [];
+  const files = ['core/journey.mjs', 'core/ledger.mjs', 'core/diagnostic.mjs', 'core/graph.mjs', 'core/open-loop.mjs', ...readdirSync(new URL('../journeys/', import.meta.url)).map(f => `journeys/${f}`)];
+  const words = /support|pipe|moment|mount|statics|fluids|playground|circuit|frame|truss/i, hits = [];
   for (const f of files) readFileSync(new URL(`../${f}`, import.meta.url), 'utf8').split('\n').forEach((line, i) => { if (words.test(line)) hits.push(`${f}:${i + 1}: ${line.trim().slice(0, 80)}`); });
   assert.deepEqual(hits, []);
 });
