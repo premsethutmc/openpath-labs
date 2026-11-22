@@ -84,6 +84,21 @@ export const PRESETS = [
     ['addPart', 'source', { surface: 1, outlet: 0, inlet: 'square' }], ['addPart', 'pipe', { D: 0.05, L: 2, material: 'pvc', rise: 0 }], ['addPart', 'pump', { rpm: 2900, D2: 0.13 }],
     ['addPart', 'pipe', { D: 0.05, L: 10, material: 'pvc', rise: 0 }], ['addPart', 'orifice', { beta: 0.5 }], ['addPart', 'pipe', { D: 0.05, L: 10, material: 'pvc', rise: 6 }],
     ['addPart', 'sink', { surface: 6 }], ['toggleGauge', 'p4'], ['toggleGauge', 'p5']] },
+  // Journey 2 (pipe sizing): a farm sump to an overhead tank 12 m up, 80 m away. The main is undersized on purpose:
+  // it misses the 2.5 L/s requirement. Gauges sit at both ends of the horizontal main (the pipe-friction lab reading).
+  { id: 'farm', name: 'Farm tank: sump to an overhead tank (undersized main)', script: [
+    ['addPart', 'source', { surface: -2, outlet: -2, inlet: 'footValve' }], ['addPart', 'pipe', { D: 0.05, L: 3, material: 'pvc', rise: 2 }],
+    ['addPart', 'pump', { rpm: 2900, D2: 0.13, motorId: '2p-1.5' }], ['addPart', 'checkValve'], ['addPart', 'valve', { open: 1 }],
+    ['addPart', 'pipe', { D: 0.032, L: 80, material: 'pvc', rise: 0 }], ['addPart', 'elbow'], ['addPart', 'elbow'],
+    ['addPart', 'pipe', { D: 0.032, L: 12, material: 'pvc', rise: 12 }], ['addPart', 'sink', { surface: 12 }],
+    ['setRequiredFlow', 2.5], ['toggleGauge', 'p5'], ['toggleGauge', 'p6']] },
+  // Its near twin for practice: another site, galvanised iron, a different lift, run and requirement.
+  { id: 'farm-twin', name: 'Orchard tank: a second site to size (undersized main)', script: [
+    ['addPart', 'source', { surface: -1.5, outlet: -1.5, inlet: 'footValve' }], ['addPart', 'pipe', { D: 0.05, L: 2, material: 'gi', rise: 1.5 }],
+    ['addPart', 'pump', { rpm: 2900, D2: 0.13, motorId: '2p-2.2' }], ['addPart', 'checkValve'], ['addPart', 'valve', { open: 1 }],
+    ['addPart', 'pipe', { D: 0.032, L: 120, material: 'gi', rise: 0 }], ['addPart', 'elbow'], ['addPart', 'elbow'], ['addPart', 'elbow'],
+    ['addPart', 'pipe', { D: 0.032, L: 9, material: 'gi', rise: 9 }], ['addPart', 'sink', { surface: 9 }],
+    ['setRequiredFlow', 3], ['toggleGauge', 'p5'], ['toggleGauge', 'p6']] },
 ];
 export function fromPreset(id) {
   const p = PRESETS.find(x => x.id === id); if (!p) throw new EditError('no such preset');
