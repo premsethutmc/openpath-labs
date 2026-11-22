@@ -173,7 +173,7 @@ test('journey: contract shape, bench adapter, anchor R1 is the original design a
   assert.deepEqual({ page: J.bench.page, domain: J.bench.domain }, { page: '../mount/?project=current', domain: 'mount-stand' });
   assert.equal(await J.bench.adapter(), READING_ADAPTER);
   for (const k of ['2,500 N', '600 mm', '50 × 80 mm', '0.15 mm', 'yield ÷ 2', '2.5 kg']) assert.ok(J.brief.includes(k), k);
-  assert.equal(J.anchor.revision, 'R1'); assert.deepEqual(J.anchor.setup.design, ORIGINAL); assert.equal(J.anchor.setup, ANCHOR_SETUP);
+  assert.equal(J.anchor.revision, 'Revision 1'); assert.deepEqual(J.anchor.setup.design, ORIGINAL); assert.equal(J.anchor.setup, ANCHOR_SETUP);
   const r = READING_ADAPTER.evaluate(J.anchor.setup);
   assert.ok(r.ok); assert.equal(r.verdicts.alignment.value, 'fail', 'the original support fails alignment: the reason to redesign');
   assert.ok(BY[J.target]); assert.equal(J.target, 'ENG.statics.moment-about-point');

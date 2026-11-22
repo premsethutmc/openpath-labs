@@ -174,7 +174,7 @@ test('journey spec: shape, bench, graph links, teach entries', async () => {
   assert.equal(J.id, 'pipe'); assert.equal(J.semester, 4); assert.match(J.course, /^CE25C12 /);
   assert.equal(J.bench.page, '../circuit/'); assert.equal(J.bench.domain, 'fluids-line');
   const ad = await J.bench.adapter(); assert.equal(ad, C.ADAPTER); assert.equal(ad.domain, 'fluids-line');
-  assert.ok(J.brief.length > 50); assert.equal(J.anchor.revision, 'R1');
+  assert.ok(J.brief.length > 50); assert.equal(J.anchor.revision, 'Revision 1');
   const ids = new Set(NODES.map(n => n.id)), presets = { '../circuit/': C.PRESETS.map(p => p.id), '../pumps/': MISSIONS.map(m => m.id) };
   assert.ok(ids.has(J.target)); assert.ok(J.teach[J.target]);
   for (const [comp, t] of Object.entries(J.teach)) {

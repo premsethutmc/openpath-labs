@@ -92,6 +92,11 @@ const LEARNERS = [
     valid: { b: 45, t: 5 } },                              // aluminium 45×80×5 tube
 ];
 // What the journey page shows beside each part of the design (its visible labels).
+const NAME = { steel: 'Structural steel', aluminium: 'Aluminium 6061-T6' }, SEC = { rect: 'Solid rectangle', rhs: 'Hollow rectangle', I: 'I-section' };
+// what the journey page shows for a design, in words (spec.describe), written out independently here
+const shownFor = (d, mount) => ({ Material: NAME[d.material],
+  Section: `${SEC[d.shape]}, ${d.b} × ${d.h} mm${d.shape === 'rhs' ? `, wall ${d.t} mm` : d.shape === 'I' ? `, web ${d.tw} mm, flanges ${d.tf} mm` : ''}`,
+  'Machine at': `${mount} mm from the left bolt`, 'Operating load': 'on', Gauges: `dial at ${mount} mm, strain gauge at ${mount} mm` });
 const SHOWN = { material: 'Material', shape: 'Section (rect solid, rhs hollow, I)', b: 'Width b (mm)', h: 'Depth h (mm)', t: 'Wall t (mm)', tw: 'Web tw (mm)', tf: 'Flange tf (mm)',
   mount: 'Machine position (mm from the left bolt)', loaded: 'Operating load', dialX: 'Dial gauge at (mm)', strainX: 'Strain gauge at (mm)' };
 const DIM_LABEL = { b: /^(Flange width b|Width b)/, h: /^Depth h/, t: /^Wall t/, tw: /^Web tw/, tf: /^Flange tf/ };
@@ -129,12 +134,12 @@ for (const L of LEARNERS) {
       assert.deepEqual([brief.P, brief.L, brief.env, brief.tol, brief.factor, brief.massLimit], [2500, 600, { b: 50, h: 80 }, 0.15, 2, 2.5]);
       assert.ok(!meets(hand(brief, R1)), 'by hand, the existing support fails the brief');
       await noOverflow('brief');
-      await tap(btn('Start · save R1'));
+      await tap(btn('Start · save Revision 1'));
 
       // ---------- stuck: predictions for R1, one deliberately wrong ----------
       await page.locator('body[data-phase="stuck"]').waitFor();
       const r1Shown = await setupShown();
-      assert.deepEqual(r1Shown, { [SHOWN.material]: R1.material, [SHOWN.shape]: 'rect', [SHOWN.b]: String(R1.b), [SHOWN.h]: String(R1.h), [SHOWN.mount]: String(brief.mount), [SHOWN.loaded]: 'on', [SHOWN.dialX]: String(brief.mount), [SHOWN.strainX]: String(brief.mount) });
+      assert.deepEqual(r1Shown, shownFor(R1, brief.mount));
       const fields = await app.locator('label.field').all();
       assert.equal(fields.length, 5);
       let wrongPrompt;
@@ -212,7 +217,7 @@ for (const L of LEARNERS) {
 
       // ---------- return: the design as saved, then the real Mount bench ----------
       await page.locator('body[data-phase="return"]').waitFor();
-      assert.match(await app.innerText(), /As saved in R1/);
+      assert.match(await app.innerText(), /As saved in Revision 1/);
       await tap(app.locator('#bench'));
       await page.waitForURL(/\/mount\/\?project=current$/);
       await page.locator('body[data-stage="free"]').waitFor();
@@ -292,10 +297,11 @@ for (const L of LEARNERS) {
 
       // ---------- back on the journey: the saved design, also after a reload ----------
       await page.locator('body[data-phase="return"]').waitFor();
-      const expectShown = { [SHOWN.material]: design.material, [SHOWN.shape]: design.shape, ...Object.fromEntries(Object.keys(L.defaults).map(k => [SHOWN[k], String(design[k])])), [SHOWN.mount]: String(brief.mount), [SHOWN.loaded]: 'on', [SHOWN.dialX]: String(brief.mount), [SHOWN.strainX]: String(brief.mount) };
+      const expectShown = shownFor(design, brief.mount);
       assert.deepEqual(await setupShown(), expectShown);
-      const changedLine = (await app.innerText()).match(/Changed since R1: ([^\n]*)\./)?.[1] ?? '';
-      for (const k of ['material', 'shape', 'b', 'h']) assert.equal(changedLine.includes(SHOWN[k]), String(design[k]) !== String(R1[k]), `changed since R1: ${changedLine}`);
+      const changedLine = (await app.innerText()).match(/Changed since Revision 1: ([^\n]*)\./)?.[1] ?? '';
+      assert.equal(changedLine.includes('Material'), design.material !== R1.material, `changed since Revision 1: ${changedLine}`);
+      assert.equal(changedLine.includes('Section'), ['shape', 'b', 'h'].some(k => String(design[k]) !== String(R1[k])), `changed since Revision 1: ${changedLine}`);
       await page.reload();
       await page.locator('body[data-phase="return"]').waitFor();
       assert.deepEqual(await setupShown(), expectShown, 'after a reload the exact saved design is shown');
@@ -314,7 +320,7 @@ for (const L of LEARNERS) {
         assert.equal(r.result, 'close', r.prompt);
         assert.ok(close(n(r.engine), predict(r.prompt, brief, design, brief.mount), 0.005, 0.0005), `${r.prompt}: engine ${r.engine}`);
       }
-      await tap(app.getByRole('button', { name: /^Save as R2/ }));
+      await tap(app.getByRole('button', { name: /^Save as Revision 2/ }));
 
       // ---------- decide: cite the runs ----------
       await page.locator('body[data-phase="decide"]').waitFor();
@@ -347,7 +353,7 @@ for (const L of LEARNERS) {
       // ---------- portfolio ----------
       await page.locator('body[data-phase="summary"]').waitFor();
       const text = await app.innerText();
-      assert.match(text, /Design R1 → R2/);
+      assert.match(text, /Design Revision 1 → Revision 2/);
       assert.deepEqual(await setupShown(), expectShown, 'R2 is the tested revised design');
       const outRow = async label => app.locator('table.tbl:not(.scored) tbody tr', { has: page.locator('th', { hasText: label }) }).evaluate(tr => [...tr.cells].slice(1).map(c => c.textContent));
       const [d1, d2] = (await outRow('Dial reading')).map(n);
@@ -381,7 +387,7 @@ test('Mount free bench from a journey: visible way back, reading names never rep
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     await page.goto(`${server.origin}/journeys/journey.html?j=support`);
     await page.locator('body[data-ready="true"]').waitFor();
-    await page.getByRole('button', { name: 'Start · save R1' }).tap();
+    await page.getByRole('button', { name: 'Start · save Revision 1' }).tap();
     await page.locator('body[data-phase="stuck"]').waitFor();
     const names = [];
     for (let visit = 0; visit < 2; visit++) {

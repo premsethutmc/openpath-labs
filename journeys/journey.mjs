@@ -46,7 +46,22 @@ function act(fn) {
 // ---------- pieces ----------
 const label = path => spec.labels?.[path] ?? path;
 const flat = (o, pre = '') => o && typeof o === 'object' ? Object.entries(o).flatMap(([k, v]) => flat(v, pre ? `${pre}.${k}` : k)) : [[pre, o]];
-const setupList = (setup, changed = []) => { const c = new Set(changed.map(d => d.path)); return `<dl class="setup">${flat(setup).map(([k, v]) => `<dt>${esc(label(k))}</dt><dd class="${c.has(k) ? 'chg' : ''}">${esc(typeof v === 'boolean' ? (v ? 'on' : 'off') : v)}</dd>`).join('')}</dl>`; };
+// A journey may describe its own setup (spec.describe(setup) → [{ label, value, paths }]) so the learner reads the design in
+// words and units; otherwise every field is listed with spec.labels. `paths` are the setup paths a line shows (for highlighting).
+const described = setup => { if (typeof spec.describe === 'function') { try { return spec.describe(setup); } catch {} } return null; };
+const setupList = (setup, changed = []) => {
+  const c = new Set(changed.map(d => d.path)), d = described(setup);
+  const hit = paths => (paths ?? []).some(p => [...c].some(k => k === p || k.startsWith(`${p}.`)));
+  if (d) return `<dl class="setup">${d.map(x => `<dt>${esc(x.label)}</dt><dd class="${hit(x.paths) ? 'chg' : ''}">${esc(x.value)}</dd>`).join('')}</dl>`;
+  return `<dl class="setup">${flat(setup).map(([k, v]) => `<dt>${esc(label(k))}</dt><dd class="${c.has(k) ? 'chg' : ''}">${esc(typeof v === 'boolean' ? (v ? 'on' : 'off') : v)}</dd>`).join('')}</dl>`;
+};
+// Names of what changed, in the journey's own words when it describes its setup.
+const changedNames = (setup, changed) => {
+  const d = described(setup);
+  if (!d) return changed.map(c => label(c.path));
+  const names = d.filter(x => (x.paths ?? []).some(p => changed.some(c => c.path === p || c.path.startsWith(`${p}.`)))).map(x => x.label);
+  return names.length ? names : changed.map(c => label(c.path));
+};
 const figure = f => {
   if (!f) return '';
   const draw = spec.figures?.[f.kind];
@@ -122,7 +137,7 @@ const PHASE = {
     ${v.scored ? `<div class="card">${scoredTable(v.scored, 'Your prediction against the engine')}
       ${v.outcome === 'missed' ? `<p>A miss is useful: it shows where to look. A few short questions will find what is blocking you.</p><div class="actions"><button type="button" class="primary" id="stuck">Find what is blocking me</button></div>`
         : `<p>Your predictions held.</p><div class="actions"><button type="button" class="primary" id="skip">Back to my design</button><button type="button" id="stuck">I’m still stuck</button></div>`}</div>` : ''}
-    <details class="card about"><summary>Design being tested (${esc(runner.state.revisionLabels?.[0] ?? 'R1')})</summary>${v.setup ? setupList(v.setup) : ''}</details>`,
+    <details class="card about"><summary>Design being tested (${esc(runner.state.revisionLabels?.[0] ?? 'Revision 1')})</summary>${v.setup ? setupList(v.setup) : ''}</details>`,
   diagnose: v => v.result ? `<div class="card"><h2>What we found</h2><p class="lead">${esc(v.result.text)}</p>
       ${v.result.gaps.length ? `<p>First: ${v.result.gaps.map(g => `<b>${esc(g.title)}</b>`).join(', ')}. Then ${esc(v.target.title)}.</p>` : ''}
       <p class="quiet">Based on ${v.result.asked.length} answer${v.result.asked.length === 1 ? '' : 's'}. A wrong answer alone is never taken as proof of a gap.</p>
@@ -145,9 +160,9 @@ const PHASE = {
   return: v => { if (v.missing) return `<div class="card"><p class="msg">The project for this journey is no longer in this browser.</p></div>`;
     const R1 = esc(runner.state.revisionLabels[0]), R2 = esc(runner.state.revisionLabels[1]), lt = v.lastTested, untested = v.rounds.length > 0 && !v.currentTested;
     const tested = !v.rounds.length ? '' : `<p class="tested ${untested ? 'no' : 'yes'}" id="tested-status">${lt ? `Last tested: run <b>${esc(lt.run)}</b>. ` : ''}${v.currentTested
-      ? `This design is tested (run ${esc(v.currentTested)}).` : `This design is not tested${lt && v.sinceTested.length ? `: changed since run ${esc(lt.run)} (${v.sinceTested.map(c => esc(label(c.path))).join(', ')})` : ''}.`}</p>`;
+      ? `This design is tested (run ${esc(v.currentTested)}).` : `This design is not tested${lt && v.sinceTested.length ? `: changed since run ${esc(lt.run)} (${changedNames(v.setup, v.sinceTested).map(esc).join(', ')})` : ''}.`}</p>`;
     return `<div class="card"><h2>Your design</h2>
-      <p class="quiet">${v.changed.length ? `Changed since ${R1}: ${v.changed.map(c => esc(label(c.path))).join(', ')}.` : `As saved in ${R1}.`}</p>${setupList(v.setup, v.changed)}${tested}
+      <p class="quiet">${v.changed.length ? `Changed since ${R1}: ${changedNames(v.setup, v.changed).map(esc).join(', ')}.` : `As saved in ${R1}.`}</p>${setupList(v.setup, v.changed)}${tested}
       <div class="actions"><a class="button" id="bench" href="${esc(v.bench)}">Change it on the bench</a><button type="button" id="reload">I’ve saved a change</button></div>
       <p class="quiet">Make the change on the bench and save it there; this page reads your latest saved design.</p></div>
     <div class="card" id="predict-card"><h2>Predict, then run</h2>
@@ -159,7 +174,7 @@ const PHASE = {
       : `<div class="card" id="choose"><h2>Save the revision</h2>${message() || `<p class="quiet">${R2} must be a design you predicted and ran. Your current design has not been run since you changed it.</p>`}
       <div class="actions"><button type="button" class="primary" id="predict-current">Predict and run this design</button>${lt ? `<button type="button" id="save-tested">Save the last tested design as ${R2}</button>` : ''}</div>
       ${lt ? `<p class="quiet">The second choice saves the setup of run ${esc(lt.run)} as ${R2}. Your current edits stay in the project on the bench, but are not part of ${R2}.</p>` : ''}</div>`}`; },
-  decide: v => `${v.message ? `<p class="notice" role="status" id="saved-note">${esc(v.message)}</p>` : ''}<div class="card"><h2>Your decision</h2><p class="quiet">From ${esc(v.from)} to ${esc(v.to)}${v.tested ? ` (tested in run ${esc(v.tested)})` : ''}: ${v.changed.length ? v.changed.map(c => esc(label(c.path))).join(', ') : 'no change to the design'}.</p>
+  decide: v => `${v.message ? `<p class="notice" role="status" id="saved-note">${esc(v.message)}</p>` : ''}<div class="card"><h2>Your decision</h2><p class="quiet">From ${esc(v.from)} to ${esc(v.to)}${v.tested ? ` (tested in run ${esc(v.tested)})` : ''}: ${v.changed.length ? changedNames(v.setup, v.changed).map(esc).join(', ') : 'no change to the design'}.</p>
       <label class="field">What did you decide, and why?<textarea id="claim" data-focus>${esc(runner.state.decision?.claim ?? '')}</textarea>${err('claim', flash?.errors)}</label>
       <fieldset class="checks"><legend class="field">Which runs show it?</legend>${v.runs.map(r => `<label><input type="checkbox" value="${esc(r.id)}" ${r.id === v.to ? 'checked' : ''}> ${esc(r.id)} · ${esc(r.name)}</label>`).join('')}${err('runs', flash?.errors)}</fieldset>
       <label class="field">What did you consider and reject? (one per line)<textarea id="rejected"></textarea></label>

@@ -39,7 +39,7 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       // brief → R1
       assert.match(await app.innerText(), /Fixture: the stiff bracket[\s\S]*Starting design/);
       await noOverflow();
-      await btn('Start · save R1').click();
+      await btn('Start · save Revision 1').click();
       // stuck: a refusal keeps the typed text; locked predictions are scored against the engine
       await app.locator('[data-field="defl"]').fill('lots');
       await btn('Lock predictions').click();
@@ -114,7 +114,7 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       await page.goBack();
       await page.locator('body[data-phase="return"]').waitFor();
       await btn('I’ve saved a change').click();
-      assert.match(await app.innerText(), /Changed since R1: design\.material, design\.h/);
+      assert.match(await app.innerText(), /Changed since Revision 1: design\.material, design\.h/);
       const own = READING_ADAPTER.evaluate({ design: R2_DESIGN, loaded: true, mount: 200, dialX: 200, strainX: 200 }).outputs;
       await app.locator('[data-field="defl"]').fill(own.deflection.value.toFixed(4)); await app.locator('[data-field="stress"]').fill(`${own.stress.value.toFixed(2)} MPa`);
       await btn('Lock predictions').click(); await btn('Run the bench').click();
@@ -126,9 +126,9 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       // R2 is a tested design: edit on the bench after the run (as the bench saves it), then try to save the edit
       const edit = h => page.evaluate(async h => { const P = await import('/core/project.mjs'), st = P.openStore('mount-stand'), p = st.current(); p.setup = { ...p.setup, design: { ...p.setup.design, h } }; st.put(p); }, h);
       await edit(TESTED.h);
-      await btn('Save as R2').click();                                   // the page was drawn before the edit: the runner refuses
+      await btn('Save as Revision 2').click();                                   // the page was drawn before the edit: the runner refuses
       assert.equal(await phase(), 'return');
-      assert.match(await app.locator('#choose').innerText(), /changed since run R4, and R2 must be a design you predicted and ran/);
+      assert.match(await app.locator('#choose').innerText(), /changed since run R4, and Revision 2 must be a design you predicted and ran/);
       assert.match(await app.locator('#tested-status').innerText(), /Last tested: run R4\. This design is not tested: changed since run R4 \(design\.h\)/);
       assert.equal(await app.locator('#save').count(), 0);
       await noOverflow(); await shot('untested');
@@ -145,12 +145,12 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       assert.equal(await app.locator('#choose').count(), 0);
       // choice 2: edit again, then save the last tested design (run R5) as R2; the edit stays in the project, not in R2
       await edit(48); await btn('I’ve saved a change').click();
-      assert.equal(await btn('Save as R2').count(), 0);
-      await btn('Save the last tested design as R2').click();
+      assert.equal(await btn('Save as Revision 2').count(), 0);
+      await btn('Save the last tested design as Revision 2').click();
 
       // decide → defend (keyed by the engine on patched copies of R2)
       assert.equal(await phase(), 'decide');
-      assert.match(await app.locator('#saved-note').innerText(), /Saved R2 from run R5, the last design you predicted and ran\. Your later edits are still in the project on the bench, but they are not part of R2\./);
+      assert.match(await app.locator('#saved-note').innerText(), /Saved Revision 2 from run R5, the last design you predicted and ran\. Your later edits are still in the project on the bench, but they are not part of Revision 2\./);
       assert.match(await app.innerText(), /From R1 to R6 \(tested in run R5\)/);
       await noOverflow(); await shot('decide');
       await btn('Save the decision').click();
@@ -169,7 +169,7 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       // portfolio entry and export
       assert.equal(await phase(), 'summary');
       const text = await app.innerText();
-      assert.match(text, /Design R1 → R2[\s\S]*Decision[\s\S]*Steel and a 45 mm deep section/);
+      assert.match(text, /Design Revision 1 → Revision 2[\s\S]*Decision[\s\S]*Steel and a 45 mm deep section/);
       assert.equal(await app.locator('.res-correct').count(), 2, 'both defence answers within tolerance (GPa converted)');
       assert.match(text, /Turning effect of a force · Solved on your own after help/);
       assert.equal(await app.locator('.badmsg').count(), 0, 'every run reproduces');

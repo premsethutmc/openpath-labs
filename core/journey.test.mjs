@@ -25,7 +25,7 @@ test('runner: anchor → stuck → diagnose → teach → apply → check → re
   assert.equal(R.view().phase, 'brief');
   R.start();
   const p0 = ctx.store.get(R.state.projectId);
-  assert.equal(R.state.r1, 'R1'); assert.equal(p0.runs[0].name, 'R1 · starting design'); assert.equal(ctx.store.current().id, p0.id, 'the bench opens the journey project');
+  assert.equal(R.state.r1, 'R1'); assert.equal(p0.runs[0].name, 'Revision 1 · starting design'); assert.equal(ctx.store.current().id, p0.id, 'the bench opens the journey project');
 
   // stuck: unreadable predictions are refused, locking is final, the score comes from the engine
   assert.equal(R.lockStuck({ defl: 'a lot' }).ok, false);
@@ -214,7 +214,7 @@ test('runner: R2 is a tested design — an edit after the run is refused, and th
   assert.deepEqual(r2.setup, A); assert.deepEqual(p.setup, B, 'the current editing state is not overwritten');
   assert.ok(P.reproduceRun(r2, ctx.adapter).ok);
   v = S.view(); assert.equal(v.phase, 'decide'); assert.equal(v.to, S.state.r2); assert.equal(v.tested, testedRun);
-  assert.match(v.message, new RegExp(`run ${testedRun}`)); assert.match(v.message, /not part of R2/);
+  assert.match(v.message, new RegExp(`run ${testedRun}`)); assert.match(v.message, /not part of Revision 2/);
   assert.equal(S.decide({ claim: 'Kept the tested design.', runs: [S.state.r2] }).ok, true);
   // defence questions come from the R2 setup (A), not the current project setup (B)
   const tA0 = ctx.adapter.evaluate(applyPatch(A, { design: { material: 'steel' } })).outputs.deflection.value;

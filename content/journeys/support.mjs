@@ -40,13 +40,29 @@ export function whatIfs(setup) {
   return out.filter(q => { const s = { ...setup, ...q.change }; return check(s.design).ok && GAUGE_POSITIONS.includes(s.mount) && s.mount >= SPEC.mountRange[0] && s.mount <= SPEC.mountRange[1]; });
 }
 
+// The design in words for the journey page (spec.describe): material, section with its dimensions, where the machine and
+// gauges sit, and whether the operating load is on.
+const SECTION = { rect: 'Solid rectangle', rhs: 'Hollow rectangle', I: 'I-section' };
+function describeSetup(setup) {
+  const d = setup.design ?? {};
+  const dims = d.shape === 'rhs' ? `${d.b} × ${d.h} mm, wall ${d.t} mm` : d.shape === 'I' ? `${d.b} × ${d.h} mm, web ${d.tw} mm, flanges ${d.tf} mm` : `${d.b} × ${d.h} mm`;
+  return [
+    { label: 'Material', value: MATERIALS[d.material]?.name ?? d.material, paths: ['design.material'] },
+    { label: 'Section', value: `${SECTION[d.shape] ?? d.shape}, ${dims}`, paths: ['design.shape', 'design.b', 'design.h', 'design.t', 'design.tw', 'design.tf'] },
+    { label: 'Machine at', value: `${setup.mount} mm from the left bolt`, paths: ['mount'] },
+    { label: 'Operating load', value: setup.loaded ? 'on' : 'off', paths: ['loaded'] },
+    { label: 'Gauges', value: `dial at ${setup.dialX} mm, strain gauge at ${setup.strainX} mm`, paths: ['dialX', 'strainX'] },
+  ];
+}
+
 export default {
+  describe: describeSetup,
   id: 'support', title: 'The support that holds', semester: 2, course: 'ME25C02 Engineering Mechanics',
   bench: { page: '../mount/?project=current', domain: 'mount-stand', adapter: () => import('../../mount/model.mjs').then(m => m.READING_ADAPTER) },
   brief: `A ${fmt(SPEC.load)} N machine must sit on a support bolted ${SPEC.span} mm apart, inside a ${SPEC.envelope.b} × ${SPEC.envelope.h} mm envelope. `
     + `Under the machine the support may deflect at most ${SPEC.tolerance} mm, its stress must stay at or below yield ÷ ${SPEC.yieldFactor}, and it may weigh at most ${SPEC.massLimit} kg. `
     + `The existing support is a ${describe(ORIGINAL)}, with the machine ${SPEC.guidedMount} mm from the left bolt. Test it, then choose the material and section.`,
-  anchor: { setup: ANCHOR_SETUP, revision: 'R1' },
+  anchor: { setup: ANCHOR_SETUP, revision: 'Revision 1' },
   // what the journey page shows beside each part of a saved setup (the page falls back to the raw key)
   labels: LABELS,
 

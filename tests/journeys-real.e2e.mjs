@@ -37,7 +37,7 @@ for (const id of ['support']) {
         const ph = await phase(); seen.add(ph);
         if (ph === 'summary') break;
         await noOverflow();
-        if (ph === 'brief') await btn('Start · save R1').click();
+        if (ph === 'brief') await btn('Start · save Revision 1').click();
         else if (ph === 'stuck') {
           if (await has('Lock predictions')) { await fillPredictions(); await btn('Lock predictions').click(); }
           else if (await has('Run the bench')) await btn('Run the bench').click();
@@ -65,12 +65,12 @@ for (const id of ['support']) {
             await page.goBack();
             await page.locator('body[data-phase="return"]').waitFor();
             await btn('I’ve saved a change').click();
-            assert.match(await app.innerText(), /Changed since R1/);
+            assert.match(await app.innerText(), /Changed since Revision 1/);
             continue;
           }
           if (!ranAfter && await has('Lock predictions')) { await fillPredictions(); await btn('Lock predictions').click(); }
           else if (await has('Run the bench')) { await btn('Run the bench').click(); ranAfter = true; }
-          else await btn('Save as R2').click();
+          else await btn('Save as Revision 2').click();
         } else if (ph === 'decide') {
           await app.locator('#claim').fill('The revised design meets the brief; the runs show it.');
           await app.locator('#rejected').fill('The original design: it missed the limit.');
@@ -85,7 +85,7 @@ for (const id of ['support']) {
       for (const ph of ['brief', 'stuck', 'diagnose', 'teach', 'apply', 'check', 'return', 'decide', 'defend']) assert.ok(seen.has(ph), `passed through ${ph}`);
       const text = await app.innerText();
       assert.match(text, /Solved on your own after help/);
-      assert.match(text, /Design R1 → R2[\s\S]*Decision/);
+      assert.match(text, /Design Revision 1 → Revision 2[\s\S]*Decision/);
       assert.equal(await app.locator('.badmsg').count(), 0, 'every run reproduces');
       await noOverflow();
       const domain = 'mount-stand';

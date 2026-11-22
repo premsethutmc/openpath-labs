@@ -6,7 +6,7 @@ export default {
   bench: { page: '../mount/?project=current', domain: 'mount-stand', adapter: () => import('../../mount/model.mjs').then(m => m.READING_ADAPTER) },
   content: { graph: [() => import('./graph.mjs')], items: [() => import('./items.mjs')] },
   brief: 'A bracket carries a machine 200 mm from the left bolt. Keep the dial reading at the machine within 0.15 mm.',
-  anchor: { setup: { design: { material: 'aluminium', shape: 'rect', b: 40, h: 30 }, loaded: true, ...at(200) }, revision: 'R1' },
+  anchor: { setup: { design: { material: 'aluminium', shape: 'rect', b: 40, h: 30 }, loaded: true, ...at(200) }, revision: 'Revision 1' },
   stuck: { predictions: [{ id: 'defl', prompt: 'Dial reading at the machine under load', unit: 'mm', tol: 0.1, truth: (s, r) => r.deflection.value }] },
   target: 'FIX.lever',
   teach: {

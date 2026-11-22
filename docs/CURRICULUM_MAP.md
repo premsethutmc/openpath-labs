@@ -229,7 +229,15 @@ Four levels, each stricter than the one before:
 | School maths underneath | 16 | — | 4 | 0 |
 | The other courses in the eight-semester map | course level only | see the map | 0 | 0 |
 
-The rest of the degree is mapped only. Only the two journey targets are independently checked.
+The rest of the degree is mapped only. Only the two journey targets are independently checked: `tests/journey-support-visible.e2e.mjs` and `tests/journey-pipe-visible.e2e.mjs` prove them on phone and desktop. Each test solves every question from its visible text with its own hand calculation. It covers a wrong prediction, help, a fresh unaided check, a reload that brings back the exact saved design, a revision made on the real bench and tested, a decision citing the linked run, and a defence. It passes two different valid designs per brief and one design the bench rejects.
+
+Still not proved:
+- **Real students learning.** The tests prove only that the software behaves correctly.
+- **A delayed retention check.** None is scheduled or tested.
+- **The diagnostic's calibration.** It still uses the school engine's draft likelihoods and mostly ends "insufficient evidence".
+- **Prerequisites taught from the school engine.** There is no link from Labs to its lessons.
+- **The bench edit that leaves the tested design.** The fixture e2e and the unit tests cover a design edited after its run; the two real-journey visible tests always predict and run after the edit.
+- **The other nine graph nodes of each topic** that no journey targets.
 
 **Next capability: axial stress, strain and Hooke's law, through yield and allowable stress (factor of safety).** Syllabus: PH25C01 Applied Physics I, semester I, *Properties of matter: elasticity, Young's modulus*; CE25C11 Strength of Materials, semester III, which has a laboratory (its unit text was not read in this pass).
 
@@ -266,3 +274,4 @@ Totals at c3ca460: 155 unit tests and 37 browser tests passing. At #16: 192 unit
 | 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps; product shape (journey, deck) and two-topic proof spec. No code | Docs only; tests unchanged |
 | 2026-11-22 | #16 | cbb3941 | Student journeys: one runner, local ledger, ported diagnostic, decisions on the record; Journey 1 support design, Journey 2 pipe sizing; moment view; Mount opens the learner's own design | core/journey.test.mjs (no journey words in the runner), tests/support-content.test.mjs, tests/pipe-content.test.mjs, playground/moments.test.mjs, tests/journeys.e2e.mjs, tests/journeys-real.e2e.mjs, tests/moments.e2e.mjs |
 | 2026-11-22 | — | 0f4c684 | Home page links to the student journeys | tests/*.e2e.mjs (home) |
+| 2026-11-22 | #17 (draft) | — not merged | Revision 2 must be a tested design; both journeys proved through visible controls only (phone and desktop, two valid designs each); revisions labelled "Revision 1/2", designs shown in words; fluid line bench and Pump House open `?preset=` without touching saved projects; Mount free bench has a way back; evidence ladder and the next capability | core/journey.test.mjs (loophole, red before the fix), tests/journeys.e2e.mjs, tests/journey-support-visible.e2e.mjs, tests/journey-pipe-visible.e2e.mjs, tests/pipe-hand.test.mjs |

@@ -179,10 +179,10 @@ export function createRunner(spec, deps, saved) {
     start() {
       if (S.phase !== 'brief') throw new JourneyError('already started');
       const p = P.createProject({ domain: adapter.domain, name: spec.title, setup: spec.anchor.setup, origin: `journey:${spec.id}` });
-      const rev = spec.anchor.revision ?? 'R1';
+      const rev = spec.anchor.revision ?? 'Revision 1';
       const run = P.saveRun(p, adapter, `${rev} · starting design`);
       store.put(p); store.open(p.id);
-      Object.assign(S, { projectId: p.id, r1: run.id, r2: null, revisionLabels: [rev, rev === 'R1' ? 'R2' : `${rev}+1`], stuck: { locked: false, values: null, scored: null, outcome: null },
+      Object.assign(S, { projectId: p.id, r1: run.id, r2: null, revisionLabels: [rev, /\d+$/.test(rev) ? rev.replace(/\d+$/, n => String(+n + 1)) : `${rev} (revised)`], stuck: { locked: false, values: null, scored: null, outcome: null },
         diag: { answers: [], result: null }, trail: { taught: [] }, ret: { rounds: [], locked: null }, decision: null, defend: null });
       go('stuck');
     },
@@ -293,7 +293,7 @@ export function createRunner(spec, deps, saved) {
     const base = { phase: S.phase, phases: PHASES, titles: PHASE_TITLES, journey: { id: spec.id, title: spec.title, course: spec.course, semester: spec.semester }, message: S.message, target: { id: target, title: titleOf(target) } };
     const p = S.projectId ? project() : null;
     switch (S.phase) {
-      case 'brief': return { ...base, brief: spec.brief, setup: clone(spec.anchor.setup), revision: spec.anchor.revision ?? 'R1', bench: spec.bench.page };
+      case 'brief': return { ...base, brief: spec.brief, setup: clone(spec.anchor.setup), revision: spec.anchor.revision ?? 'Revision 1', bench: spec.bench.page };
       case 'stuck': return { ...base, predictions: spec.stuck.predictions.map(x => ({ id: x.id, prompt: x.prompt, unit: x.unit ?? '' })), locked: S.stuck.locked, values: S.stuck.values, scored: S.stuck.scored, outcome: S.stuck.outcome, setup: p && runOf(p, S.r1)?.setup, bench: spec.bench.page };
       case 'diagnose': {
         const d = S.diag.result;
@@ -317,7 +317,7 @@ export function createRunner(spec, deps, saved) {
           ...(() => { const last = lastTested(p), cur = currentTested(p);
             return { lastTested: last ? { run: last.run, setup: clone(last.setup) } : null, currentTested: cur ? cur.run : null, sinceTested: last && p ? P.setupDiff(last.setup, p.setup) : [] }; })() };
       }
-      case 'decide': return { ...base, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, tested: S.r2Tested ?? null, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [] };
+      case 'decide': return { ...base, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, tested: S.r2Tested ?? null, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [], setup: p ? clone(runOf(p, S.r2).setup) : null };
       case 'defend': return { ...base, questions: S.defend.questions.map(q => ({ prompt: q.prompt, unit: q.unit, label: q.label })) };
       case 'summary': return { ...base, portfolio: portfolio() };
     }

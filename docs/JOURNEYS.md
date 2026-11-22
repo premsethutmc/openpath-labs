@@ -91,6 +91,10 @@ export default {
 
 R2 can only be a design that has a locked prediction and a run in the return phase. The learner may revise freely, but `saveRevision()` refuses when the current design differs from every tested one (compared with `setupDiff` against the run on the project record — the record is the authority, so a reload or an edited page state never turns an untested design into a tested one). The page then offers two choices: **Predict and run this design** (`#predict-current` → `predictCurrent()`, clears a stale lock for a fresh round) or **Save the last tested design as R2** (`#save-tested` → `saveTestedRevision()`: saves that run's own setup as a new reproducible run, leaves the current edit in the project and says so). `view()` in return gives `lastTested { run, setup }`, `currentTested` (run id or null) and `sinceTested` (diff); `#tested-status` shows them. The decision's `to`, the portfolio's `design.to` (with `tested`: the prediction run) and the defence questions all use the R2 run's setup.
 
+## Showing the design
+
+Revisions are labelled `Revision 1` and `Revision 2` (from `spec.anchor.revision`), so they never read like bench run ids (`R1`, `R2`, … on the project record). A journey may give `describe(setup) → [{ label, value, paths }]` so the page shows the design in words and units and names what changed; without it the page lists every setup field with `spec.labels`.
+
 ## Bench pages
 
 A journey's `bench.page` opens the learner's own design. The fluid line bench opens the current project; with `?preset=<id>`, as "Explore on the bench" links it, it opens a scratch bench on that preset that never changes the saved projects (Pump House `?preset=` opens the named lesson). The Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand); its mission shows a “Back to the journey” link built from the project's `journey:<id>` origin. `tests/journey-support-visible.e2e.mjs` and `tests/journey-pipe-visible.e2e.mjs` play the two journeys through visible controls only, each with two different valid designs.

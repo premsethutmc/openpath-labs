@@ -119,7 +119,7 @@ for (const V of VIEWPORTS) {
 
         if (s === 'Brief') {
           assert.match(await app.innerText(), /at least 2\.5 L\/s[\s\S]*motor must not be overloaded/);
-          await press(btn('Start · save R1'));
+          await press(btn('Start · save Revision 1'));
 
         } else if (s === 'Predict') {
           if (await has('Lock predictions')) {
@@ -200,9 +200,9 @@ for (const V of VIEWPORTS) {
         } else if (s === 'Your design') {
           if (!design) {
             // R1 is still the starting design: exploring presets on the bench did not change it
-            assert.match(await app.innerText(), /As saved in R1\./);
+            assert.match(await app.innerText(), /As saved in Revision 1\./);
             r1Shown = await pairs();
-            assert.equal(r1Shown['chain.5.D'], '0.032'); assert.equal(r1Shown['chain.5.L'], '80');
+            assert.match(r1Shown['6. Pipe'], /^bore 32 mm, length 80 m,/);
 
             // ---- the real fluid line bench, through its visible link ----
             await press(app.getByRole('link', { name: 'Change it on the bench' }));
@@ -247,17 +247,17 @@ for (const V of VIEWPORTS) {
             assert.equal(await step(), 'Your design');
             await press(btn('I’ve saved a change'));
             const text = await app.innerText();
-            assert.match(text, /Changed since R1: .*chain\.5\.D/);
+            assert.match(text, /Changed since Revision 1: .*6\. Pipe/);
             const shown = await pairs();
-            assert.equal(shown['chain.5.D'], String(d.main)); assert.equal(shown[`chain.${8 + d.addElbows}.D`], String(d.riser)); assert.equal(shown['chain.5.L'], String(d.L));
-            assert.equal(Object.entries(shown).filter(([k, v]) => /^chain\.\d+\.type$/.test(k) && v === 'elbow').length, 2 + d.addElbows);
+            assert.match(shown['6. Pipe'], new RegExp(`^bore ${+(d.main * 1000).toPrecision(4)} mm, length ${d.L} m,`)); assert.match(shown[`${9 + d.addElbows}. Pipe`], new RegExp(`^bore ${+(d.riser * 1000).toPrecision(4)} mm,`));
+            assert.equal(Object.keys(shown).filter(k => /^\d+\. 90° elbow$/.test(k)).length, 2 + d.addElbows);
 
             // reload the journey page mid-way: the exact saved design comes back
             const before = await setupShown();
             await page.reload(); await ready();
             assert.equal(await step(), 'Your design');
             assert.equal(await setupShown(), before, 'the same design after a reload');
-            assert.match(await app.innerText(), /Changed since R1/);
+            assert.match(await app.innerText(), /Changed since Revision 1/);
             continue;
           }
           if (!ranReturn && await has('Lock predictions')) {
@@ -273,7 +273,7 @@ for (const V of VIEWPORTS) {
             const t = await app.locator('table.scored').last().innerText();
             assert.doesNotMatch(t, /\boff\b/, `all three predictions close: ${t}`);
           } else {
-            const save = app.getByRole('button', { name: /Save as R2/ });
+            const save = app.getByRole('button', { name: /Save as Revision 2/ });
             await press(save.first());
           }
 
@@ -311,7 +311,7 @@ for (const V of VIEWPORTS) {
       assert.ok(stuckDone && explored && transferOpened && shownSolution && helped >= 2);
       assert.ok(solved.length >= 5, `items solved by hand: ${solved.length}`);
       const text = await app.innerText();
-      assert.match(text, /Design R1 → R2/);
+      assert.match(text, /Design Revision 1 → Revision 2/);
       const flowRow = (await app.locator('table.tbl').first().locator('tr').filter({ hasText: /^Flow/ }).innerText()).split('\t').map(t => t.trim());
       near(+flowRow[1], 1.651, 0.002, 'R1 flow'); near(+flowRow[2], bench.P3.Q, 0.003, 'R2 flow = the bench run of the design');
       assert.equal((await app.locator('#claim-text').innerText()).includes(`Run ${runId}`), true);
@@ -322,7 +322,7 @@ for (const V of VIEWPORTS) {
       assert.match(text, new RegExp(`${target.replace(/[()]/g, '.')} · Solved on your own after help`));
       const runs = app.locator('.card').filter({ has: page.locator('h2', { hasText: /^Runs$/ }) }).locator('li');
       const names = await runs.allInnerTexts();
-      for (const nm of [OVERLOAD.run, SHORT.run, design.run, 'R1 · starting design', 'R2 · revised design']) assert.ok(names.some(t => t.includes(nm)), `run listed: ${nm}`);
+      for (const nm of [OVERLOAD.run, SHORT.run, design.run, 'Revision 1 · starting design', 'Revision 2 · revised design']) assert.ok(names.some(t => t.includes(nm)), `run listed: ${nm}`);
       assert.ok(names.every(t => /reproduced from its saved setup/.test(t)), 'every run reproduces');
       assert.equal(await app.locator('.badmsg').count(), 0);
       await noOverflow('portfolio');
