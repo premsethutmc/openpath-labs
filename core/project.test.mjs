@@ -45,3 +45,19 @@ test('store: one domain per store, ids assigned, current project remembered', ()
   assert.throws(() => st.put(P.createProject({ domain: 'other', setup: {} })), /cannot hold/);
   assert.throws(() => P.deserialize(P.serialize(p), 'other'), /toy project/);
 });
+
+test('decisions: version 2 record, runs checked, version 1 files still load', () => {
+  const p = P.createProject({ domain: 'toy', name: 'T', setup: { x: 1 } });
+  assert.equal(p.version, 2);
+  P.saveRun(p, toy, 'R1'); p.setup.x = 4; P.saveRun(p, toy, 'R2');
+  assert.throws(() => P.addDecision(p, { from: 'R1', to: 'R9', claim: 'x' }), /no run R9/);
+  assert.throws(() => P.addDecision(p, { from: 'R1', to: 'R2', claim: ' ' }), /claim/);
+  const d = P.addDecision(p, { from: 'R1', to: 'R2', claim: 'Bigger x passes', runs: ['R2', 'R2'], rejected: ['x = 2', ''], defence: [{ prompt: 'q', answer: 8, truth: 8, result: 'correct' }] });
+  assert.deepEqual({ id: d.id, runs: d.runs, rejected: d.rejected }, { id: 'D1', runs: ['R2'], rejected: ['x = 2'] });
+  const back = P.deserialize(P.serialize(p), 'toy');
+  assert.deepEqual(back, JSON.parse(P.serialize(p)), 'save → load gives the same record');
+  const v1 = { format: 'openpath.project', version: 1, domain: 'toy', id: 'P1', name: 'old', origin: 'scratch', setup: { x: 1 }, runs: [], nextRun: 1 };
+  const old = P.deserialize(JSON.stringify(v1), 'toy');
+  assert.equal(old.version, 1); assert.deepEqual(old.decisions, []);
+  assert.throws(() => P.deserialize(JSON.stringify({ ...v1, version: 3 })), /version 1 or 2/);
+});

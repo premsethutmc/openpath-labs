@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Journeys · OpenPath Labs</title>
+  <link rel="stylesheet" href="../core/workbench.css">
+  <link rel="stylesheet" href="./journeys.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Journeys</span>
+</header>
+<main class="jr">
+  <div>
+    <p class="eyebrow">Student</p>
+    <h1>Journeys</h1>
+    <p class="quiet">Start from a design of your own on a bench. When a prediction misses, find what is blocking you, learn it, show you can do it alone, then come back and defend a better design.</p>
+  </div>
+  <ul class="list" id="list"><li class="quiet">Loading…</li></ul>
+  <section class="card" id="record">
+    <h2>Your learning record</h2>
+    <p class="quiet">Kept in this browser under a random learner id, with no name. Export it to keep a copy or move it to another device.</p>
+    <p class="quiet" id="learner"></p>
+    <div class="actions"><button type="button" id="export">Export record</button><label class="nb-import">Import record<input type="file" id="import" accept="application/json,.json"></label></div>
+    <p class="msg" id="msg" role="status"></p>
+  </section>
+</main>
+<script type="module" src="./index.mjs"></script>
+</body>
+</html>

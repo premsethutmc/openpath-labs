@@ -183,6 +183,8 @@ Uses only what exists, apart from the gaps listed after it.
 5. **No return-and-defend step.** The record holds runs, not decisions. It needs a decision entry (claim, linked runs, alternatives rejected) and "what if" questions generated from the learner's own design and checked by the engine.
 6. **The moment is not visible as a moment.** The Force Playground shows reactions and the bending diagram, but no lever arm, perpendicular distance or ΣM about a chosen point. Teaching step 3 needs this view; it is a view on an existing engine, not a new simulator.
 
+**Status (22 Nov 2026, PR #16):** both journeys play end to end for a student in one runner (`journeys/`). Gaps 1, 2, 5 and 6 are closed for these two topics: statics and fluids graphs (13 + 12 nodes, 17 school-maths nodes), item generators keyed by the engines, decisions and defence on the record, and the moment view in the Force Playground. Gap 4 is closed by porting the school engine's diagnostic@1 into `core/diagnostic.mjs`, not by a vendored bundle. Gap 3 is half closed: Labs keeps a local pseudonymous ledger using the school engine's evidence semantics, but there is no sync with OpenPath accounts yet, and school-maths gaps are practised in Labs with no link to the school engine's lessons (`learnUrl` is null).
+
 Not blocking this journey, but on the path: a versioned public schema and portfolio export (portability); drawing, projection and CAD (all of semester I); unit-level reading of the semester III–VIII syllabi.
 
 ### Product shape and the first proof (decided 22 Nov 2026)
@@ -234,5 +236,6 @@ Run all tests: `node --test --test-concurrency=1 tests/*.test.mjs engines/**/*.t
 | 2026-11-22 | #14 | 670a1bf | Stage 2: fatigue, bearing life, critical speed, unbalance on the shaft bench | engines/machine/*.test.mjs, machine/model.test.mjs, tests/machine-dynamics.e2e.mjs |
 | 2026-11-22 | #13 | c3ca460 | Stage 3 started: thermal bench | engines/thermal/thermal.test.mjs, thermal/model.test.mjs, tests/thermal.e2e.mjs |
 
-Totals at c3ca460: 155 unit tests and 37 browser tests passing.
+Totals at c3ca460: 155 unit tests and 37 browser tests passing. At #16: 192 unit and 44 browser.
 | 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps; product shape (journey, deck) and two-topic proof spec. No code | Docs only; tests unchanged |
+| 2026-11-22 | #16 | (merge) | Student journeys: one runner, local ledger, ported diagnostic, decisions on the record; Journey 1 support design, Journey 2 pipe sizing; moment view; Mount opens the learner's own design | core/journey.test.mjs (no journey words in the runner), tests/support-content.test.mjs, tests/pipe-content.test.mjs, playground/moments.test.mjs, tests/journeys.e2e.mjs, tests/journeys-real.e2e.mjs, tests/moments.e2e.mjs |

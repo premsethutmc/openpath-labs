@@ -5,14 +5,16 @@
 //   verdicts: { key: { label, value: 'pass' | 'fail' | 'cannot-assess' | 'not-applicable', reason } }
 // A project holds the learner's current setup and the runs they chose to save. A run freezes the setup it was taken
 // on together with its results, so it can be recomputed later and compared with any other run.
-export const FORMAT = 'openpath.project', VERSION = 1;
+// Version 2 adds decisions: a claim about a revision, the runs that show it, what was rejected and its defence.
+// Version 1 files still load (they simply have no decisions yet).
+export const FORMAT = 'openpath.project', VERSION = 2, VERSIONS = [1, 2];
 
 export class ProjectError extends Error {}
 const clone = v => JSON.parse(JSON.stringify(v));
 
 export function createProject({ domain, name, setup, origin = 'scratch' }) {
   if (!domain) throw new ProjectError('a project needs a domain');
-  return { format: FORMAT, version: VERSION, domain, id: null, name: name || 'Untitled', origin, setup: clone(setup), runs: [], nextRun: 1 };
+  return { format: FORMAT, version: VERSION, domain, id: null, name: name || 'Untitled', origin, setup: clone(setup), runs: [], nextRun: 1, decisions: [] };
 }
 const sameDomain = (project, adapter) => { if (project.domain !== adapter.domain) throw new ProjectError(`this project belongs to ${project.domain}, not ${adapter.domain}`); };
 
@@ -59,12 +61,29 @@ export function forkProject(project, { name, fromRun } = {}) {
   return { ...createProject({ domain: project.domain, name: name || `${project.name} (fork)`, setup: run ? run.setup : project.setup }), origin: `fork:${project.id ?? project.name}${run ? `@${run.id}` : ''}` };
 }
 
+// A decision on the record: from one run (revision) to another, what is claimed, which runs show it, what was rejected,
+// and the "what if" defence with its engine-computed truths. Every run it names must be on this project.
+export function addDecision(project, { from, to, claim, runs = [], rejected = [], defence = [] }) {
+  const has = id => project.runs.some(r => r.id === id);
+  for (const id of [from, to, ...runs]) if (!has(id)) throw new ProjectError(`no run ${id} on this project`);
+  if (!String(claim ?? '').trim()) throw new ProjectError('a decision needs a claim');
+  if (!Array.isArray(rejected) || !Array.isArray(defence)) throw new ProjectError('rejected and defence are lists');
+  project.decisions ??= [];
+  const d = { id: `D${project.decisions.length + 1}`, from, to, claim: String(claim).trim(), runs: [...new Set(runs)],
+    rejected: rejected.map(t => String(t).trim()).filter(Boolean), defence: clone(defence) };
+  project.decisions.push(d);
+  project.version = VERSION;
+  return d;
+}
+
 export const serialize = project => JSON.stringify(project, null, 2);
 export function deserialize(text, domain) {
   let p; try { p = JSON.parse(text); } catch { throw new ProjectError('not a project file'); }
-  if (p?.format !== FORMAT || p.version !== VERSION) throw new ProjectError('not an OpenPath project file (version 1)');
+  if (p?.format !== FORMAT || !VERSIONS.includes(p.version)) throw new ProjectError(`not an OpenPath project file (version ${VERSIONS.join(' or ')})`);
   if (domain && p.domain !== domain) throw new ProjectError(`this file is a ${p.domain} project; open it in that bench`);
   if (!Array.isArray(p.runs) || typeof p.setup !== 'object') throw new ProjectError('project file is incomplete');
+  if (p.version === 1) p.decisions = [];                       // a version 1 file loads as it was; decisions start empty
+  else if (!Array.isArray(p.decisions)) throw new ProjectError('project file is incomplete');
   return p;
 }
 

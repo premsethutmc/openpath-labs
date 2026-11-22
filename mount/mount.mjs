@@ -35,7 +35,7 @@ const S = {
 function takeReading() {
   const st = stand(S.design, { mount: S.mount, loaded: S.loaded }), dd = st.at(S.dialX), ss = st.at(S.strainX);
   if (S.loaded && standLocked()) return;   // unseen case: no loaded results before the prediction and design are locked
-  const r = { name: `R${S.runs.length + 1} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
+  const r = { name: `${S.stage === 'free' ? 'Reading ' : 'R'}${S.runs.length + 1} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
     attempt: S.stage === 'transfer' || S.stage === 'finished' ? S.transfer.attempt : 0, afterLock: (S.stage === 'transfer' || S.stage === 'finished') && S.transfer.locked,
     dialX: S.dialX, strainX: S.strainX, deflection: dd.deflection, strain: ss.strain * 1e6, stress: ss.strain * MATERIALS[S.design.material].E, mass: st.mass };
   // every reading goes onto the shared experiment record and is recomputed from its setup when reopened
@@ -173,6 +173,7 @@ function mission() {
       <div class="row"><button type="button" class="primary" id="to-defend" ${tried.length ? '' : 'disabled'}>I have a design to defend</button></div>`;
   } else if (S.stage === 'defend') h += defendHTML();
   else if (S.stage === 'transfer' || S.stage === 'finished') h += transferHTML();
+  if (S.stage === 'free') h = `<div class="mhead"><span>Your design</span></div><h2>Open bench</h2><p>You opened this support from a journey. Change the design, load the stand, read the gauges at the machine position and save the reading in <b>Experiments</b>. Then go back to the journey.</p>${limitsTable(S.mount)}`;
   el.innerHTML = h; wireMission();
 }
 
@@ -329,7 +330,15 @@ $('load-on').onclick = () => { if (standLocked()) return; S.loaded = true; draw(
 $('load-off').onclick = () => { S.loaded = false; draw(); };
 $('take').onclick = takeReading;
 $('cmp-a').onchange = paintCompare; $('cmp-b').onchange = paintCompare;
+// Opened from a journey (?project=current): no guided mission; the current project's latest saved design is on the bench
+// and the design is free to change. The mount position stays the one the learner saved.
+if (new URLSearchParams(location.search).get('project') === 'current') {
+  const p = nb.project(), last = p.runs[p.runs.length - 1], s0 = clone(last ? last.setup : p.setup);
+  S.stage = 'free'; document.body.dataset.stage = 'free'; WB.open('design');
+  if (s0?.design) { S.design = s0.design; S.dialX = s0.dialX ?? S.dialX; S.strainX = s0.strainX ?? S.strainX; S.mount = s0.mount ?? S.mount; }
+  $('dial-x').value = S.dialX; $('strain-x').value = S.strainX;
+}
 refresh();
 nb.render();
 window.__mount = { protocol: () => J, runs: () => nb.project().runs };
-document.body.dataset.ready = 'true'; document.body.dataset.stage = 'investigate';
+document.body.dataset.ready = 'true'; document.body.dataset.stage = S.stage;
