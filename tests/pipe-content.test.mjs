@@ -245,3 +245,13 @@ test('defend: 2–3 what-ifs on the learner\'s own setup, answered by the bench 
   const qs = J.defend(J.anchor.setup), base = evalJ(J.anchor.setup).outputs.flow.value, f = q => evalJ({ ...J.anchor.setup, ...q.change }).outputs.flow.value;
   assert.equal(qs.length, 3); assert.ok(f(qs[0]) > base * (1 + qs[0].tol)); assert.ok(f(qs[1]) < base * (1 - qs[1].tol)); assert.ok(f(qs[2]) < base && f(qs[2]) > f(qs[1]));
 });
+
+test('every "Explore on the bench" and transfer link names a preset its bench opens', () => {
+  const links = [...Object.values(J.teach).map(t => t.explore).filter(Boolean), J.apply.transfer];
+  assert.ok(links.length >= 8);
+  for (const { page, preset } of links) {
+    if (page === '../circuit/') assert.ok(C.presetFromQuery(`?preset=${preset}`), `circuit preset ${preset}`);
+    else if (page === '../pumps/') assert.ok(MISSIONS.some(m => m.id === preset), `Pump House mission ${preset}`);
+    else assert.fail(`unknown bench ${page}`);
+  }
+});

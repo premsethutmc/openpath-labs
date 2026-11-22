@@ -34,3 +34,4 @@
 details.topic{border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:8px}
 details.topic summary{min-height:44px;display:flex;align-items:center;font-weight:700;cursor:pointer}
 details.topic code{display:block;font:500 .8rem var(--mono);white-space:pre-wrap;background:#0d151b;border-radius:8px;padding:8px;margin:6px 0}
+.explore-note{margin:8px 0 0;padding:8px 12px;border:1px dashed var(--act);border-radius:12px;font-size:.86rem;color:var(--ink)}.explore-note a{color:var(--act)}

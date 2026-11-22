@@ -89,7 +89,7 @@ export default {
 
 ## Bench pages
 
-A journey's `bench.page` opens the learner's own design: the fluid line bench opens the current project; the Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand).
+A journey's `bench.page` opens the learner's own design: the fluid line bench opens the current project (with `?preset=<id>`, as "Explore on the bench" links it, it opens a scratch bench on that preset that never changes the saved projects); the Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand).
 
 ## Acceptance (the whole proof)
 
