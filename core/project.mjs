@@ -18,12 +18,13 @@ export function createProject({ domain, name, setup, origin = 'scratch' }) {
 }
 const sameDomain = (project, adapter) => { if (project.domain !== adapter.domain) throw new ProjectError(`this project belongs to ${project.domain}, not ${adapter.domain}`); };
 
-// Save the current setup as a run. A setup the model does not support is refused with its reason: no made-up result.
-export function saveRun(project, adapter, name) {
+// Save the current setup as a run (or a given setup, e.g. one taken from an earlier run; the current setup is left as it is).
+// A setup the model does not support is refused with its reason: no made-up result.
+export function saveRun(project, adapter, name, setup = project.setup) {
   sameDomain(project, adapter);
-  const r = adapter.evaluate(clone(project.setup));
+  const r = adapter.evaluate(clone(setup));
   if (!r.ok) throw new ProjectError(`Not saved: ${r.reason}`);
-  const run = { id: `R${project.nextRun++}`, name: (name || '').trim() || `Run ${project.nextRun - 1}`, setup: clone(project.setup), outputs: clone(r.outputs), verdicts: clone(r.verdicts || {}) };
+  const run = { id: `R${project.nextRun++}`, name: (name || '').trim() || `Run ${project.nextRun - 1}`, setup: clone(setup), outputs: clone(r.outputs), verdicts: clone(r.verdicts || {}) };
   project.runs.push(run);
   return run;
 }

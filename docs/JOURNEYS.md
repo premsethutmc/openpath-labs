@@ -87,6 +87,10 @@ export default {
 
 `addDecision(project, { from, to, claim, runs: [runId], rejected: [text], defence: [{ prompt, answer, truth, result }] })`. This bumps the file to version 2; version 1 files still load.
 
+## R2 is a tested design
+
+R2 can only be a design that has a locked prediction and a run in the return phase. The learner may revise freely, but `saveRevision()` refuses when the current design differs from every tested one (compared with `setupDiff` against the run on the project record — the record is the authority, so a reload or an edited page state never turns an untested design into a tested one). The page then offers two choices: **Predict and run this design** (`#predict-current` → `predictCurrent()`, clears a stale lock for a fresh round) or **Save the last tested design as R2** (`#save-tested` → `saveTestedRevision()`: saves that run's own setup as a new reproducible run, leaves the current edit in the project and says so). `view()` in return gives `lastTested { run, setup }`, `currentTested` (run id or null) and `sinceTested` (diff); `#tested-status` shows them. The decision's `to`, the portfolio's `design.to` (with `tested`: the prediction run) and the defence questions all use the R2 run's setup.
+
 ## Bench pages
 
 A journey's `bench.page` opens the learner's own design: the fluid line bench opens the current project; the Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand).

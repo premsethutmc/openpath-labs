@@ -142,17 +142,24 @@ const PHASE = {
       ${['independent-after-help', 'independent'].includes(v.status) ? '<p class="quiet">Recorded with your help kept apart. A later check will strengthen this.</p><div class="actions"><button type="button" class="primary" id="design">Back to my design</button></div>'
         : '<div class="actions"><button type="button" class="primary" id="reteach">Learn it again</button><button type="button" id="design">Go to my design anyway</button></div>'}</div>`
     : `<div><h2>One fresh question, on your own</h2><p class="quiet">No hints. This is the evidence that you can do it alone.</p></div>${message()}${itemCard(v.item)}`,
-  return: v => v.missing ? `<div class="card"><p class="msg">The project for this journey is no longer in this browser.</p></div>` : `<div class="card"><h2>Your design</h2>
-      <p class="quiet">${v.changed.length ? `Changed since ${esc(runner.state.revisionLabels[0])}: ${v.changed.map(c => esc(label(c.path))).join(', ')}.` : `As saved in ${esc(runner.state.revisionLabels[0])}.`}</p>${setupList(v.setup, v.changed)}
+  return: v => { if (v.missing) return `<div class="card"><p class="msg">The project for this journey is no longer in this browser.</p></div>`;
+    const R1 = esc(runner.state.revisionLabels[0]), R2 = esc(runner.state.revisionLabels[1]), lt = v.lastTested, untested = v.rounds.length > 0 && !v.currentTested;
+    const tested = !v.rounds.length ? '' : `<p class="tested ${untested ? 'no' : 'yes'}" id="tested-status">${lt ? `Last tested: run <b>${esc(lt.run)}</b>. ` : ''}${v.currentTested
+      ? `This design is tested (run ${esc(v.currentTested)}).` : `This design is not tested${lt && v.sinceTested.length ? `: changed since run ${esc(lt.run)} (${v.sinceTested.map(c => esc(label(c.path))).join(', ')})` : ''}.`}</p>`;
+    return `<div class="card"><h2>Your design</h2>
+      <p class="quiet">${v.changed.length ? `Changed since ${R1}: ${v.changed.map(c => esc(label(c.path))).join(', ')}.` : `As saved in ${R1}.`}</p>${setupList(v.setup, v.changed)}${tested}
       <div class="actions"><a class="button" id="bench" href="${esc(v.bench)}">Change it on the bench</a><button type="button" id="reload">I’ve saved a change</button></div>
       <p class="quiet">Make the change on the bench and save it there; this page reads your latest saved design.</p></div>
-    <div class="card"><h2>Predict, then run</h2>
+    <div class="card" id="predict-card"><h2>Predict, then run</h2>
       ${v.predictions.map(p => numberField(p.id, p.prompt, p.unit, { value: v.locked?.values?.[p.id] ?? '', disabled: !!v.locked, errors: flash?.errors })).join('')}
-      ${v.lockedStale ? '<p class="msg">Your design changed after you locked. Run will ask you to predict again.</p>' : ''}${message()}
+      ${v.lockedStale ? '<p class="msg">Your design changed after you locked. Run will ask you to predict again.</p>' : ''}${untested ? '' : message()}
       <div class="actions">${v.locked ? '<button type="button" class="primary" id="run">Run the bench</button>' : '<button type="button" class="primary" id="lock">Lock predictions</button>'}</div></div>
-    ${v.rounds.map((r, k) => `<div class="card round">${scoredTable(r.scored, `Prediction run ${k + 1}`)}</div>`).join('')}
-    ${v.rounds.length ? `<div class="card"><h2>Save the revision</h2><p class="quiet">Saves the design as it stands now as ${esc(runner.state.revisionLabels[1])}.</p><div class="actions"><button type="button" class="primary" id="save">Save as ${esc(runner.state.revisionLabels[1])}</button></div></div>` : ''}`,
-  decide: v => `<div class="card"><h2>Your decision</h2><p class="quiet">From ${esc(v.from)} to ${esc(v.to)}: ${v.changed.length ? v.changed.map(c => esc(label(c.path))).join(', ') : 'no change to the design'}.</p>
+    ${v.rounds.map((r, k) => `<div class="card round">${scoredTable(r.scored, `Prediction run ${k + 1} · run ${r.run}`)}</div>`).join('')}
+    ${!v.rounds.length ? '' : !untested ? `<div class="card"><h2>Save the revision</h2><p class="quiet">Saves this design, as tested in run ${esc(v.currentTested)}, as ${R2}.</p><div class="actions"><button type="button" class="primary" id="save">Save as ${R2}</button></div></div>`
+      : `<div class="card" id="choose"><h2>Save the revision</h2>${message() || `<p class="quiet">${R2} must be a design you predicted and ran. Your current design has not been run since you changed it.</p>`}
+      <div class="actions"><button type="button" class="primary" id="predict-current">Predict and run this design</button>${lt ? `<button type="button" id="save-tested">Save the last tested design as ${R2}</button>` : ''}</div>
+      ${lt ? `<p class="quiet">The second choice saves the setup of run ${esc(lt.run)} as ${R2}. Your current edits stay in the project on the bench, but are not part of ${R2}.</p>` : ''}</div>`}`; },
+  decide: v => `${v.message ? `<p class="notice" role="status" id="saved-note">${esc(v.message)}</p>` : ''}<div class="card"><h2>Your decision</h2><p class="quiet">From ${esc(v.from)} to ${esc(v.to)}${v.tested ? ` (tested in run ${esc(v.tested)})` : ''}: ${v.changed.length ? v.changed.map(c => esc(label(c.path))).join(', ') : 'no change to the design'}.</p>
       <label class="field">What did you decide, and why?<textarea id="claim" data-focus>${esc(runner.state.decision?.claim ?? '')}</textarea>${err('claim', flash?.errors)}</label>
       <fieldset class="checks"><legend class="field">Which runs show it?</legend>${v.runs.map(r => `<label><input type="checkbox" value="${esc(r.id)}" ${r.id === v.to ? 'checked' : ''}> ${esc(r.id)} · ${esc(r.name)}</label>`).join('')}${err('runs', flash?.errors)}</fieldset>
       <label class="field">What did you consider and reject? (one per line)<textarea id="rejected"></textarea></label>
@@ -179,7 +186,9 @@ const WIRE = {
   brief: () => on('#start', act(() => runner.start())),
   stuck: () => { on('#lock', act(() => runner.lockStuck(fields()))); on('#run', act(() => runner.runStuck())); on('#stuck', act(() => runner.stuck())); on('#skip', act(() => runner.skipToDesign())); },
   check: () => { on('#reteach', act(() => runner.reteach())); on('#design', act(() => runner.toDesign())); },
-  return: () => { on('#lock', act(() => runner.lockReturn(fields()))); on('#run', act(() => runner.runReturn())); on('#save', act(() => runner.saveRevision())); on('#reload', act(() => {})); },
+  return: () => { on('#lock', act(() => runner.lockReturn(fields()))); on('#run', act(() => runner.runReturn())); on('#save', act(() => runner.saveRevision())); on('#reload', act(() => {}));
+    on('#save-tested', act(() => runner.saveTestedRevision()));
+    on('#predict-current', () => { act(() => runner.predictCurrent())(); const card = $('predict-card'); card?.scrollIntoView({ block: 'start' }); card?.querySelector('input:not([disabled]), #run')?.focus({ preventScroll: true }); }); },
   decide: () => on('#decide', act(() => runner.decide({ claim: $('claim').value, runs: [...app.querySelectorAll('.checks input:checked')].map(c => c.value), rejected: $('rejected').value }))),
   defend: () => on('#defend', act(() => runner.defendAnswers(fields()))),
   summary: v => {

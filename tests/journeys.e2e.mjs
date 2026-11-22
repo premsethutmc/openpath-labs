@@ -9,6 +9,7 @@ import { applyPatch } from '../core/journey.mjs';
 
 const SRC = '/journeys/journey.html?src=../tests/fixtures/journey.mjs';
 const R2_DESIGN = { material: 'steel', shape: 'rect', b: 40, h: 50 };
+const TESTED = { ...R2_DESIGN, h: 45 };                            // edited after the R4 run, then predicted and run (R5): this becomes R2
 
 for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
   test(`journey page ${vp.width}px: the whole loop lands on the project record and the ledger`, async () => {
@@ -119,19 +120,47 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       await btn('Lock predictions').click(); await btn('Run the bench').click();
       assert.equal(await app.locator('.round').count(), 2);
       assert.equal(await app.locator('.round').nth(1).locator('.res-correct').count(), 2);
+      assert.match(await app.locator('#tested-status').innerText(), /Last tested: run R4\. This design is tested \(run R4\)/);
       await noOverflow(); await shot('return');
-      await btn('Save as R2').click();
+
+      // R2 is a tested design: edit on the bench after the run (as the bench saves it), then try to save the edit
+      const edit = h => page.evaluate(async h => { const P = await import('/core/project.mjs'), st = P.openStore('mount-stand'), p = st.current(); p.setup = { ...p.setup, design: { ...p.setup.design, h } }; st.put(p); }, h);
+      await edit(TESTED.h);
+      await btn('Save as R2').click();                                   // the page was drawn before the edit: the runner refuses
+      assert.equal(await phase(), 'return');
+      assert.match(await app.locator('#choose').innerText(), /changed since run R4, and R2 must be a design you predicted and ran/);
+      assert.match(await app.locator('#tested-status').innerText(), /Last tested: run R4\. This design is not tested: changed since run R4 \(design\.h\)/);
+      assert.equal(await app.locator('#save').count(), 0);
+      await noOverflow(); await shot('untested');
+      // a reload keeps the binding: still not tested, both choices offered
+      await page.reload(); await page.locator('body[data-phase="return"]').waitFor();
+      assert.match(await app.locator('#tested-status').innerText(), /run R4\. This design is not tested/);
+      // choice 1: predict and run this design (a fresh round)
+      await btn('Predict and run this design').click();
+      assert.equal(await page.evaluate(() => document.activeElement?.dataset.field), 'defl');
+      const ownT = READING_ADAPTER.evaluate({ design: TESTED, loaded: true, mount: 200, dialX: 200, strainX: 200 }).outputs;
+      await app.locator('[data-field="defl"]').fill(ownT.deflection.value.toFixed(4)); await app.locator('[data-field="stress"]').fill(ownT.stress.value.toFixed(2));
+      await btn('Lock predictions').click(); await btn('Run the bench').click();
+      assert.match(await app.locator('#tested-status').innerText(), /This design is tested \(run R5\)/);
+      assert.equal(await app.locator('#choose').count(), 0);
+      // choice 2: edit again, then save the last tested design (run R5) as R2; the edit stays in the project, not in R2
+      await edit(48); await btn('I’ve saved a change').click();
+      assert.equal(await btn('Save as R2').count(), 0);
+      await btn('Save the last tested design as R2').click();
 
       // decide → defend (keyed by the engine on patched copies of R2)
       assert.equal(await phase(), 'decide');
+      assert.match(await app.locator('#saved-note').innerText(), /Saved R2 from run R5, the last design you predicted and ran\. Your later edits are still in the project on the bench, but they are not part of R2\./);
+      assert.match(await app.innerText(), /From R1 to R6 \(tested in run R5\)/);
+      await noOverflow(); await shot('decide');
       await btn('Save the decision').click();
       assert.match(await app.innerText(), /Say what you decided/);
-      await app.locator('#claim').fill('Steel and a 50 mm deep section keep the dial reading inside 0.15 mm.');
+      await app.locator('#claim').fill('Steel and a 45 mm deep section keep the dial reading inside 0.15 mm.');
       await app.locator('#rejected').fill('Aluminium 40 × 50: still too flexible');
       await app.locator('.checks input[value="R3"]').check();
       await btn('Save the decision').click();
       assert.equal(await phase(), 'defend'); await shot('defend');
-      const r2 = { design: R2_DESIGN, loaded: true, mount: 200, dialX: 200, strainX: 200 };
+      const r2 = { design: TESTED, loaded: true, mount: 200, dialX: 200, strainX: 200 };
       const t0 = READING_ADAPTER.evaluate(applyPatch(r2, { design: { material: 'steel' } })).outputs.deflection.value;
       const t1 = READING_ADAPTER.evaluate(applyPatch(r2, { mount: 300, dialX: 300, strainX: 300 })).outputs.stress.value;
       await app.locator('[data-field="0"]').fill(t0.toPrecision(4)); await app.locator('[data-field="1"]').fill(`${(t1 / 1000).toPrecision(4)} GPa`);
@@ -140,7 +169,7 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       // portfolio entry and export
       assert.equal(await phase(), 'summary');
       const text = await app.innerText();
-      assert.match(text, /Design R1 → R2[\s\S]*Decision[\s\S]*Steel and a 50 mm deep section/);
+      assert.match(text, /Design R1 → R2[\s\S]*Decision[\s\S]*Steel and a 45 mm deep section/);
       assert.equal(await app.locator('.res-correct').count(), 2, 'both defence answers within tolerance (GPa converted)');
       assert.match(text, /Turning effect of a force · Solved on your own after help/);
       assert.equal(await app.locator('.badmsg').count(), 0, 'every run reproduces');
@@ -148,13 +177,15 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       const [dl] = await Promise.all([page.waitForEvent('download'), btn('Export portfolio (JSON)').click()]);
       const pf = JSON.parse(await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8'));
       assert.equal(pf.format, 'openpath.portfolio');
-      assert.deepEqual([pf.design.from.run, pf.design.to.run, pf.decision.from, pf.decision.to], ['R1', 'R5', 'R1', 'R5']);
+      assert.deepEqual([pf.design.from.run, pf.design.to.run, pf.design.to.tested, pf.decision.from, pf.decision.to], ['R1', 'R6', 'R5', 'R1', 'R6']);
+      assert.deepEqual(pf.design.to.setup.design, TESTED, 'R2 is the tested design, not the later edit');
       assert.deepEqual(pf.decision.defence.map(d => d.truth), [t0, t1]);
       assert.deepEqual(pf.trail.taught, ['FIX.product', 'FIX.lever']);
       // the record in the bench's store: version 2 with the decision; the ledger holds the journey's events
       const rec = await page.evaluate(() => ({ store: JSON.parse(localStorage.getItem('openpath.projects.mount-stand')), ledger: JSON.parse(localStorage.getItem('openpath.ledger')) }));
       const proj = rec.store.projects.find(p => p.origin === 'journey:fixture-bracket');
-      assert.equal(proj.version, 2); assert.equal(proj.decisions.length, 1); assert.deepEqual(proj.runs.map(r => r.id), ['R1', 'R2', 'R3', 'R4', 'R5']);
+      assert.equal(proj.version, 2); assert.equal(proj.decisions.length, 1); assert.deepEqual(proj.runs.map(r => r.id), ['R1', 'R2', 'R3', 'R4', 'R5', 'R6']);
+      assert.equal(proj.setup.design.h, 48, 'the learner\'s current edit is kept, not overwritten');
       const kinds = new Set(rec.ledger.events.map(e => `${e.kind}/${e.provenance}`));
       for (const k of ['evidence/diagnostic', 'shown_solution/practice', 'evidence/practice', 'evidence/check']) assert.ok(kinds.has(k), k);
       assert.deepEqual(errors, []);
