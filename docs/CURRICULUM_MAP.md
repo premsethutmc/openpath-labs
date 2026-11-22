@@ -109,6 +109,8 @@ Not yet: 3D CAD or 3D finite-element stress analysis, a general multi-physics so
 
 **Direction correction (22 Nov 2026):** the product is an open-ended sandbox. The learning loop attaches to the student's own project on any open bench (`docs/OPEN_LOOP.md`). The fixed journeys below (support, pipe, stiffness) are optional worked examples, not the product, and benches such as the Mount lab are opened up rather than kept as fixed scenarios.
 
+*Solids benches opened (`feat/ol-2`):* the Mount lab's open bench (`mount/?mode=open`, and `?project=current` from the loop) lets the student set span (200–3000 mm), load (100–50,000 N), machine position, supports (pinned–roller, fixed–fixed, propped cantilever, cantilever), any material in `core/materials.mjs` and their own deflection, factor-of-safety and mass limits; the guided mission and Journeys 1 and 3 are unchanged. `mount/learn.mjs` and `playground/learn.mjs` describe the student's design, map its outputs to graph competencies (reactions, bending moment, bending and normal stress, stiffness, factor of safety, second moment of area, strain) and list its levers. Runs saved before still reproduce: new outputs (support reactions, peak moment and stress, factor of safety) appear only on setups that carry the open-bench fields (`bench` on the Mount lab, `v: 2` on the Force Playground).
+
 ## Four-year journey (planning pass, 22 Nov 2026)
 
 Planning only: no new simulator, merge or deployment. One branch, Mechanical Engineering. The branch table above stays as the subject-coverage map; this section is the student's path through the degree.
