@@ -4,10 +4,9 @@
 // Links into content/graph/statics.mjs (ENG.solids.bending-stress, ENG.solids.beam-stiffness, ENG.statics.second-moment-area)
 // and school maths (content/graph/school-math.mjs).
 //
-// Not done here: ENG.solids.bending-stress and ENG.solids.beam-stiffness use stress, E and yield without naming these nodes
-// as prerequisites. core/graph.mjs refuses a second definition of a non-school node, so a file cannot add edges to
-// another file's node; that edge belongs in content/graph/statics.mjs (bending-stress requires normal-stress; beam-stiffness
-// requires hookes-law). Here the beam nodes are reached the other way: normal stress lists bending stress as useful.
+// ENG.solids.bending-stress requires ENG.solids.normal-stress and ENG.solids.beam-stiffness requires ENG.solids.hookes-law;
+// those edges live on the beam nodes in content/graph/statics.mjs (a node is defined in one file only).
+
 const node = (id, title, requires, support, items) => ({ id, title, requires, support, items });
 
 export const NODES = [

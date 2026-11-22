@@ -17,6 +17,6 @@ export const NODES = [
   node('ENG.statics.cantilever-reactions', 'Reactions at a fixed support (cantilever)', ['ENG.statics.equilibrium-2d'], ['ENG.statics.couple'], 'statics.cantilever'),
   node('ENG.statics.bending-moment', 'Bending moment from loads (largest under a point load)', ['ENG.statics.beam-reactions', 'ENG.statics.moment-about-point'], ['ENG.statics.cantilever-reactions'], 'statics.bending-moment'),
   node('ENG.statics.second-moment-area', 'Second moment of area: rectangle, hollow rectangle, I-section', ['MATH.measurement.rectangle-area', 'MATH.number.exponents'], [], 'statics.second-moment'),
-  node('ENG.solids.bending-stress', 'Bending stress σ = M·c / I', ['ENG.statics.bending-moment', 'ENG.statics.second-moment-area', 'MATH.measurement.unit-conversions'], [], 'solids.bending-stress'),
-  node('ENG.solids.beam-stiffness', 'Beam stiffness: deflection ∝ 1 / (E·I)', ['ENG.statics.second-moment-area', 'ENG.statics.bending-moment'], ['MATH.algebra.inverse-proportion', 'MATH.number.exponents'], 'solids.stiffness'),
+  node('ENG.solids.bending-stress', 'Bending stress σ = M·c / I', ['ENG.statics.bending-moment', 'ENG.statics.second-moment-area', 'ENG.solids.normal-stress', 'MATH.measurement.unit-conversions'], [], 'solids.bending-stress'),
+  node('ENG.solids.beam-stiffness', 'Beam stiffness: deflection ∝ 1 / (E·I)', ['ENG.statics.second-moment-area', 'ENG.statics.bending-moment', 'ENG.solids.hookes-law'], ['MATH.algebra.inverse-proportion', 'MATH.number.exponents'], 'solids.stiffness'),
 ];
