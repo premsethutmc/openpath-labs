@@ -5,6 +5,7 @@ import { analyze, verdict, SAMPLES } from '../engines/solids/analyze.mjs';
 import { displacedPoint } from '../engines/solids/frame.mjs';
 import { PRESETS, LOAD_OBJECTS } from './presets.mjs';
 import { addMember, deleteMember, cycleSupport, moveNode, findNode, mass, snap, editableCopy, buildStructure } from './build.mjs';
+import { momentsAbout, pickPoint, balanced } from './moments.mjs';
 import { workbench } from '../core/workbench.mjs';
 import { notebook } from '../core/notebook.mjs';
 
@@ -184,7 +185,7 @@ function draw() {
     svg.innerHTML = out + editOverlay(); return;
   }
   const md = analysis.maxDefl.d;
-  lastScale = state.exaggerate && md > 0 && !(preset.editable && tool !== 'move') ? Math.max(1, (0.07 * Math.min(view.W, view.H)) / (md * view.s)) : 1;
+  lastScale = state.exaggerate && !mview.on && md > 0 && !(preset.editable && tool !== 'move') ? Math.max(1, (0.07 * Math.min(view.W, view.H)) / (md * view.s)) : 1;
   // undeformed ghost
   out += preset.members.map(m => `<line x1="${view.X(preset.nodes[m.i].x)}" y1="${view.Y(preset.nodes[m.i].y)}" x2="${view.X(preset.nodes[m.j].x)}" y2="${view.Y(preset.nodes[m.j].y)}" class="ghost"/>`).join('');
   const failed = analysis.sf < 1 ? analysis.governing : null;
@@ -229,6 +230,7 @@ function draw() {
     return a;
   }).join('') + `<defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3fbf7f"/></marker></defs>`;
   out += state.loads.map(loadGlyph).join('');
+  if (mview.on) out += momentOverlay(st);
   if (lastScale > 1.5) out += `<text class="hint" x="${view.W - 8}" y="16" text-anchor="end">bend shown ×${fmt(lastScale, 0)}</text>`;
   svg.innerHTML = `<title id="scene-title">${preset.name}: ${verdict(analysis).text}</title>` + out + editOverlay();
 }
@@ -247,6 +249,69 @@ function editOverlay() {
   }
   return o;
 }
+
+// ---------- moment view (playground/moments.mjs: a view on the solver's results) ----------
+const mview = { on: false, O: null, reactions: true, result: null };
+const MCOL = { load: '#f0b429', reaction: '#3fbf7f', distributed: '#9fb3c0', couple: '#3fbf7f' };
+const Nmm = v => (Math.abs(v) >= 1e6 ? `${fmt(v / 1e6, 2)} kN·m` : `${fmt(v / 1e3, 1)} N·m`);
+const Nf = v => (Math.abs(v) >= 1000 ? kN(v) : `${fmt(v, 0)} N`);
+const turn = v => (Math.abs(v) < 1e-6 ? '' : v > 0 ? ' ↺' : ' ↻');
+function defaultPoint() { const sp = preset.supports[0]; return sp ? { ...preset.nodes[sp.node], node: sp.node } : preset.nodes[0] ? { ...preset.nodes[0], node: 0 } : { x: 0, y: 0, node: null }; }
+function computeMoments(st) {
+  if (!mview.on || !analysis.ok) { mview.result = null; return null; }
+  if (!mview.O || (mview.O.node !== null && !preset.nodes[mview.O.node])) mview.O = defaultPoint();
+  if (mview.O.node !== null) mview.O = { ...mview.O, ...preset.nodes[mview.O.node] };
+  mview.result = momentsAbout(st, analysis.res, mview.O, { labels: state.loads.map(l => LOAD_OBJECTS[l.obj].name), includeReactions: mview.reactions });
+  document.body.dataset.msum = mview.result.sum.toFixed(3);
+  return mview.result;
+}
+function momentOverlay(st) {
+  const m = computeMoments(st); if (!m) return '';
+  const { X, Y, W, H, s } = view, ox = X(m.O.x), oy = Y(m.O.y), far = 2 * Math.hypot(W, H) / s;
+  let o = '<g class="moments" pointer-events="none">', labelled = 0;
+  m.rows.forEach(r => {
+    const c = MCOL[r.kind];
+    if (r.kind === 'couple') {
+      const n = r.id.startsWith('reaction-m-') ? preset.nodes[analysis.res.reactions[+r.id.split('-')[2]].node] : m.O, x = X(n.x), y = Y(n.y);
+      o += `<path d="M${x + 22} ${y}A22 22 0 1 ${r.M > 0 ? 0 : 1} ${x} ${y - 22}" fill="none" stroke="${c}" stroke-width="2" marker-end="url(#mh-${r.kind})"/>`;
+      return;
+    }
+    const len = Math.hypot(r.F.x, r.F.y), ux = r.F.x / len, uy = r.F.y / len, a = r.at;
+    o += `<line class="loa" x1="${X(a.x - ux * far)}" y1="${Y(a.y - uy * far)}" x2="${X(a.x + ux * far)}" y2="${Y(a.y + uy * far)}" stroke="${c}"/>`;
+    const tx = X(a.x), ty = Y(a.y), tail = 34;
+    o += `<path d="M${tx - ux * tail} ${ty + uy * tail}L${tx} ${ty}" stroke="${c}" stroke-width="2.4" marker-end="url(#mh-${r.kind})"/>`;
+    if (r.d * s > 3) {
+      const fx = X(r.foot.x), fy = Y(r.foot.y), px = (ox - fx) / Math.hypot(ox - fx, oy - fy), py = (oy - fy) / Math.hypot(ox - fx, oy - fy), q = 7;
+      o += `<line x1="${ox}" y1="${oy}" x2="${fx}" y2="${fy}" stroke="${c}" stroke-width="2"/>`;
+      o += `<path d="M${fx + px * q} ${fy + py * q}L${fx + px * q + ux * q} ${fy + py * q - uy * q}L${fx + ux * q} ${fy - uy * q}" fill="none" stroke="${c}" stroke-width="1.2"/>`;
+      const right = fx > W - 80 ? false : fx < 80 ? true : fx >= ox;   // keep the label inside the scene
+      o += `<text class="mlabel" x="${fx + (right ? 6 : -6)}" y="${fy - 6 - 13 * (labelled++ % 3)}" text-anchor="${right ? 'start' : 'end'}" fill="${c}">d ${fmt(r.d / 1000, r.d < 1000 ? 3 : 2)} m</text>`;
+    }
+  });
+  o += `<circle cx="${ox}" cy="${oy}" r="9" fill="none" stroke="#e0531f" stroke-width="2.4"/><path d="M${ox - 14} ${oy}h28M${ox} ${oy - 14}v28" stroke="#e0531f" stroke-width="1.6"/><text class="mlabel" x="${ox + 12}" y="${oy + 22}" fill="#e0531f">O</text>`;
+  o += `<defs>${Object.entries(MCOL).map(([k, c]) => `<marker id="mh-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join('')}</defs></g>`;
+  return o;
+}
+function paintMoments() {
+  const el = $('moments'); if (!el) return;
+  $('t-moment').setAttribute('aria-pressed', String(mview.on));
+  if (!mview.on) { el.innerHTML = '<h2>Moments about a point</h2><p>Turn on <b>Moments</b> above the scene, then tap any point: each force shows its line of action, its lever arm (the perpendicular distance from the point) and its moment.</p><div class="row"><button type="button" class="primary" id="m-on">Show moments</button></div>'; $('m-on').onclick = () => setMoments(true); return; }
+  const m = mview.result;
+  if (!m) { el.innerHTML = `<h2>Moments about a point</h2><p>${analysis.ok ? '' : 'The structure is not stable, so there are no moments to show.'}</p>`; return; }
+  const ok = balanced(m), where = m.O.node !== null ? `joint ${m.O.node + 1}` : 'the tapped point';
+  el.innerHTML = `<h2>Moments about O</h2><p class="note">O is at ${where} (${fmt(m.O.x / 1000, 2)}, ${fmt(m.O.y / 1000, 2)}) m. Tap the scene to move it. Anticlockwise ↺ is +.</p>
+    <div class="chips" role="radiogroup" aria-label="Take moments about">${preset.nodes.map((n, k) => `<button type="button" role="radio" data-mpoint="${k}" aria-checked="${m.O.node === k}">Joint ${k + 1}${preset.supports.some(sp => sp.node === k) ? ' (support)' : ''}</button>`).join('')}</div>
+    <label class="mcheck"><input type="checkbox" id="m-react" ${mview.reactions ? 'checked' : ''}> Include support reactions</label>
+    <table class="mtable"><thead><tr><th>Force</th><th>F</th><th>Lever arm d</th><th>M about O</th></tr></thead><tbody>
+    ${m.rows.map(r => `<tr data-row="${r.id}"><th><i style="background:${MCOL[r.kind]}"></i>${r.label}</th><td>${r.F ? Nf(Math.hypot(r.F.x, r.F.y)) : 'couple'}</td><td>${r.d === null ? '–' : `${fmt(r.d / 1000, r.d < 1000 ? 3 : 2)} m`}</td><td>${Nmm(r.M)}${turn(r.M)}</td></tr>`).join('')}
+    </tbody><tfoot><tr><th colspan="3">ΣM about O</th><td id="m-sum">${ok ? '0' : Nmm(m.sum) + turn(m.sum)}</td></tr></tfoot></table>
+    <p class="mverdict ${ok ? 'ok' : ''}" id="m-verdict">${mview.reactions ? (ok ? 'ΣM = 0 about this point, as for every point: the structure is in equilibrium.' : 'ΣM is not zero: check the model.')
+      : `Loads alone: ΣM = ${Nmm(m.sumLoads)}${turn(m.sumLoads)}. The supports must supply ${Nmm(-m.sumLoads)}${turn(-m.sumLoads)} about O to hold it still.`}</p>
+    <p class="tip">M = F × d. d is measured at right angles to the force’s line of action (dashed), not to where the force acts.</p>`;
+  el.querySelectorAll('[data-mpoint]').forEach(b => b.onclick = () => { const k = +b.dataset.mpoint; mview.O = { ...preset.nodes[k], node: k }; update({}); });
+  $('m-react').onchange = e => { mview.reactions = e.target.checked; update({}); };
+}
+function setMoments(on) { mview.on = on; if (on) { mview.O = mview.O || defaultPoint(); WB.open('moments'); } else delete document.body.dataset.msum; update({}); }
 
 // ---------- panels ----------
 function paintStats() {
@@ -378,7 +443,7 @@ function update(patch) {
   state = { ...state, ...patch };
   if (patch.material || patch.section !== undefined || patch.loads) state.selected = patch.selected ?? null;
   analysis = run(state);
-  draw(); paintStats(); paintInspect(); paintControls(); if (!patch.loads || !drag) paintGuide();
+  draw(); paintStats(); paintInspect(); paintControls(); paintMoments(); if (!patch.loads || !drag) paintGuide();
   document.body.dataset.sf = analysis.ok ? analysis.sf.toFixed(3) : 'unstable';
   if (preset.editable && !drag && !nodeDrag) saveDesign();
   if (nb && !drag && !nodeDrag) nb.sync();
@@ -406,7 +471,7 @@ function paintBuildbar() {
 function editCopy() { openBuild(editableCopy(preset, state, BUILD)); }
 
 function openBuild(p) {
-  preset = p; undoStack = []; tool = 'move'; pending = null;
+  preset = p; undoStack = []; tool = 'move'; pending = null; mview.O = null;
   store.set('labs.preset', 'build');
   state = { ...freshState(preset), loads: clone(p.loads || []), material: p.material, section: p.section, scenario: p.scenario || 'normal' };
   guide = { step: 0, revealed: false };
@@ -420,7 +485,7 @@ function setPreset(id) {
   if (id === 'build') { openBuild(store.get('labs.design', null) || clone(BUILD)); return; }
   preset = PRESETS.find(p => p.id === id) || PRESETS[0];
   store.set('labs.preset', preset.id);
-  state = freshState(preset);
+  state = freshState(preset); mview.O = null;
   guide = { step: 0, revealed: false };
   $('title').textContent = preset.name;
   $('question').textContent = preset.question;
@@ -467,6 +532,7 @@ svg.addEventListener('pointerdown', e => {
   }
   const g = e.target.closest('.load.draggable');
   if (g) { drag = +g.dataset.load; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+  if (mview.on && analysis.ok) { e.preventDefault(); mview.O = pickPoint(preset, pointer(e), 24 / view.s); update({}); WB.open('moments'); return; }
   const nd = e.target.closest('.node');
   if (nd && preset.editable) { nodeDrag = { k: +nd.dataset.node, before: clone(design()) }; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
   if (hit) { update({ selected: +hit.dataset.member }); WB.open('inspect'); }
@@ -491,6 +557,7 @@ svg.addEventListener('pointerup', endDrag); svg.addEventListener('pointercancel'
 svg.addEventListener('keydown', e => { const hit = e.target.closest?.('.hit'); if (hit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); update({ selected: +hit.dataset.member }); WB.open('inspect'); } });
 $('t-forces').onclick = () => update({ forces: !state.forces });
 $('t-shape').onclick = () => update({ exaggerate: !state.exaggerate });
+$('t-moment').onclick = () => setMoments(!mview.on);
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 new ResizeObserver(() => { if (preset) draw(); }).observe(svg);
 
@@ -522,10 +589,12 @@ const WB = workbench('playground', { initial: 'guide' });
 $('objects').innerHTML = PRESETS.map(p => `<button type="button" data-preset="${p.id}">${p.name}</button>`).join('') + '<button type="button" data-preset="build" class="buildbtn">+ Build your own</button>';
 $('objects').querySelectorAll('button').forEach(b => b.onclick = () => { setPreset(b.dataset.preset); location.hash = b.dataset.preset; });
 setMode(mode);
-setPreset(location.hash.slice(1) || store.get('labs.preset', 'footbridge'));
+const QUERY = new URLSearchParams(location.search);   // ?preset=shelf&view=moment: how a journey opens the playground
+setPreset(location.hash.slice(1) || QUERY.get('preset') || store.get('labs.preset', 'footbridge'));
 window.addEventListener('hashchange', () => { if (location.hash.slice(1) !== preset.id) setPreset(location.hash.slice(1)); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && pending) { pending = null; draw(); } });
 nb = notebook($('experiments'), { adapter: SOLIDS_ADAPTER, getSetup, applySetup });
 nb.sync(); nb.render();
-window.__labs = { toScreen: (x, y) => ({ x: view.X(x), y: view.Y(y) }) }; // used by browser tests
+if (QUERY.get('view') === 'moment') setMoments(true);
+window.__labs = { toScreen: (x, y) => ({ x: view.X(x), y: view.Y(y) }), moments: () => mview.result && JSON.parse(JSON.stringify(mview.result)) }; // used by browser tests
 document.body.dataset.ready = 'true';
