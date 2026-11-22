@@ -4,44 +4,49 @@
 //   bending stress at the mount σ = M·c / I = M / (I/c)  → set by the load and the section, not by E (strength demand)
 //   factor of safety on yield  FoS = yield ÷ σ           → required ≥ SPEC.yieldFactor (allowable = yield ÷ 2)
 //   linear elastic (Hooke)      σ = E·ε, valid only for σ ≤ yield; nothing beyond yield is modelled
-import { SPEC, stand, sectionOf } from './model.mjs';
+import { SPEC, stand, sectionOf, benchOf, strengthOf } from './model.mjs';
 import { MATERIALS } from '../core/materials.mjs';
 
 export const factorOfSafety = (yieldStrength, stress) => (Math.abs(stress) > 0 ? yieldStrength / Math.abs(stress) : Infinity);
 
 // Stiffness and strength properties of a design: E·I (N·mm²) and the section modulus I/c (mm³).
-export function properties(design) {
-  const m = MATERIALS[design.material], s = sectionOf(design);
-  return { E: m.E, I: s.I, c: s.c, EI: m.E * s.I, Z: s.I / s.c, yield: m.yield, allowable: m.yield / SPEC.yieldFactor };
+// bench (optional): an open-bench set-up (./model.mjs benchOf); without it, the mission's SPEC.
+export function properties(design, bench) {
+  const m = MATERIALS[design.material], s = sectionOf(design), fy = bench ? strengthOf(m) : m.yield, k = bench ? benchOf({ bench }).limits.yieldFactor : SPEC.yieldFactor;
+  return { E: m.E, I: s.I, c: s.c, EI: m.E * s.I, Z: s.I / s.c, yield: fy, allowable: fy / k };
 }
 
 // The design under the operating load at mount position `mount`, judged at the mount (deflection and peak moment are both there).
-export function splitReadout(design, mount) {
-  const st = stand(design, { mount, loaded: true }), at = st.at(mount), p = properties(design);
+export function splitReadout(design, mount, bench) {
+  const B = bench ? benchOf({ bench }) : null, tol = B ? B.limits.deflection : SPEC.tolerance;
+  const st = stand(design, B ? { mount, loaded: true, span: B.span, load: B.load, supports: B.supports } : { mount, loaded: true }), at = st.at(mount), p = properties(design, bench);
   const deflection = at.deflection, stress = Math.abs(at.stress), strain = Math.abs(at.strain) * 1e6;
-  return { ...p, mount, load: SPEC.load,
-    deflection, tolerance: SPEC.tolerance, deflectionRatio: deflection / SPEC.tolerance, stiff: deflection <= SPEC.tolerance,
+  return { ...p, mount, load: B ? B.load : SPEC.load,
+    deflection, tolerance: tol, deflectionRatio: deflection / tol, stiff: deflection <= tol,
     stress, strain, stressRatio: stress / p.allowable, strong: stress <= p.allowable,
-    fos: factorOfSafety(p.yield, stress), fosRequired: SPEC.yieldFactor, beyondYield: stress > p.yield };
+    fos: factorOfSafety(p.yield, stress), fosRequired: B ? B.limits.yieldFactor : SPEC.yieldFactor, beyondYield: stress > p.yield };
 }
 
 // One strain reading placed on the material's linear-elastic line. strain in µε (sign kept), E and yield in MPa.
-export function stressStrainPoint({ E, yield: fy }, strainMicro) {
+// fy: yield (or, on the open bench, the material's bending strength); factor: the required factor of safety.
+export function stressStrainPoint({ E, yield: fy }, strainMicro, factor = SPEC.yieldFactor) {
   const stress = E * strainMicro * 1e-6, yieldStrain = fy / E * 1e6;
-  return { strain: strainMicro, stress, yieldStrain, yield: fy, allowable: fy / SPEC.yieldFactor,
+  return { strain: strainMicro, stress, yieldStrain, yield: fy, allowable: fy / factor,
     fractionOfYield: Math.abs(stress) / fy, beyondYield: Math.abs(stress) > fy };
 }
 
 // Two saved runs ({ setup: { design, mount, loaded, dialX, strainX }, outputs: { deflection, stress } }) compared as ratios B ÷ A.
 // Deflection should follow 1/(E·I) and stress should follow 1/(I/c) when the load, mount and gauge positions match.
 export function runRatios(a, b) {
-  const pa = properties(a.setup.design), pb = properties(b.setup.design);
+  const pa = properties(a.setup.design, a.setup.bench), pb = properties(b.setup.design, b.setup.bench);
   const r = (x, y) => (Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) > 1e-12 ? y / x : null);
   const sa = a.setup, sb = b.setup, issues = [];
   if (!sa.loaded || !sb.loaded) issues.push('both readings must be under load');
   if (sa.mount !== sb.mount) issues.push('the machine mount moved');
   if (sa.dialX !== sb.dialX) issues.push('the dial gauge moved');
   if (sa.strainX !== sb.strainX) issues.push('the strain gauge moved');
+  const ba = benchOf(sa), bb = benchOf(sb);
+  if (ba.span !== bb.span || ba.load !== bb.load || ba.supports !== bb.supports) issues.push('the span, load or supports changed');
   return {
     deflection: r(a.outputs.deflection?.value, b.outputs.deflection?.value), stiffness: pb.EI ? pa.EI / pb.EI : null,   // (E·I)A ÷ (E·I)B
     stress: r(a.outputs.stress?.value, b.outputs.stress?.value), section: pb.Z ? pa.Z / pb.Z : null,                   // (I/c)A ÷ (I/c)B
