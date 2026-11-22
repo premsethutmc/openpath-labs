@@ -35,16 +35,23 @@ export function checkShaft(shaft) {
   if (Math.abs(torque) > 1e-6) throw new ShaftError('torque', `Torques do not balance (net ${(torque / 1000).toFixed(2)} N·m). Power goes in at one place and out at another: add the matching torque where it leaves.`);
 }
 
-export function solveShaft(shaft, { resolution = 80 } = {}) {
-  checkShaft(shaft);
+// The beam model shared by the static solve and the rotor model (engines/machine/rotor.mjs): stations at the ends,
+// steps, bearings, loads, any extra stations asked for (e.g. stress raisers) and a uniform grid.
+export function beamModel(shaft, { resolution = 80, stations: extra = [] } = {}) {
   const mat = MATERIALS[shaft.material], geo = geometry(shaft), L = lengthOf(shaft);
-  const stations = [0, L, ...geo.map(g => g.x1), ...shaft.bearings.map(b => b.x), ...shaft.loads.map(l => l.x), ...Array.from({ length: resolution + 1 }, (_, i) => L * i / resolution)];
+  const stations = [0, L, ...geo.map(g => g.x1), ...shaft.bearings.map(b => b.x), ...shaft.loads.map(l => l.x), ...extra, ...Array.from({ length: resolution + 1 }, (_, i) => L * i / resolution)];
   const xs = [...new Set(stations.map(v => Math.round(v * 1e6) / 1e6))].sort((a, b) => a - b);
   const nodes = xs.map(x => ({ x, y: 0 }));
   const members = xs.slice(1).map((x, k) => { const g = segAt(geo, (xs[k] + x) / 2); return { i: k, j: k + 1, type: 'frame', material: mat, section: sectionOf(g), seg: g.i }; });
   const order = shaft.bearings.map((b, i) => ({ i, x: b.x })).sort((a, b) => a.x - b.x);
   const node = x => xs.findIndex(v => near(v, x));
   const supports = order.map((b, k) => ({ node: node(b.x), type: k === 0 ? 'pin' : 'roller', bearing: b.i }));
+  return { mat, geo, L, xs, nodes, members, supports, node };
+}
+
+export function solveShaft(shaft, { resolution = 80, stations = [] } = {}) {
+  checkShaft(shaft);
+  const { mat, geo, L, xs, nodes, members, supports, node } = beamModel(shaft, { resolution, stations });
   const loads = shaft.loads.filter(l => l.kind === 'force').map(l => ({ node: node(l.x), fx: 0, fy: -l.F, m: 0 }));
   const r = solve({ nodes, members, supports, loads, selfWeight: !!shaft.selfWeight, gravity: 1 });
   if (!r.ok) throw new ShaftError('unstable', 'The shaft can move freely: check the bearings.');

@@ -22,6 +22,7 @@
     <div class="wb-title"><h1 id="title">Machine design bench</h1><p id="subtitle"></p></div>
     <div class="instrument"><svg id="shaft" viewBox="0 0 600 210" role="img" aria-labelledby="shaft-title"><title id="shaft-title">The shaft, its bearings and loads</title></svg></div>
     <div class="instrument plots"><svg id="plots" viewBox="0 0 600 170" role="img" aria-labelledby="plots-title"><title id="plots-title">Bending moment and deflection along the shaft</title></svg></div>
+    <div class="instrument plots" id="speedbox" hidden><svg id="speedplot" viewBox="0 0 600 128" role="img" aria-labelledby="speed-title"><title id="speed-title">Unbalance response against operating speed</title></svg></div>
     <div class="solve" id="status" role="status" aria-live="polite"></div>
     <ul class="checks" id="checks"></ul>
     <dl class="readings" id="readings"></dl>
@@ -32,6 +33,7 @@
     <section class="module" data-module="shaft" data-title="Shaft" id="m-shaft"></section>
     <section class="module" data-module="bearings" data-title="Bearings" id="m-bearings"></section>
     <section class="module" data-module="loads" data-title="Loads" id="m-loads"></section>
+    <section class="module" data-module="speed" data-title="Speed" id="m-speed"></section>
     <section class="module" data-module="limits" data-title="Limits" id="m-limits"></section>
     <section class="module" data-module="explain" data-title="Explain" id="m-explain"></section>
     <section class="module" data-module="sweep" data-title="Sweep" id="m-sweep"></section>

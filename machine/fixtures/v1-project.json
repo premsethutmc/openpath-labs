@@ -1,0 +1,697 @@
+{
+  "format": "openpath.project",
+  "version": 1,
+  "domain": "machine-shaft",
+  "id": null,
+  "name": "Saved before stage 2",
+  "origin": "scratch",
+  "setup": {
+    "material": "steel",
+    "selfWeight": true,
+    "segments": [
+      {
+        "id": "s1",
+        "L": 400,
+        "d": 30,
+        "bore": 20
+      }
+    ],
+    "bearings": [
+      {
+        "id": "b2",
+        "x": 0,
+        "rating": null
+      },
+      {
+        "id": "b3",
+        "x": 250,
+        "rating": null
+      }
+    ],
+    "loads": [
+      {
+        "id": "f4",
+        "kind": "force",
+        "x": 380,
+        "F": 1500
+      },
+      {
+        "id": "t5",
+        "kind": "torque",
+        "x": 20,
+        "T": 40
+      },
+      {
+        "id": "t6",
+        "kind": "torque",
+        "x": 380,
+        "T": -40
+      }
+    ],
+    "limits": {
+      "minSF": 2,
+      "deflection": 0.15,
+      "slope": 2
+    },
+    "nextId": 7
+  },
+  "runs": [
+    {
+      "id": "R1",
+      "name": "pulley as given",
+      "setup": {
+        "material": "steel",
+        "selfWeight": true,
+        "segments": [
+          {
+            "id": "s1",
+            "L": 400,
+            "d": 30,
+            "bore": 0
+          }
+        ],
+        "bearings": [
+          {
+            "id": "b2",
+            "x": 0,
+            "rating": null
+          },
+          {
+            "id": "b3",
+            "x": 250,
+            "rating": null
+          }
+        ],
+        "loads": [
+          {
+            "id": "f4",
+            "kind": "force",
+            "x": 380,
+            "F": 1500
+          },
+          {
+            "id": "t5",
+            "kind": "torque",
+            "x": 20,
+            "T": 40
+          },
+          {
+            "id": "t6",
+            "kind": "torque",
+            "x": 380,
+            "T": -40
+          }
+        ],
+        "limits": {
+          "minSF": 2,
+          "deflection": 0.15,
+          "slope": null
+        },
+        "nextId": 7
+      },
+      "outputs": {
+        "R:b2": {
+          "label": "Bearing 1 reaction (x = 0 mm)",
+          "value": -775.6452719552527,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "R:b3": {
+          "label": "Bearing 2 reaction (x = 250 mm)",
+          "value": 2297.4189123614524,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "stress": {
+          "label": "Highest von Mises stress",
+          "value": 74.94419838229625,
+          "unit": "MPa",
+          "source": "simulated"
+        },
+        "sf": {
+          "label": "Safety factor",
+          "value": 3.3358152518321744,
+          "unit": "",
+          "source": "simulated"
+        },
+        "deflection": {
+          "label": "Largest deflection",
+          "value": 0.4772647103828861,
+          "unit": "mm",
+          "source": "simulated"
+        },
+        "slope": {
+          "label": "Largest bearing slope",
+          "value": 2.0454317388624603,
+          "unit": "mrad",
+          "source": "simulated"
+        },
+        "torque": {
+          "label": "Largest torque carried",
+          "value": 40,
+          "unit": "N·m",
+          "source": "simulated"
+        },
+        "mass": {
+          "label": "Shaft mass",
+          "value": 2.2195352097611893,
+          "unit": "kg",
+          "source": "simulated"
+        }
+      },
+      "verdicts": {
+        "strength": {
+          "label": "Strength (von Mises)",
+          "value": "pass",
+          "reason": "safety factor 3.34 (needs ≥ 2)"
+        },
+        "deflection": {
+          "label": "Deflection",
+          "value": "fail",
+          "reason": "0.4773 mm (limit 0.15 mm)"
+        }
+      }
+    },
+    {
+      "id": "R2",
+      "name": "pulley fixed",
+      "setup": {
+        "material": "steel",
+        "selfWeight": true,
+        "segments": [
+          {
+            "id": "s1",
+            "L": 400,
+            "d": 35,
+            "bore": 0
+          }
+        ],
+        "bearings": [
+          {
+            "id": "b2",
+            "x": 0,
+            "rating": null
+          },
+          {
+            "id": "b3",
+            "x": 360,
+            "rating": null
+          }
+        ],
+        "loads": [
+          {
+            "id": "f4",
+            "kind": "force",
+            "x": 380,
+            "F": 1500
+          },
+          {
+            "id": "t5",
+            "kind": "torque",
+            "x": 20,
+            "T": 40
+          },
+          {
+            "id": "t6",
+            "kind": "torque",
+            "x": 380,
+            "T": -40
+          }
+        ],
+        "limits": {
+          "minSF": 2,
+          "deflection": 0.15,
+          "slope": null
+        },
+        "nextId": 7
+      },
+      "outputs": {
+        "R:b2": {
+          "label": "Bearing 1 reaction (x = 0 mm)",
+          "value": -70.16162492338711,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "R:b3": {
+          "label": "Bearing 2 reaction (x = 360 mm)",
+          "value": 1599.7979688400328,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "stress": {
+          "label": "Highest von Mises stress",
+          "value": 10.896158488798662,
+          "unit": "MPa",
+          "source": "simulated"
+        },
+        "sf": {
+          "label": "Safety factor",
+          "value": 22.94386597414144,
+          "unit": "",
+          "source": "simulated"
+        },
+        "deflection": {
+          "label": "Largest deflection",
+          "value": 0.015897099333021542,
+          "unit": "mm",
+          "source": "simulated"
+        },
+        "slope": {
+          "label": "Largest bearing slope",
+          "value": 0.23506635001921672,
+          "unit": "mrad",
+          "source": "simulated"
+        },
+        "torque": {
+          "label": "Largest torque carried",
+          "value": 40,
+          "unit": "N·m",
+          "source": "simulated"
+        },
+        "mass": {
+          "label": "Shaft mass",
+          "value": 3.021034035508285,
+          "unit": "kg",
+          "source": "simulated"
+        }
+      },
+      "verdicts": {
+        "strength": {
+          "label": "Strength (von Mises)",
+          "value": "pass",
+          "reason": "safety factor 22.94 (needs ≥ 2)"
+        },
+        "deflection": {
+          "label": "Deflection",
+          "value": "pass",
+          "reason": "0.0159 mm (limit 0.15 mm)"
+        }
+      }
+    },
+    {
+      "id": "R3",
+      "name": "countershaft",
+      "setup": {
+        "material": "steel",
+        "selfWeight": true,
+        "segments": [
+          {
+            "id": "s1",
+            "L": 60,
+            "d": 25,
+            "bore": 0
+          },
+          {
+            "id": "s2",
+            "L": 180,
+            "d": 32,
+            "bore": 0
+          },
+          {
+            "id": "s3",
+            "L": 60,
+            "d": 25,
+            "bore": 0
+          }
+        ],
+        "bearings": [
+          {
+            "id": "b4",
+            "x": 30,
+            "rating": 3000
+          },
+          {
+            "id": "b5",
+            "x": 270,
+            "rating": 3000
+          }
+        ],
+        "loads": [
+          {
+            "id": "f6",
+            "kind": "force",
+            "x": 100,
+            "F": 1800
+          },
+          {
+            "id": "t7",
+            "kind": "torque",
+            "x": 100,
+            "T": 60
+          },
+          {
+            "id": "f8",
+            "kind": "force",
+            "x": 220,
+            "F": 3200
+          },
+          {
+            "id": "t9",
+            "kind": "torque",
+            "x": 220,
+            "T": -60
+          }
+        ],
+        "limits": {
+          "minSF": 2.5,
+          "deflection": 0.05,
+          "slope": null
+        },
+        "nextId": 10
+      },
+      "outputs": {
+        "R:b4": {
+          "label": "Bearing 1 reaction (x = 30 mm)",
+          "value": 1949.5088056776933,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "R:b5": {
+          "label": "Bearing 2 reaction (x = 270 mm)",
+          "value": 3066.175472130001,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "stress": {
+          "label": "Highest von Mises stress",
+          "value": 59.920712347281714,
+          "unit": "MPa",
+          "source": "simulated"
+        },
+        "sf": {
+          "label": "Safety factor",
+          "value": 4.172180039367325,
+          "unit": "",
+          "source": "simulated"
+        },
+        "deflection": {
+          "label": "Largest deflection",
+          "value": 0.09581631501055929,
+          "unit": "mm",
+          "source": "simulated"
+        },
+        "slope": {
+          "label": "Largest bearing slope",
+          "value": 1.5516212862708603,
+          "unit": "mrad",
+          "source": "simulated"
+        },
+        "torque": {
+          "label": "Largest torque carried",
+          "value": 60,
+          "unit": "N·m",
+          "source": "simulated"
+        },
+        "mass": {
+          "label": "Shaft mass",
+          "value": 1.5988051960979763,
+          "unit": "kg",
+          "source": "simulated"
+        }
+      },
+      "verdicts": {
+        "strength": {
+          "label": "Strength (von Mises)",
+          "value": "pass",
+          "reason": "safety factor 4.17 (needs ≥ 2.5)"
+        },
+        "deflection": {
+          "label": "Deflection",
+          "value": "fail",
+          "reason": "0.0958 mm (limit 0.05 mm)"
+        },
+        "R:b4": {
+          "label": "Bearing 1 load",
+          "value": "pass",
+          "reason": "1950 N (limit 3000 N)"
+        },
+        "R:b5": {
+          "label": "Bearing 2 load",
+          "value": "fail",
+          "reason": "3066 N (limit 3000 N)"
+        }
+      }
+    },
+    {
+      "id": "R4",
+      "name": "line shaft cast iron",
+      "setup": {
+        "material": "castIron",
+        "selfWeight": true,
+        "segments": [
+          {
+            "id": "s1",
+            "L": 1500,
+            "d": 40,
+            "bore": 0
+          }
+        ],
+        "bearings": [
+          {
+            "id": "b2",
+            "x": 0,
+            "rating": null
+          },
+          {
+            "id": "b3",
+            "x": 750,
+            "rating": null
+          },
+          {
+            "id": "b4",
+            "x": 1500,
+            "rating": null
+          }
+        ],
+        "loads": [
+          {
+            "id": "f5",
+            "kind": "force",
+            "x": 375,
+            "F": 2000
+          },
+          {
+            "id": "f6",
+            "kind": "force",
+            "x": 1125,
+            "F": 2000
+          },
+          {
+            "id": "t7",
+            "kind": "torque",
+            "x": 0,
+            "T": 150
+          },
+          {
+            "id": "t8",
+            "kind": "torque",
+            "x": 375,
+            "T": -75
+          },
+          {
+            "id": "t9",
+            "kind": "torque",
+            "x": 1125,
+            "T": -75
+          }
+        ],
+        "limits": {
+          "minSF": 2,
+          "deflection": 0.5,
+          "slope": null
+        },
+        "nextId": 10
+      },
+      "outputs": {
+        "R:b2": {
+          "label": "Bearing 1 reaction (x = 0 mm)",
+          "value": 649.963409391301,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "R:b3": {
+          "label": "Bearing 2 reaction (x = 750 mm)",
+          "value": 2833.211364618117,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "R:b4": {
+          "label": "Bearing 3 reaction (x = 1500 mm)",
+          "value": 649.9634093846653,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "stress": {
+          "label": "Highest maximum principal stress stress",
+          "value": 46.521277063073974,
+          "unit": "MPa",
+          "source": "simulated"
+        },
+        "sf": {
+          "label": "Safety factor",
+          "value": 4.299108120545319,
+          "unit": "",
+          "source": "simulated"
+        },
+        "deflection": {
+          "label": "Largest deflection",
+          "value": 0.6375779947855421,
+          "unit": "mm",
+          "source": "simulated"
+        },
+        "slope": {
+          "label": "Largest bearing slope",
+          "value": 2.8597243903003324,
+          "unit": "mrad",
+          "source": "simulated"
+        },
+        "torque": {
+          "label": "Largest torque carried",
+          "value": 150,
+          "unit": "N·m",
+          "source": "simulated"
+        },
+        "mass": {
+          "label": "Shaft mass",
+          "value": 13.57168026350791,
+          "unit": "kg",
+          "source": "simulated"
+        }
+      },
+      "verdicts": {
+        "strength": {
+          "label": "Strength (maximum principal stress)",
+          "value": "pass",
+          "reason": "safety factor 4.30 (needs ≥ 2)"
+        },
+        "deflection": {
+          "label": "Deflection",
+          "value": "fail",
+          "reason": "0.6376 mm (limit 0.5 mm)"
+        }
+      }
+    },
+    {
+      "id": "R5",
+      "name": "hollow with slope limit",
+      "setup": {
+        "material": "steel",
+        "selfWeight": true,
+        "segments": [
+          {
+            "id": "s1",
+            "L": 400,
+            "d": 30,
+            "bore": 20
+          }
+        ],
+        "bearings": [
+          {
+            "id": "b2",
+            "x": 0,
+            "rating": null
+          },
+          {
+            "id": "b3",
+            "x": 250,
+            "rating": null
+          }
+        ],
+        "loads": [
+          {
+            "id": "f4",
+            "kind": "force",
+            "x": 380,
+            "F": 1500
+          },
+          {
+            "id": "t5",
+            "kind": "torque",
+            "x": 20,
+            "T": 40
+          },
+          {
+            "id": "t6",
+            "kind": "torque",
+            "x": 380,
+            "T": -40
+          }
+        ],
+        "limits": {
+          "minSF": 2,
+          "deflection": 0.15,
+          "slope": 2
+        },
+        "nextId": 7
+      },
+      "outputs": {
+        "R:b2": {
+          "label": "Bearing 1 reaction (x = 0 mm)",
+          "value": -777.5807065133363,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "R:b3": {
+          "label": "Bearing 2 reaction (x = 250 mm)",
+          "value": 2289.6771733568266,
+          "unit": "N",
+          "source": "simulated"
+        },
+        "stress": {
+          "label": "Highest von Mises stress",
+          "value": 93.26601149976065,
+          "unit": "MPa",
+          "source": "simulated"
+        },
+        "sf": {
+          "label": "Safety factor",
+          "value": 2.6805048911161125,
+          "unit": "",
+          "source": "simulated"
+        },
+        "deflection": {
+          "label": "Largest deflection",
+          "value": 0.5943424407216057,
+          "unit": "mm",
+          "source": "simulated"
+        },
+        "slope": {
+          "label": "Largest bearing slope",
+          "value": 2.5478366108497266,
+          "unit": "mrad",
+          "source": "simulated"
+        },
+        "torque": {
+          "label": "Largest torque carried",
+          "value": 40,
+          "unit": "N·m",
+          "source": "simulated"
+        },
+        "mass": {
+          "label": "Shaft mass",
+          "value": 1.2330751165339937,
+          "unit": "kg",
+          "source": "simulated"
+        }
+      },
+      "verdicts": {
+        "strength": {
+          "label": "Strength (von Mises)",
+          "value": "pass",
+          "reason": "safety factor 2.68 (needs ≥ 2)"
+        },
+        "deflection": {
+          "label": "Deflection",
+          "value": "fail",
+          "reason": "0.5943 mm (limit 0.15 mm)"
+        },
+        "slope": {
+          "label": "Slope at bearings",
+          "value": "fail",
+          "reason": "2.548 mrad (limit 2 mrad)"
+        }
+      }
+    }
+  ],
+  "nextRun": 6
+}

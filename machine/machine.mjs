@@ -36,6 +36,8 @@ function paintShaft(e) {
     if (l.kind === 'force') { const dn = l.F >= 0, y0 = dn ? 18 : cy + 70, y1 = dn ? cy - 32 : cy + 32; out += `<line x1="${px}" x2="${px}" y1="${y0}" y2="${y1}" class="force" marker-end="url(#arr)"/><text x="${px + 4}" y="${dn ? 16 : cy + 82}" class="lbl">${f(l.F / 1000, 2)} kN</text>`; }
     else out += `<path d="M${px - 9} ${cy - 40} a10 6 0 1 1 18 0" class="torque" marker-end="url(#arrT)"/><text x="${px - 4}" y="${cy - 50}" class="lbl" text-anchor="middle">${l.T > 0 ? '+' : ''}${l.T} N·m</text>`;
   });
+  setup.raisers.forEach((q, i) => { const px = X(q.x); out += `<g class="raiser" data-raiser-mark="${q.id}"><line x1="${px}" x2="${px}" y1="${cy - 36}" y2="${cy + 36}"/><text x="${px + 3}" y="${cy + 46}" class="lbl kt">K${i + 1} ${f(q.kt, 1)}</text></g>`; });
+  setup.loads.filter(l => l.kind === 'force' && l.mass > 0).forEach(l => { const px = X(l.x), h = 70; out += `<rect x="${px - 4}" y="${cy - h / 2}" width="8" height="${h}" rx="2" class="disc"/><text x="${px + 6}" y="${cy + 24}" class="lbl">${f(l.mass, 0)} kg${l.ecc ? ` · e ${f(l.ecc, 0)} µm` : ''}</text>`; });
   setup.bearings.forEach((b, i) => {
     const px = X(b.x), c = e.ok ? e.checks.find(q => q.key === `R:${b.id}`) : null, R = e.ok ? e.outputs[`R:${b.id}`].value : null;
     out += `<g data-brg="${b.id}" role="button" tabindex="0" aria-label="Bearing ${i + 1} at ${b.x} mm — drag to move"><path d="M${px} ${cy + 30} l-11 22 h22z" class="brg ${c && !c.pass ? 'over' : ''}"/><rect x="${px - 16}" y="${cy + 26}" width="32" height="32" fill="transparent"/></g>
@@ -62,14 +64,29 @@ function paintPlots(e) {
     <line x1="${gx}" x2="${gx}" y1="20" y2="165" class="gov"/><text x="${Math.min(gx + 4, 520)}" y="166" class="lbl">governs here</text>`;
 }
 
+function paintSpeed(e) {
+  const box = $('speedbox'), sr = M.speedResponse(e);
+  box.hidden = !sr; if (!sr) { $('speedplot').innerHTML = ''; return; }
+  const top = sr.points.at(-1).rpm, cap = Math.max(...sr.points.map(p => p.q)), X = v => 40 + v / top * 520, Y = q => 108 - Math.min(q, cap) / cap * 70;
+  const qop = e.dyn.unbalanced ? e.dyn.amplitude : e.dyn.mag;
+  $('speedplot').innerHTML = `<text x="6" y="14" class="lbl">${sr.unit === 'µm' ? 'unbalance whirl (µm, teaching estimate)' : 'magnification r/e (no unbalance given)'} vs speed · damping ζ ${e.s.damping}</text>
+    <line x1="40" x2="560" y1="108" y2="108" class="ax"/><path d="M${sr.points.map(p => `${X(p.rpm).toFixed(1)} ${Y(p.q).toFixed(1)}`).join(' L')}" class="q"/>
+    <line x1="${X(sr.critical)}" x2="${X(sr.critical)}" y1="34" y2="108" class="crit"/><line x1="${X(sr.speed)}" x2="${X(sr.speed)}" y1="34" y2="108" class="op"/><circle cx="${X(sr.speed)}" cy="${Y(qop)}" r="4" class="opdot"/>
+    <text x="6" y="28" class="lbl"><tspan class="critl">┆ critical ${f(sr.critical, 0)} rpm</tspan>   <tspan class="op">│ running ${f(sr.speed, 0)} rpm: ${f(qop, 1)}${sr.unit === 'µm' ? ' µm' : '×'}</tspan></text>
+    <text x="40" y="122" class="lbl">0</text><text x="560" y="122" class="lbl" text-anchor="end">${f(top, 0)} rpm</text>`;
+}
+
 function paintResults(e) {
   const st = $('status');
   if (!e.ok) { st.className = 'solve unsupported'; st.innerHTML = `<b>Not solved.</b> ${esc(e.reason)}`; $('checks').innerHTML = ''; $('readings').innerHTML = ''; return; }
   const g = e.governing;
-  st.className = `solve ${e.checks.every(c => c.pass) ? 'pass' : 'fail'}`;
-  st.textContent = `${e.checks.every(c => c.pass) ? 'All your limits are met.' : 'Not all your limits are met.'} ${g.label} governs (${(g.util * 100).toFixed(0)} % of its limit).`;
-  $('checks').innerHTML = e.checks.map(c => `<li class="${c.pass ? 'pass' : 'fail'}" data-check="${c.key}">${esc(c.label)}: ${c.pass ? 'OK' : 'over'} · ${(c.util * 100).toFixed(0)} %</li>`).join('');
-  $('readings').innerHTML = Object.entries(e.outputs).filter(([k]) => k !== 'mass').map(([k, o]) => `<div data-out="${k}"><dt>${esc(o.label.replace(/ \(x = .*\)/, ''))}</dt><dd>${f(o.value, k === 'deflection' ? 4 : k === 'slope' || k === 'sf' ? 2 : 1)} ${esc(o.unit)}</dd></div>`).join('');
+  const known = e.checks.filter(c => !c.cannot), na = e.checks.filter(c => c.cannot), allOk = known.every(c => c.pass);
+  st.className = `solve ${allOk ? 'pass' : 'fail'}`;
+  st.textContent = `${allOk ? 'All your limits are met' : 'Not all your limits are met'}${na.length ? ' where they can be assessed' : ''}. ${g.label} governs (${(g.util * 100).toFixed(0)} % of its limit).${na.length ? ` Cannot assess: ${na.map(c => `${c.label} — ${c.reason}`).join('; ')}.` : ''}`;
+  $('checks').innerHTML = e.checks.map(c => c.cannot ? `<li class="na" data-check="${c.key}" title="${esc(c.reason)}">${esc(c.label)}: cannot assess</li>` : `<li class="${c.pass ? 'pass' : 'fail'}" data-check="${c.key}">${esc(c.label)}: ${c.pass ? 'OK' : 'over'} · ${(c.util * 100).toFixed(0)} %</li>`).join('');
+  const digits = (k, o) => (k === 'deflection' ? 4 : k === 'slope' || k === 'sf' || k === 'fatigueSF' ? 2 : o.unit === 'rpm' || o.unit === 'h' || o.unit === '%' ? 0 : 1);
+  const show = (k, o) => (o.unit === 'h' && o.value >= 1e6 ? o.value.toExponential(2) : f(o.value, digits(k, o)));
+  $('readings').innerHTML = Object.entries(e.outputs).filter(([k]) => k !== 'mass' && k !== 'speed').map(([k, o]) => `<div data-out="${k}"><dt>${esc(o.label.replace(/ \(x = .*\)/, ''))}</dt><dd>${show(k, o)} ${esc(o.unit)}</dd></div>`).join('');
 }
 
 // ---------- modules ----------
@@ -79,61 +96,91 @@ function paintShaftModule() {
     <label class="field" style="flex-direction:row;align-items:center"><input type="checkbox" id="sw" ${setup.selfWeight ? 'checked' : ''} style="width:20px;min-height:20px"> Include the shaft's own weight</label>
     <p class="label">Segments, left to right</p>
     <ul class="rows">${setup.segments.map((s, i) => `<li><b>${i + 1}</b><label>Length mm<input data-seg="${s.id}" data-key="L" type="number" inputmode="decimal" value="${s.L}"></label><label>Ø mm<input data-seg="${s.id}" data-key="d" type="number" inputmode="decimal" value="${s.d}"></label><label>Bore mm<input data-seg="${s.id}" data-key="bore" type="number" inputmode="decimal" value="${s.bore}"></label><button type="button" data-delseg="${s.id}" aria-label="Remove segment ${i + 1}">✕</button></li>`).join('') || '<li class="note">No segments yet.</li>'}</ul>
-    <div class="row"><button type="button" id="addseg">+ Add segment</button></div>${say('shaft')}`;
+    <div class="row"><button type="button" id="addseg">+ Add segment</button></div>
+    <p class="label">Fatigue (used when an operating speed is set)</p>
+    <div class="grid2"><label class="field">Surface finish<select id="finish">${Object.entries(M.SURFACE).map(([k, v]) => `<option value="${k}" ${setup.finish === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
+    <label class="field">Reliability<select id="reliab">${Object.keys(M.RELIABILITY).map(Number).sort((a, b) => a - b).map(r => `<option value="${r}" ${setup.reliability === r ? 'selected' : ''}>${r} %</option>`).join('')}</select></label></div>
+    <p class="note">Stress raisers: shoulders, keyseats, grooves. Kt (bending) and Kts (torsion) are yours to supply; the kinds give Shigley's first estimates (Table 7-1). The bench takes Kf = Kt.</p>
+    <ul class="rows">${setup.raisers.map((q, i) => `<li class="two"><b>K${i + 1}</b><label>Position mm<input data-raiser="${q.id}" data-key="x" type="number" inputmode="decimal" value="${q.x}"></label><label>Kind<select data-raiser="${q.id}" data-key="kind">${Object.entries(M.RAISER_KINDS).map(([k, v]) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label><button type="button" data-delraiser="${q.id}" aria-label="Remove stress raiser ${i + 1}">✕</button><span></span><label>Kt<input data-raiser="${q.id}" data-key="kt" type="number" inputmode="decimal" step="0.1" value="${q.kt}"></label><label>Kts<input data-raiser="${q.id}" data-key="kts" type="number" inputmode="decimal" step="0.1" value="${q.kts}"></label><span></span></li>`).join('') || '<li class="note">No stress raisers: a plain shaft (Kt = 1).</li>'}</ul>
+    <div class="row"><button type="button" id="addraiser">+ Add stress raiser</button></div>${say('shaft')}`;
   document.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => act('shaft', () => M.setMaterial(setup, b.dataset.mat)));
   $('sw').onchange = e => act('shaft', () => M.setSelfWeight(setup, e.target.checked));
   document.querySelectorAll('[data-seg]').forEach(i => i.onchange = () => act('shaft', () => M.setSegment(setup, i.dataset.seg, i.dataset.key, +i.value)));
   document.querySelectorAll('[data-delseg]').forEach(b => b.onclick = () => act('shaft', () => M.removeSegment(setup, b.dataset.delseg)));
   $('addseg').onclick = () => act('shaft', () => { M.addSegment(setup, setup.segments.length ? { L: 100, d: setup.segments.at(-1).d } : {}); });
+  $('finish').onchange = ev => act('shaft', () => M.setFinish(setup, ev.target.value));
+  $('reliab').onchange = ev => act('shaft', () => M.setReliability(setup, +ev.target.value));
+  document.querySelectorAll('[data-raiser]').forEach(i => i.onchange = () => act('shaft', () => M.setRaiser(setup, i.dataset.raiser, i.dataset.key, i.dataset.key === 'kind' ? i.value : +i.value)));
+  document.querySelectorAll('[data-delraiser]').forEach(b => b.onclick = () => act('shaft', () => M.removeRaiser(setup, b.dataset.delraiser)));
+  $('addraiser').onclick = () => act('shaft', () => { const g = setup.segments; M.addRaiser(setup, { x: g.length > 1 ? g[0].L : Math.round(M.shaftLength(setup) / 2), kind: 'roundFillet' }); });
 }
 function paintBearings() {
   $('m-bearings').innerHTML = `<h2>Bearings</h2><p class="note">Bearings support the shaft but do not resist bending. Drag them on the drawing or type a position. Give a bearing a load limit to check it.</p>
-    <ul class="rows">${setup.bearings.map((b, i) => `<li><b>B${i + 1}</b><label>Position mm<input data-bearing="${b.id}" data-key="x" type="number" inputmode="decimal" value="${b.x}"></label><label>Load limit N<input data-bearing="${b.id}" data-key="rating" type="number" inputmode="decimal" placeholder="none" value="${b.rating ?? ''}"></label><span></span><button type="button" data-delbrg="${b.id}" aria-label="Remove bearing ${i + 1}">✕</button></li>`).join('') || '<li class="note">No bearings yet.</li>'}</ul>
+    <p class="note">For life, enter the catalogue dynamic load rating C: L10 = (C/P)³ ball, (C/P)^10/3 roller, P = the radial reaction.</p>
+    <ul class="rows">${setup.bearings.map((b, i) => `<li class="two"><b>B${i + 1}</b><label>Position mm<input data-bearing="${b.id}" data-key="x" type="number" inputmode="decimal" value="${b.x}"></label><label>Load limit N<input data-bearing="${b.id}" data-key="rating" type="number" inputmode="decimal" placeholder="none" value="${b.rating ?? ''}"></label><button type="button" data-delbrg="${b.id}" aria-label="Remove bearing ${i + 1}">✕</button><span></span><label>Rating C N<input data-bearing="${b.id}" data-key="C" type="number" inputmode="decimal" placeholder="none" value="${b.C ?? ''}"></label><label>Type<select data-bearing="${b.id}" data-key="type"><option value="ball" ${b.type === 'ball' ? 'selected' : ''}>Ball</option><option value="roller" ${b.type === 'roller' ? 'selected' : ''}>Roller</option></select></label><span></span></li>`).join('') || '<li class="note">No bearings yet.</li>'}</ul>
     <div class="row"><button type="button" id="addbrg">+ Add bearing</button></div>${say('bearings')}`;
-  document.querySelectorAll('[data-bearing]').forEach(i => i.onchange = () => act('bearings', () => M.setBearing(setup, i.dataset.bearing, i.dataset.key, i.dataset.key === 'rating' ? numOrNull(i.value) : +i.value)));
+  document.querySelectorAll('[data-bearing]').forEach(i => i.onchange = () => act('bearings', () => M.setBearing(setup, i.dataset.bearing, i.dataset.key, i.dataset.key === 'type' ? i.value : ['rating', 'C'].includes(i.dataset.key) ? numOrNull(i.value) : +i.value)));
   document.querySelectorAll('[data-delbrg]').forEach(b => b.onclick = () => act('bearings', () => M.removeBearing(setup, b.dataset.delbrg)));
   $('addbrg').onclick = () => act('bearings', () => { M.addBearing(setup, Math.round(M.shaftLength(setup) / 2)); });
 }
 function paintLoads() {
   $('m-loads').innerHTML = `<h2>Loads</h2><p class="note">Forces act across the shaft (positive = downward). Torques must balance: power in at one place, out at another (+ in, − out).</p>
-    <ul class="rows">${setup.loads.map((l, i) => `<li><b>${l.kind === 'force' ? 'F' : 'T'}${i + 1}</b><label>Position mm<input data-load="${l.id}" data-key="x" type="number" inputmode="decimal" value="${l.x}"></label>${l.kind === 'force' ? `<label>Force N<input data-load="${l.id}" data-key="F" type="number" inputmode="decimal" value="${l.F}"></label>` : `<label>Torque N·m<input data-load="${l.id}" data-key="T" type="number" inputmode="decimal" value="${l.T}"></label>`}<span></span><button type="button" data-delload="${l.id}" aria-label="Remove load ${i + 1}">✕</button></li>`).join('') || '<li class="note">No loads yet.</li>'}</ul>
+    <p class="note">A force can carry a rotating mass (a pulley, gear or fan) with an eccentricity: they set the critical speed and the unbalance whirl. The static check uses only the force (include the part's weight in it).</p>
+    <ul class="rows">${setup.loads.map((l, i) => l.kind === 'force' ? `<li class="two"><b>F${i + 1}</b><label>Position mm<input data-load="${l.id}" data-key="x" type="number" inputmode="decimal" value="${l.x}"></label><label>Force N<input data-load="${l.id}" data-key="F" type="number" inputmode="decimal" value="${l.F}"></label><button type="button" data-delload="${l.id}" aria-label="Remove load ${i + 1}">✕</button><span></span><label>Mass kg<input data-load="${l.id}" data-key="mass" type="number" inputmode="decimal" value="${l.mass ?? 0}"></label><label>Eccentricity µm<input data-load="${l.id}" data-key="ecc" type="number" inputmode="decimal" value="${l.ecc ?? 0}"></label><span></span></li>`
+      : `<li><b>T${i + 1}</b><label>Position mm<input data-load="${l.id}" data-key="x" type="number" inputmode="decimal" value="${l.x}"></label><label>Torque N·m<input data-load="${l.id}" data-key="T" type="number" inputmode="decimal" value="${l.T}"></label><span></span><button type="button" data-delload="${l.id}" aria-label="Remove load ${i + 1}">✕</button></li>`).join('') || '<li class="note">No loads yet.</li>'}</ul>
     <div class="row"><button type="button" id="addF">+ Add force</button><button type="button" id="addT">+ Add torque</button></div>${say('loads')}`;
   document.querySelectorAll('[data-load]').forEach(i => i.onchange = () => act('loads', () => M.setLoad(setup, i.dataset.load, i.dataset.key, +i.value)));
   document.querySelectorAll('[data-delload]').forEach(b => b.onclick = () => act('loads', () => M.removeLoad(setup, b.dataset.delload)));
   $('addF').onclick = () => act('loads', () => { M.addForce(setup, Math.round(M.shaftLength(setup) / 2), 1000); });
   $('addT').onclick = () => act('loads', () => { M.addTorque(setup, 0, 0); });
 }
+function paintSpeedModule(e) {
+  const d = e.ok ? e.dyn : null;
+  const facts = !e.ok ? esc(e.reason) : setup.speed === null ? 'No operating speed: the bench checks the shaft standing still (strength, deflection, slope, bearing loads).'
+    : d.rotor ? `First critical speed ${f(d.rotor.rpm, 0)} rpm (Rayleigh); Dunkerley check ${f(d.rotor.dunkerleyRpm, 0)} rpm. Running at ${(d.ratio * 100).toFixed(0)} % of it: unbalance magnified ${f(d.mag, 2)}×.` : esc(d.rotorWhy);
+  $('m-speed').innerHTML = `<h2>Speed and dynamics</h2>
+    <div class="grid2"><label class="field"><span>Operating speed <span class="unit">rpm, empty = static only</span></span><input id="speed" type="number" inputmode="decimal" step="10" value="${setup.speed ?? ''}"></label>
+    <label class="field"><span>Damping ratio ζ <span class="unit">teaching estimate</span></span><input id="damping" type="number" inputmode="decimal" step="0.005" value="${setup.damping}"></label></div>
+    <p class="note" id="speed-facts">${facts}</p>
+    <p class="note">The shaft's own mass counts when its own weight is on (Shaft tab); attached masses and eccentricities are on the Loads tab. Rigid bearings, first mode only — see Learn.</p>${say('speed')}`;
+  $('speed').onchange = ev => act('speed', () => M.setSpeed(setup, numOrNull(ev.target.value)));
+  $('damping').onchange = ev => act('speed', () => M.setDamping(setup, +ev.target.value));
+}
 function paintLimits() {
   const L = setup.limits;
   $('m-limits').innerHTML = `<h2>Your limits</h2><p class="note">The bench checks only what you set here (plus each bearing's load limit).</p>
     <div class="grid2"><label class="field"><span>Minimum safety factor</span><input id="lim-minSF" type="number" inputmode="decimal" step="0.1" value="${L.minSF}"></label>
     <label class="field"><span>Deflection limit <span class="unit">mm, empty = none</span></span><input id="lim-deflection" type="number" inputmode="decimal" step="0.01" value="${L.deflection ?? ''}"></label>
-    <label class="field"><span>Bearing slope limit <span class="unit">mrad, empty = none</span></span><input id="lim-slope" type="number" inputmode="decimal" step="0.1" value="${L.slope ?? ''}"></label></div>${say('limits')}`;
-  for (const k of ['minSF', 'deflection', 'slope']) $(`lim-${k}`).onchange = e => act('limits', () => M.setLimit(setup, k, numOrNull(e.target.value)));
+    <label class="field"><span>Bearing slope limit <span class="unit">mrad, empty = none</span></span><input id="lim-slope" type="number" inputmode="decimal" step="0.1" value="${L.slope ?? ''}"></label>
+    <label class="field"><span>Minimum fatigue safety factor <span class="unit">empty = none</span></span><input id="lim-fatigueSF" type="number" inputmode="decimal" step="0.1" value="${L.fatigueSF ?? ''}"></label>
+    <label class="field"><span>Required bearing life <span class="unit">h, bearings with C</span></span><input id="lim-lifeHours" type="number" inputmode="decimal" step="1000" value="${L.lifeHours ?? ''}"></label>
+    <label class="field"><span>Speed below <span class="unit">% of critical, empty = none</span></span><input id="lim-critPct" type="number" inputmode="decimal" step="5" value="${L.critPct ?? ''}"></label>
+    <label class="field"><span>Vibration limit <span class="unit">µm whirl, empty = none</span></span><input id="lim-amplitude" type="number" inputmode="decimal" step="5" value="${L.amplitude ?? ''}"></label></div>${say('limits')}`;
+  for (const k of ['minSF', 'deflection', 'slope', 'fatigueSF', 'lifeHours', 'critPct', 'amplitude']) $(`lim-${k}`).onchange = e => act('limits', () => M.setLimit(setup, k, numOrNull(e.target.value)));
 }
 function paintExplain(e) {
   if (!e.ok) { $('m-explain').innerHTML = `<h2>Explain</h2><p class="note">${esc(e.reason)}</p>`; return; }
   const x = M.explain(setup), qs = M.quantities(setup), s = M.sensitivity(setup, qs.some(q => q.key === sens) ? sens : 'deflection');
-  const row = (r, i) => `<tr><th>${esc(r.input)} ${esc(r.change)}</th><td>${r.delta >= 0 ? '+' : ''}${Math.abs(r.delta) < 0.01 ? r.delta.toPrecision(2) : r.delta.toFixed(3)}</td><td>${r.ref ? `<button type="button" data-try="${i}">Apply</button>` : ''}</td></tr>`;
+  const row = (r, i) => `<tr><th>${esc(r.input)} ${esc(r.change)}</th><td>${r.delta >= 0 ? '+' : ''}${Math.abs(r.delta) >= 1e5 ? r.delta.toExponential(2) : Math.abs(r.delta) < 0.01 ? r.delta.toPrecision(2) : r.delta.toFixed(3)}</td><td>${r.ref ? `<button type="button" data-try="${i}">Apply</button>` : ''}</td></tr>`;
   $('m-explain').innerHTML = `<h2>What governs</h2><p id="explain-head"><b>${esc(x.headline)}</b></p><p class="note">${esc(x.facts)}</p>
     <p class="label">Changes that help most (computed, one step each)</p><table class="tbl movers" id="movers"><tbody>${x.movers.map((r, i) => row(r, `m${i}`)).join('') || '<tr><td>No single step helps.</td></tr>'}</tbody></table>
     <p class="label">What moves…</p><label class="field"><select id="sens">${qs.map(q => `<option value="${q.key}" ${q.key === s.quantity ? 'selected' : ''}>${esc(q.label)}</option>`).join('')}</select></label>
     <p class="note">Now ${f(s.value, 4)}. Effect of a one-step change of each input:</p><table class="tbl movers" id="sens-table"><tbody>${s.rows.slice(0, 10).map((r, i) => row(r, `s${i}`)).join('')}</tbody></table>`;
   const tries = { ...Object.fromEntries(x.movers.map((r, i) => [`m${i}`, r])), ...Object.fromEntries(s.rows.slice(0, 10).map((r, i) => [`s${i}`, r])) };
-  document.querySelectorAll('[data-try]').forEach(b => b.onclick = () => act('explain', () => { const r = tries[b.dataset.try]; const fn = { segments: M.setSegment, bearings: M.setBearing, loads: M.setLoad }[r.ref.list]; fn(setup, r.ref.id, r.ref.key, r.to); }));
+  document.querySelectorAll('[data-try]').forEach(b => b.onclick = () => act('explain', () => { const r = tries[b.dataset.try]; M.applyRef(setup, r.ref, r.to); }));
   $('sens').onchange = ev => { sens = ev.target.value; render(); };
 }
 function paintSweep(e) {
   if (!e.ok) { $('m-sweep').innerHTML = `<h2>Sweep</h2><p class="note">${esc(e.reason)}</p>`; return; }
   const ins = M.inputs(setup), qs = M.quantities(setup);
   if (!swForm || !ins[swForm.input] || !qs.some(q => q.key === swForm.q)) swForm = { input: 0, q: qs[0].key, from: null, to: null };
-  const inp = ins[swForm.input], isPos = inp.ref.key === 'x', L = M.shaftLength(setup);
-  const from = swForm.from ?? (isPos ? 0 : Math.max(3, Math.round(inp.value * 0.6))), to = swForm.to ?? (isPos ? L : Math.round(inp.value * 1.4));
+  const inp = ins[swForm.input], isPos = inp.ref.key === 'x', isSpeed = inp.ref.key === 'speed', L = M.shaftLength(setup), crit = e.dyn?.rotor?.rpm;
+  const from = swForm.from ?? (isPos ? 0 : isSpeed ? 100 : inp.ref.key === 'kt' ? 1 : Math.max(3, Math.round(inp.value * 0.6))), to = swForm.to ?? (isPos ? L : isSpeed ? Math.round(2 * Math.max(inp.value, crit || 0) / 100) * 100 : inp.ref.key === 'kt' ? Math.max(2, +(inp.value * 1.4).toFixed(1)) : Math.round(inp.value * 1.4));
   let out = '';
   if (sw) {
     const ok = sw.points.filter(p => p.q !== null), lo = Math.min(...ok.map(p => p.q)), hi = Math.max(...ok.map(p => p.q)), X = v => 30 + (v - sw.points[0].v) / (sw.points.at(-1).v - sw.points[0].v) * 250, Y = q => 100 - (hi === lo ? 0.5 : (q - lo) / (hi - lo)) * 80;
     out = `<svg class="sweepplot" viewBox="0 0 300 120" role="img" aria-label="Sweep result"><line x1="30" x2="280" y1="100" y2="100" class="ax"/><path d="M${ok.map(p => `${X(p.v)} ${Y(p.q)}`).join(' L')}" class="q"/>${sw.best ? `<circle cx="${X(sw.best.v)}" cy="${Y(sw.best.q)}" r="4" class="best"/>` : ''}<text x="30" y="114" class="lbl">${f(sw.points[0].v, 0)}</text><text x="280" y="114" class="lbl" text-anchor="end">${f(sw.points.at(-1).v, 0)}</text><text x="30" y="12" class="lbl">${f(hi, 3)}</text><text x="30" y="96" class="lbl">${f(lo, 3)}</text></svg>
-      <p class="note" id="sweep-best">${sw.best ? `${sw.key === 'sf' ? 'Highest' : 'Lowest'} at ${f(sw.best.v, 1)}: ${f(sw.best.q, 3)}.` : 'No valid point in this range.'} ${sw.points.some(p => p.q === null) ? `Some points are impossible (${esc(sw.points.find(p => p.q === null).why)})` : ''}</p>
+      <p class="note" id="sweep-best">${sw.best ? `${sw.higherIsBetter ? 'Highest' : 'Lowest'} at ${f(sw.best.v, 1)}: ${f(sw.best.q, 3)}.` : 'No valid point in this range.'} ${sw.worst ? `<span id="sweep-worst" data-at="${sw.worst.v}">${sw.higherIsBetter ? 'Lowest' : 'Highest'} at ${f(sw.worst.v, 1)}: ${f(sw.worst.q, 3)}.</span>` : ''} ${sw.points.some(p => p.q === null) ? `Some points are impossible (${esc(sw.points.find(p => p.q === null).why)})` : ''}</p>
       ${sw.best ? `<div class="row"><button type="button" id="useBest">Use ${f(sw.best.v, 1)}</button></div>` : ''}`;
   }
   $('m-sweep').innerHTML = `<h2>Sweep one input</h2><p class="note">Vary one input across a range and watch any result.</p>
@@ -144,8 +191,8 @@ function paintSweep(e) {
   $('sw-in').onchange = ev => { swForm = { ...swForm, input: +ev.target.value, from: null, to: null }; sw = null; render(); };
   $('sw-q').onchange = ev => { swForm.q = ev.target.value; sw = null; render(); };
   $('sw-from').onchange = ev => { swForm.from = +ev.target.value; }; $('sw-to').onchange = ev => { swForm.to = +ev.target.value; };
-  $('sw-run').onclick = () => { try { sw = M.sweep(setup, inp.ref, swForm.q, +$('sw-from').value, +$('sw-to').value, 20); msg = {}; } catch (err) { msg = { sweep: { text: err.message } }; } render(); };
-  if ($('useBest')) $('useBest').onclick = () => act('sweep', () => { const fn = { segments: M.setSegment, bearings: M.setBearing, loads: M.setLoad }[sw.ref.list]; fn(setup, sw.ref.id, sw.ref.key, +sw.best.v.toFixed(1)); sw = null; return 'Applied.'; });
+  $('sw-run').onclick = () => { try { sw = M.sweep(setup, inp.ref, swForm.q, +$('sw-from').value, +$('sw-to').value, 40); msg = {}; } catch (err) { msg = { sweep: { text: err.message } }; } render(); };
+  if ($('useBest')) $('useBest').onclick = () => act('sweep', () => { M.applyRef(setup, sw.ref, +sw.best.v.toFixed(1)); sw = null; return 'Applied.'; });
 }
 function paintLearn() {
   $('m-learn').innerHTML = `<h2>Concepts</h2><p class="note">Open any topic. Notes never change a tool or a result.</p>${M.TOPICS.map(t => `<details class="topic"><summary>${esc(t.title)}</summary><p>${esc(t.concept)}</p>${t.equation ? `<code>${esc(t.equation)}</code>` : ''}${t.limits ? `<p class="note">${esc(t.limits)}</p>` : ''}</details>`).join('')}`;
@@ -155,12 +202,12 @@ function render() {
   const e = M.evaluate(setup);
   $('title').textContent = nb.project().name;
   $('subtitle').textContent = setup.segments.length ? `${M.shaftLength(setup)} mm shaft · ${setup.bearings.length} bearings · ${setup.loads.length} loads · ${MATERIALS[setup.material].name}` : 'Nothing on the bench yet';
-  paintStarts(); paintShaft(e); paintPlots(e); paintResults(e);
-  if (!drag) { paintShaftModule(); paintBearings(); paintLoads(); paintLimits(); paintExplain(e); paintSweep(e); paintLearn(); nb.render(); }
+  paintStarts(); paintShaft(e); paintPlots(e); paintSpeed(e); paintResults(e);
+  if (!drag) { paintShaftModule(); paintBearings(); paintLoads(); paintSpeedModule(e); paintLimits(); paintExplain(e); paintSweep(e); paintLearn(); nb.render(); }
 }
 
 const bench = workbench('machine', { initial: 'shaft' });
-const nb = notebook($('m-experiments'), { adapter: M.ADAPTER, getSetup: () => clone(setup), applySetup: s => { setup = s; sw = null; msg = {}; render(); } });
-setup = clone(nb.project().setup);
+const nb = notebook($('m-experiments'), { adapter: M.ADAPTER, getSetup: () => clone(setup), applySetup: s => { setup = M.upgrade(s); sw = null; msg = {}; render(); } });
+setup = M.upgrade(nb.project().setup);   // a setup saved before stage 2 gains the new fields, with no speed (static only)
 render();
 document.body.dataset.ready = 'true';
