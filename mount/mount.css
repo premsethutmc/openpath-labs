@@ -17,3 +17,27 @@ select{width:100%}
 .cmp.lim td{white-space:normal;text-align:left}.cmp.lim th{width:42%}
 #runs .cmp th:first-child{min-width:150px}
 #back-journey{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:10px;font-weight:600;text-decoration:none;background:var(--act);color:#140a02}
+/* Stiffness vs strength readout, stress–strain view, two-run ratios (./split.mjs) */
+.ss{margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+.ss h3{font:800 .92rem Archivo,sans-serif;margin:0}
+.ss-cond{font:500 .72rem var(--mono);color:var(--dim);margin:2px 0 8px}
+.ss-bars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ss-g{background:#0d151b;border:1px solid var(--line);border-radius:10px;padding:8px}
+.ss-g p{margin:0}
+.ss-k{font:600 .7rem var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.03em;min-height:2.6em}
+.ss-track{position:relative;height:14px;margin:18px 0 16px;background:#16222b;border-radius:4px}
+.ss-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--ok)}.ss-fill.no{background:var(--bad)}
+.ss-mark{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink)}
+.ss-mark em{position:absolute;top:19px;left:50%;transform:translateX(-50%);font:500 .62rem var(--mono);font-style:normal;color:var(--muted);white-space:nowrap}
+.ss-v{font:600 .76rem var(--mono)}.ss-v b,.ss-fos b,.ss-line b{font-family:var(--mono)}
+.ss-gov{font:500 .72rem var(--mono);color:var(--acc);margin-top:4px!important}
+.ss-fos{font:500 .8rem var(--mono);margin:8px 0 0}
+.ss .ok,.ss-line .ok,#ss-cmp .ok,.ss-fos .ok{color:var(--ok)}.ss .no,.ss-fos .no,.cmp .no b,#runs b.no{color:var(--bad)}
+#ss-chart{margin-top:4px}
+.ss-pt{font:500 .8rem var(--mono);margin:8px 0 0}
+.ss-flag{margin:8px 0 0;padding:8px 10px;border:1px solid #5a2420;border-radius:8px;color:var(--bad);font-size:.84rem;font-weight:600}
+.ss-h2{margin-top:16px!important}
+.ss-tbl th:first-child{width:34%}
+.ss-line{font-size:.84rem;margin:6px 0 0}
+.ss-mark.up em{top:-16px}
+#ss-chart text{paint-order:stroke;stroke:#0d151b;stroke-width:4px;stroke-linejoin:round}

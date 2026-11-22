@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { NODES as STATICS } from '../content/graph/statics.mjs';
 import { NODES as SCHOOL } from '../content/graph/school-math.mjs';
+import { NODES as SOLIDS } from '../content/graph/solids.mjs';
 import { GENERATORS as GS } from '../content/items/statics.mjs';
 import { GENERATORS as GM } from '../content/items/school-math.mjs';
 import J, { ANCHOR_SETUP, whatIfs } from '../content/journeys/support.mjs';
@@ -15,7 +16,7 @@ import { section } from '../core/sections.mjs';
 import { READING_ADAPTER, evaluateReading, stand, SPEC, ORIGINAL } from '../mount/model.mjs';
 import { PRESETS } from '../playground/presets.mjs';
 
-const NODES = [...STATICS, ...SCHOOL], BY = Object.fromEntries(NODES.map(n => [n.id, n])), GEN = { ...GS, ...GM };
+const NODES = [...STATICS, ...SCHOOL], BY = Object.fromEntries([...NODES, ...SOLIDS].map(n => [n.id, n])), GEN = { ...GS, ...GM };   // beam nodes require stress/strain nodes in content/graph/solids.mjs
 const SEEDS = Array.from({ length: 60 }, (_, i) => i * 7919 + 1);
 const close = (a, b, rel = 1e-6, abs = 1e-6, msg) => assert.ok(Math.abs(a - b) <= Math.max(abs, rel * Math.abs(b)), `${msg ?? ''} ${a} vs ${b}`);
 // School competency ids at premsethutmc/openpath main 62b17d3f, content/mathematics/curriculum.v1.json (checked 22 Nov 2026).
