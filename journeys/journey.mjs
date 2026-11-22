@@ -210,7 +210,7 @@ const PHASE = {
   defend: v => `<div class="card"><h2>Defend it</h2><p class="quiet">What if things changed? Answer from your own numbers; the engine checks each one on a copy of your design.</p>
       ${v.questions.map((q, k) => numberField(String(k), q.prompt, q.unit, { errors: flash?.errors })).join('')}
       ${v.questions.length ? '' : '<p class="quiet">No questions for this design.</p>'}${message()}
-      <div class="actions"><button type="button" class="primary" id="defend">Submit</button></div></div>`,
+      <div class="actions"><button type="button" class="primary" id="defend">Submit</button></div></div>${benchLink(v)}`,
   summary: v => { const p = v.portfolio, d = p.design;
     return `<div><p class="eyebrow">Portfolio entry</p><h1>${esc(p.journey.title)}</h1></div>
     <div class="card"><h2>Design ${esc(d.from.label)} → ${esc(d.to?.label ?? '–')}</h2>${d.to ? `<p class="quiet" id="r2-run">${esc(d.to.label)} is run ${esc(d.to.run)}${d.to.tested ? `, the design you predicted and ran in run ${esc(d.to.tested)}` : ''}.</p>${setupList(d.to.setup, d.changed)}` : ''}

@@ -141,6 +141,12 @@ const RULES = [
     m => one(n(m[4]) * n(m[5]) * n(m[1]) / 1000 * n(m[2]) / (n(m[3]) / 100) / 1000, 'kW')],
   [/^The fluid line bench runs at ([\d.]+) L\/s with ([\d.]+) m of pump head and ([\d.]+) kW of shaft power \(water at ([\d.]+) °C, ρ = ([\d.]+) kg\/m³, g = ([\d.]+) m\/s²\)\. What is the pump's efficiency\?$/,
     m => one(n(m[5]) * n(m[6]) * n(m[1]) / 1000 * n(m[2]) / (n(m[3]) * 1000) * 100, '%')],
+  // ---- school maths and the pump shaft (open loop on a student's own line: unit conversions, T = P/ω) ----
+  [/^A bracket is ([\d,.]+) mm long\. How long is it in metres\?$/, m => one(n(m[1].replace(/,/g, '')) / 1000, 'm')],
+  [/^The solver reports a bending moment of ([\d,.]+) N·mm\. What is it in N·m\?$/, m => one(n(m[1].replace(/,/g, '')) / 1000, 'N·m')],
+  [/^A gearbox passes the same power to a shaft turning at a lower speed\. The torque on that shaft…$/, (m, o) => pick(o, 'It rises: half the speed gives twice the torque')],
+  [/^A motor delivers ([\d.]+) kW at (\d+) rpm\. Find the torque on its shaft\.$/, m => one(n(m[1]) * 1000 / (2 * Math.PI * n(m[2]) / 60), 'N·m')],
+  [/^A pump shaft carries (\d+) N·m at (\d+) rpm\. What power does it transmit\?$/, m => one(n(m[1]) * 2 * Math.PI * n(m[2]) / 60 / 1000, 'kW')],
   [/^A pump sits ([\d.]+) m above an open sump\. Atmospheric pressure ([\d.]+) kPa, vapour pressure ([\d.]+) kPa \(water at \d+ °C\), suction losses ([\d.]+) m\. Find NPSH available \(ρ = (\d+) kg\/m³, g = ([\d.]+)\)\.$/,
     m => one((n(m[2]) - n(m[3])) * 1000 / (n(m[5]) * n(m[6])) - n(m[1]) - n(m[4]), 'm')],
   [/^A pump needs NPSH ([\d.]+) m and you want a ([\d.]+) m margin\. Atmospheric ([\d.]+) kPa, vapour pressure ([\d.]+) kPa, suction losses ([\d.]+) m\. How high above the sump can the pump sit \(ρ = (\d+) kg\/m³, g = ([\d.]+)\)\?$/,

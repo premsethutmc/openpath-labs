@@ -350,7 +350,7 @@ export function createRunner(spec, deps, saved) {
             return { lastTested: last ? { run: last.run, setup: clone(last.setup) } : null, currentTested: cur ? cur.run : null, sinceTested: last && p ? P.setupDiff(last.setup, p.setup) : [] }; })() };
       }
       case 'decide': return { ...base, bench: spec.bench.page, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, tested: S.r2Tested ?? null, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [], setup: p ? clone(runOf(p, S.r2).setup) : null };
-      case 'defend': return { ...base, questions: S.defend.questions.map(q => ({ prompt: q.prompt, unit: q.unit, label: q.label })) };
+      case 'defend': return { ...base, bench: spec.bench.page, questions: S.defend.questions.map(q => ({ prompt: q.prompt, unit: q.unit, label: q.label })) };
       case 'summary': return { ...base, bench: spec.bench.page, portfolio: portfolio() };
     }
     throw new JourneyError(`unknown phase ${S.phase}`);

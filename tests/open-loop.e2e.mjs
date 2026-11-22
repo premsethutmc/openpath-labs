@@ -139,7 +139,7 @@ for (const [label, vp, mine, revised] of [
       const prompts = await app.locator('.field').allInnerTexts();
       const changed = Object.keys(revised).filter(k => revised[k] !== mine[k]);
       assert.equal(prompts.length, changed.length);
-      const reads = ['deflection', 'stress'], LABEL = { deflection: 'Dial reading', stress: 'Stress at the gauge' }, NAME = { material: 'the material', b: 'the width', h: 'the depth' };
+      const reads = ['deflection', 'stress'], LABEL = { deflection: 'the dial reading', stress: 'the stress at the gauge' }, NAME = { material: 'the material', b: 'the width', h: 'the depth' };
       const order = ['material', 'h', 'b'].filter(k => changed.includes(k));
       for (const [i, k] of order.entries()) {
         const read = reads[i % 2];
