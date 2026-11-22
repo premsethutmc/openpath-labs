@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cooling loop fault · Pump House · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <style>
+    #loop{display:block;width:100%;height:auto;max-height:60vh}
+    .cmp{width:100%;border-collapse:collapse;font:500 .76rem var(--mono);margin:8px 0}
+    .cmp th,.cmp td{padding:5px 4px;border-bottom:1px solid #1b2832;text-align:right}
+    .cmp th:first-child{text-align:left;color:var(--muted);font-weight:500}.cmp thead th{color:var(--dim)}
+    .opts{display:grid;gap:8px;margin-top:6px}.opts button{text-align:left;padding:10px 12px;min-height:auto;line-height:1.45;font-weight:500}
+    .opts button[aria-pressed=true]{background:var(--ink);color:#0b1117}
+    .fb{margin:6px 0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-size:.86rem}.fb.ok{border-color:#1f5a3c}.fb.no{border-color:#5a4615}
+    .fb b{font-family:var(--mono)}
+    .step{font:700 .7rem var(--mono);color:var(--acc);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 4px}
+    .tbl-wrap{overflow-x:auto}
+  </style>
+</head>
+<body data-mode="learn">
+<header class="bar">
+  <a class="back" href="./index.html">‹ Pump House</a>
+  <span class="crumb">CE3391 Unit IV · fault-finding</span>
+</header>
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1>The cooling loop is short of water</h1><p>Find the fault before replacing anything.</p></div>
+    <div class="instrument">
+      <svg id="loop" viewBox="0 0 400 300" role="img" aria-labelledby="loop-t"><title id="loop-t">Factory cooling loop: basin, inlet strainer, pump, discharge section, return header</title></svg>
+      <span id="status" class="status warn">LOW FLOW</span>
+    </div>
+    <dl class="readings">
+      <div><dt>Flow</dt><dd id="g-q">–</dd></div>
+      <div><dt>Pump head</dt><dd id="g-h">–</dd></div>
+      <div><dt>Motor power</dt><dd id="g-p">–</dd></div>
+      <div><dt>Efficiency</dt><dd id="g-e">–</dd></div>
+    </dl>
+  </section>
+  <section class="side">
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module mission" data-module="mission" data-title="Mission" id="mission" aria-live="polite"></section>
+    <section class="module" data-module="log" data-title="Run log">
+      <h2>Saved runs</h2>
+      <p class="note">Every state you produce is saved with its inputs and units. Measurements appear only where you placed a gauge.</p>
+      <div id="log" class="tbl-wrap"></div>
+    </section>
+    <section class="module" data-module="experiments" data-title="Experiments" id="experiments"></section>
+    <section class="module about" data-module="about" data-title="Model">
+      <h2>What is simulated, and what is not</h2>
+      <p><b>Simulated lab fixture, not manufacturer or field test data.</b> The pump is Pump House’s model pump (Euler equation with slip and losses); the pipes use Darcy–Weisbach with Colebrook friction. Water at 32 °C; the basin surface is 4 m above the pump, so the suction is flooded and every case stays at least 2 m of NPSH away from cavitation.</p>
+      <p><b>The fault</b> is an added local loss R·Q² either in the inlet strainer or in the discharge section (non-return valve + gate valve). In each case R is the same for both candidates, so flow, pump head, power and efficiency are identical whichever section is at fault — the dashboard alone cannot tell them apart.</p>
+      <p><b>The gauge</b> reads the differential pressure between two taps either side of one section, on the same pipe, at equal elevation and diameter: it measures only that section’s loss, Δp = ρg(K<sub>clean</sub>·V²/2g + fault). A clean section’s loss scales with flow² (turbulent flow).</p>
+      <p><b>Not modelled:</b> partial blockage that changes with time, air in the line, gauge error, pump wear.</p>
+    </section>
+  </section>
+</main>
+<script type="module" src="./fault.mjs"></script>
+</body>
+</html>

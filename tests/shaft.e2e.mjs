@@ -46,6 +46,8 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     await state('first');
     assert.equal(await page.locator('#x-pv .xloop').count(), 2);
     assert.equal(await page.locator('#x-flow .xflow').count(), 2, 'airflow for A and B on the same axes');
+    // shared learning protocol (core/protocol.mjs): the prediction was locked before run B
+    assert.deepEqual(await page.evaluate(() => { const p = window.__shaft.protocol(); return [p.prediction('pair:first'), p.isLocked('pair:first')]; }), ['Down', true]);
     let t = await exp.innerText();
     assert.match(t, /Air in through the valve\s+369\.2 mg\s+315\.4 mg/);
     assert.match(t, /Net air kept per cycle\s+353\.4 mg\s+291\.0 mg/);

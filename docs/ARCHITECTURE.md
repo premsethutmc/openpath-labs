@@ -69,3 +69,11 @@ tests/                browser tests
 
 ## Workbench layout (all labs)
 `core/workbench.css` + `core/workbench.mjs`: every lab is one screen — the live instrument (machine or field) stays visible, four key readings sit under it, and a dock switches between modules (Mission/Guide, controls, charts, model notes). Exactly one module is open at a time; Learn mode locks the control modules a mission does not need. Visual language: dark engineering-instrument style, monospace readings with units, one meaning per colour scale, no cartoon art.
+
+## Experiment record and learning protocol (shared by labs)
+Saved evidence lives in one place: `core/project.mjs` (projects, runs frozen with their setup, outputs with units and source, reproduce, compare, fork, export/import), shown by the shared Experiments panel `core/notebook.mjs`. Each bench supplies an adapter `{ domain, evaluate(setup) }`; a setup its model cannot solve is refused with its reason. See `docs/WORKSHOP.md`.
+
+Guided cases add `core/protocol.mjs`, which stores no runs: `Protocol.predict / lock / score / retract` (a prediction recorded, locked before the result, scored after it), `giveFeedback / canAdvance` (feedback before the next case unlocks) and `checkAnswers`.
+- Pump House fault lab: hypothesis locked when the gauge is placed; this case's readings are kept in memory for the mission; a finished case (fault found and repaired) is saved to the record — cases in progress are never stored, so the hidden fault is not exposed.
+- Mount lab: unseen-case prediction and design locked before loaded readings; every test-stand reading is a run on the record; the Experiments panel cannot record a loaded result before the lock.
+- Engine World: predictions locked before each bench run (its 1D runs are not yet on the record).

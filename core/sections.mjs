@@ -21,6 +21,10 @@ export function section(spec) {
     const { d, t } = spec, di = d - 2 * t;
     return { ...spec, A: Math.PI * (d * d - di * di) / 4, I: Math.PI * (d ** 4 - di ** 4) / 64, c: d / 2, depth: d, label: `Ø${d}×${t} mm tube` };
   }
+  if (shape === 'rhs') {   // rectangular hollow section, uniform wall t, bending about the axis parallel to b
+    const { b, h, t } = spec, bi = b - 2 * t, hi = h - 2 * t;
+    return { ...spec, A: b * h - bi * hi, I: (b * h ** 3 - bi * hi ** 3) / 12, c: h / 2, depth: h, label: `${b}×${h}×${t} mm hollow` };
+  }
   if (shape === 'I') {
     const { h, b, tw, tf } = spec, hw = h - 2 * tf;
     const I = (b * h ** 3 - (b - tw) * hw ** 3) / 12;

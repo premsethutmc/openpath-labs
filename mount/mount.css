@@ -1,0 +1,18 @@
+/* The Mount That Didn't Break — lab-specific pieces on top of the shared workbench. */
+#rig{display:block;width:100%;height:auto;max-height:52vh}
+.tbl{overflow-x:auto}
+.cmp{width:100%;border-collapse:collapse;font:500 .74rem var(--mono);margin:8px 0}
+.cmp th,.cmp td{padding:5px 4px;border-bottom:1px solid #1b2832;text-align:right;white-space:nowrap}
+.cmp th:first-child{text-align:left;color:var(--muted);font-weight:500;white-space:normal}.cmp thead th{color:var(--dim)}
+.cmp .ok{color:var(--ok)}.cmp .no{color:var(--bad)}.cmp .na{color:var(--dim)}
+.opts{display:grid;gap:8px;margin-top:6px}.opts button{text-align:left;padding:10px 12px;min-height:auto;line-height:1.45;font-weight:500}
+.opts button[aria-pressed=true]{background:var(--ink);color:#0b1117}
+.fb{margin:6px 0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-size:.86rem}.fb.ok{border-color:#1f5a3c}.fb.no{border-color:#5a4615}
+.step{font:700 .7rem var(--mono);color:var(--acc);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 4px}
+.check{list-style:none;padding:0;margin:6px 0;font-size:.86rem}.check li::before{content:'○ ';color:var(--dim)}.check li.done::before{content:'● ';color:var(--ok)}
+textarea{width:100%;min-height:110px;font:inherit;font-size:.9rem;background:var(--panel2);color:var(--ink);border:1px solid #2c3e4a;border-radius:10px;padding:10px}
+.rubric{font-size:.84rem;color:var(--muted)}.rubric li{margin:3px 0}
+select{width:100%}
+#dims .range{margin-top:8px}
+.cmp.lim td{white-space:normal;text-align:left}.cmp.lim th{width:42%}
+#runs .cmp th:first-child{min-width:150px}

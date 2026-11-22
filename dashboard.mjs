@@ -14,7 +14,7 @@ const STATUS = { live: 'Live', next: 'Building next', planned: 'Planned', seeded
 
 const STAGES = [
   { title: 'Forces around you', q: 'What forces act on it? Does it stay put?', engines: ['Solids'], status: 'live', objects: ['shelf', 'crane'] },
-  { title: 'Strength of materials', q: 'How hard is the material working inside? How much does it bend? When does it fail? How do I make it stronger or lighter?', engines: ['Solids', 'Materials'], status: 'live', objects: ['footbridge', 'truss', 'diving', 'column'] },
+  { title: 'Strength of materials', q: 'How hard is the material working inside? How much does it bend? When does it fail? How do I make it stronger or lighter?', engines: ['Solids', 'Materials'], status: 'live', links: [{ name: 'The mount that didn’t break', href: './mount/index.html', sub: 'Investigate a support that bends out of alignment, redesign it, defend it' }], objects: ['footbridge', 'truss', 'diving', 'column'] },
   { title: 'Materials', q: 'What is it made of, why does it fail, and can I make a better one?', engines: ['Materials', 'Solids'], status: 'planned', soon: 'Blend your own alloy, quench and temper it, take it to the Arctic.' },
   { title: 'Making things', q: 'How are shapes made, and what does that do to strength?', engines: ['Solids', 'Materials'], status: 'live', links: [{ name: 'Workshop', href: './workshop/index.html', sub: 'Turn a blank, measure the bore, test it on a shaft' }], soon: 'Milling, welding, casting, 3D printing next.' },
   { title: 'Machines', q: 'How is motion transformed?', engines: ['Motion'], status: 'next', soon: 'Linkages, cams, gear trains, steering — drag them and watch them move.' },

@@ -4,6 +4,7 @@
 import { BENCH_STOCK, BENCH_INPUTS, compare, solverRunner, setupForRunner, intakeEvidence, judge, CLEAR_BAR, LATE_FROM, airShift } from './bench-setup.mjs';
 import { K12M, K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
 import { piston } from '../engines/motion/crank.mjs';
+import { Protocol } from '../core/protocol.mjs';
 
 const $ = id => document.getElementById(id);
 const f = (n, d = 1) => (Math.abs(n) >= 1000 ? Math.round(n).toLocaleString('en-IN') : n.toFixed(d));
@@ -19,6 +20,7 @@ const guided = () => document.body.dataset.mode === 'learn';
 const X = { rpm: 4500, pairs: [], view: 0, angle: 0, playing: false, pv: 'linear', pth: 'full', busy: false, maxCycles: undefined,
   runnerL: GUIDED_L, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {} };
 let worker = null, reqId = 0; const pending = new Map();
+let J = new Protocol();   // shared learning protocol: predictions locked before each run
 function bench(setup, rpm) {
   worker ||= new Worker(new URL('./bench-worker.mjs', import.meta.url), { type: 'module' });
   worker.onmessage = ({ data }) => { if (data.kind === 'shaft') { pending.get(data.label)?.(data.run); pending.delete(data.label); } };
@@ -29,7 +31,10 @@ async function runPair(rpm, kind, prediction, { newA = true, withB = true } = {}
   X.busy = true; paint();
   let pair;
   if (newA) { pair = { rpm, kind, prediction, A: await bench(BENCH_STOCK, rpm) }; X.pairs.push(pair); } else pair = X.pairs[0];
-  if (withB && pair.A.valid) { pair.B = await bench(setupForRunner(X.runnerL), rpm); pair.prediction = prediction; }
+  if (withB && pair.A.valid) {
+    J.lock(`pair:${kind}`);
+    pair.B = await bench(setupForRunner(X.runnerL), rpm); pair.prediction = prediction;
+  }
   X.view = X.pairs.indexOf(pair); X.busy = false; X.prediction = null; paint();
 }
 
@@ -161,8 +166,8 @@ function resultBlock(p) {
   if (!p.A.valid) return `<p class="msg bad">Run A at ${p.rpm} rpm did not converge — not plotted, no numbers shown.</p>`;
   const c = compare(p.A, p.B);
   if (!c.ok) return `<p class="msg bad">${c.reason}</p>`;
-  const want = verdict(c.torque.rel);
-  return `<p class="result ${want === p.prediction ? 'right' : 'wrong'}">At ${p.rpm} rpm you predicted <b>${p.prediction}</b>. Brake torque ${f(c.torque.a, 1)} → ${f(c.torque.b, 1)} N·m (${sgn(c.torque.rel)}): <b>${want}</b>.</p>${pairTable(p, c)}
+  const want = verdict(c.torque.rel), sc = J.score(`pair:${p.kind}`, want);
+  return `<p class="result ${sc.correct ? 'right' : 'wrong'}">At ${p.rpm} rpm you predicted <b>${sc.predicted}</b>. Brake torque ${f(c.torque.a, 1)} → ${f(c.torque.b, 1)} N·m (${sgn(c.torque.rel)}): <b>${want}</b>.</p>${pairTable(p, c)}
     <p class="note">Both runs converged (${p.A.cycles} and ${p.B.cycles} cycles). Model predictions, not dyno measurements.</p>`;
 }
 const predictRow = (key, disabled) => `<p class="think">Predict before you run: brake torque will go…</p><div class="row">${['Up', 'Down', 'Within ±1 %'].map(o => `<button type="button" class="guess" data-xp="${key}" data-v="${o}" aria-pressed="${X.prediction === o}" ${disabled ? 'disabled' : ''}>${o}</button>`).join('')}</div>`;
@@ -292,7 +297,7 @@ function wire() {
     r.oninput = e => { X.runnerL = +e.target.value / 100; $('x-runner-out').textContent = `${cm(X.runnerL)} (Run A: ${cm(STOCK_L)})`; };
     r.onchange = () => { X.prediction = null; paint(); $('x-runner')?.focus(); };
   }
-  document.querySelectorAll('[data-xp]').forEach(b => b.onclick = () => { X.prediction = b.dataset.v; paint(); });
+  document.querySelectorAll('[data-xp]').forEach(b => b.onclick = () => { J.predict(`pair:${b.dataset.xp}`, b.dataset.v); X.prediction = b.dataset.v; paint(); });
   const b1 = $('x-runB'); if (b1) b1.onclick = () => runPair(X.pairs[0].rpm, 'first', X.prediction, { newA: false });
   document.querySelectorAll('[data-xnext]').forEach(b => b.onclick = () => { X.nextRpm = +b.dataset.xnext; paint(); });
   const b2 = $('x-runPair'); if (b2) b2.onclick = () => runPair(X.nextRpm, 'repeat', X.prediction);
@@ -301,11 +306,11 @@ function wire() {
   document.querySelectorAll('[data-air]').forEach(b => b.onclick = () => { X.air = { ...X.air, [b.dataset.air]: b.dataset.v }; paint(); });
   document.querySelectorAll('[data-xunseen]').forEach(b => b.onclick = () => { X.unseenRpm = +b.dataset.xunseen; paint(); });
   const b3 = $('x-runUnseen'); if (b3) b3.onclick = () => runPair(X.unseenRpm, 'unseen', X.prediction);
-  const drop = kind => { X.pairs = X.pairs.filter(p => p.kind !== kind); X.view = 0; X.prediction = null; if (kind === 'repeat') { X.cite = {}; X.why = null; X.air = {}; } paint(); };
-  const rs = $('x-reset'); if (rs) rs.onclick = () => { X.pairs[0].B = null; X.prediction = null; paint(); };
+  const drop = kind => { J.retract(`pair:${kind}`); X.pairs = X.pairs.filter(p => p.kind !== kind); X.view = 0; X.prediction = null; if (kind === 'repeat') { X.cite = {}; X.why = null; X.air = {}; } paint(); };
+  const rs = $('x-reset'); if (rs) rs.onclick = () => { J.retract('pair:first'); X.pairs[0].B = null; X.prediction = null; paint(); };
   const rd = $('x-redo'); if (rd) rd.onclick = () => drop('repeat');
   const ru = $('x-redoUnseen'); if (ru) ru.onclick = () => drop('unseen');
-  const rr = $('x-restart'); if (rr) rr.onclick = () => { Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {}, runnerL: GUIDED_L }); paint(); };
+  const rr = $('x-restart'); if (rr) rr.onclick = () => { J = new Protocol(); Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {}, runnerL: GUIDED_L }); paint(); };
 }
 
 export function initShaft() {
@@ -319,7 +324,7 @@ export function initShaft() {
   document.querySelectorAll('[data-xpth]').forEach(b => b.onclick = () => { X.pth = b.dataset.xpth; document.querySelectorAll('[data-xpth]').forEach(c => c.setAttribute('aria-checked', String(c === b))); drawPTheta(); });
   new MutationObserver(() => paint()).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
   paint();
-  window.__shaft = { X, setMaxCycles: n => { X.maxCycles = n; } };   // used by browser tests
+  window.__shaft = { X, protocol: () => J, setMaxCycles: n => { X.maxCycles = n; } };   // used by browser tests
   return {
     // When the experiment owns the clock, the 3D cutaway follows its crank angle.
     tick(dt, moduleOpen) {
