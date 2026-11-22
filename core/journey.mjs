@@ -9,6 +9,12 @@
 //     ledger   core/ledger.mjs openLedger()                         store  core/project.mjs openStore(spec.bench.domain)
 //     nonce    integer that makes this learner's items fresh       state  a saved runner.state to resume
 //   runner.state is plain JSON (save it anywhere); runner.view() describes the one thing to show now.
+// A spec built from the learner's own work (core/open-loop.mjs) may also give:
+//   anchor.project       an existing project id in the store: Revision 1 is a run of its current setup on that project
+//   stuck.choose         { options: [{ id, prompt, unit }], min, max }: the learner picks what to predict (choose(ids));
+//                        stuck.predictions and return.predictions are then functions (picked ids) → [Prediction]
+//   target(ctx)          a function ({ scored, picked, setup }) → competency, called once the stuck round ends
+//   defend(setup, outputs, { from, picked, adapter })   the third argument is new; old specs ignore it
 import * as P from './project.mjs';
 import { checkResponse, checkNumber, readNumber, within, describeStatus } from './ledger.mjs';
 import { diagnose, DIAGNOSIS_TEXT } from './diagnostic.mjs';
@@ -28,10 +34,19 @@ export function createRunner(spec, deps, saved) {
   const { adapter, graph, items, ledger, store } = deps;
   if (!spec?.id || !spec.target) throw new JourneyError('a journey needs an id and a target');
   if (adapter.domain !== spec.bench?.domain) throw new JourneyError(`journey bench domain ${spec.bench?.domain} does not match the adapter (${adapter.domain})`);
-  if (!graph.has(spec.target)) throw new JourneyError(`unknown target competency ${spec.target}`);
+  if (typeof spec.target !== 'function' && !graph.has(spec.target)) throw new JourneyError(`unknown target competency ${spec.target}`);
   if (saved && saved.journey !== spec.id) throw new JourneyError('saved state belongs to another journey');
   const S = saved ? clone(saved) : { v: 1, journey: spec.id, phase: 'brief', nonce: (deps.nonce ?? 1) >>> 0, counter: 0, message: null };
-  const target = spec.target;
+  let target = typeof spec.target === 'function' ? S.target ?? null : spec.target;
+  const choose = spec.stuck?.choose ?? null;
+  const predictionsOf = list => (typeof list === 'function' ? (S.stuck?.picked ? list([...S.stuck.picked]) : []) : list);
+  // a target chosen from the stuck round (the output missed most, say) is fixed once and kept in the state
+  function chooseTarget() {
+    if (target) return;
+    const run = runOf(needProject(), S.r1), c = spec.target({ scored: clone(S.stuck.scored ?? null), picked: [...(S.stuck.picked ?? [])], setup: clone(run.setup) });
+    if (!graph.has(c)) throw new JourneyError(`unknown target competency ${c}`);
+    target = S.target = c;
+  }
 
   // ---------- helpers ----------
   const project = () => { store.reload(); return S.projectId ? store.get(S.projectId) : null; };
@@ -178,33 +193,49 @@ export function createRunner(spec, deps, saved) {
   const actions = {
     start() {
       if (S.phase !== 'brief') throw new JourneyError('already started');
-      const p = P.createProject({ domain: adapter.domain, name: spec.title, setup: spec.anchor.setup, origin: `journey:${spec.id}` });
+      let p;
+      if (spec.anchor.project != null) {                // the learner's own project: Revision 1 is a run of its current setup
+        store.reload(); p = store.get(spec.anchor.project);
+        if (!p) throw new JourneyError('Your project is no longer in this browser. Open it on the bench again.');
+        if (p.domain !== adapter.domain) throw new JourneyError(`this project belongs to ${p.domain}, not ${adapter.domain}`);
+      } else p = P.createProject({ domain: adapter.domain, name: spec.title, setup: spec.anchor.setup, origin: `journey:${spec.id}` });
       const rev = spec.anchor.revision ?? 'Revision 1';
       const run = P.saveRun(p, adapter, `${rev} · starting design`);
       store.put(p); store.open(p.id);
-      Object.assign(S, { projectId: p.id, r1: run.id, r2: null, revisionLabels: [rev, /\d+$/.test(rev) ? rev.replace(/\d+$/, n => String(+n + 1)) : `${rev} (revised)`], stuck: { locked: false, values: null, scored: null, outcome: null },
+      Object.assign(S, { projectId: p.id, r1: run.id, r2: null, revisionLabels: [rev, /\d+$/.test(rev) ? rev.replace(/\d+$/, n => String(+n + 1)) : `${rev} (revised)`], stuck: { locked: false, values: null, scored: null, outcome: null, picked: choose?.picked ? [...choose.picked] : null },
         diag: { answers: [], result: null }, trail: { taught: [] }, ret: { rounds: [], locked: null }, decision: null, defend: null });
       go('stuck');
     },
+    choose(ids) {                                    // pick the outputs to predict (only when the spec offers a choice)
+      if (S.phase !== 'stuck' || !choose || S.stuck.locked) throw new JourneyError('not now');
+      const known = new Set(choose.options.map(o => o.id)), picked = [...new Set((ids || []).filter(id => known.has(id)))];
+      const min = choose.min ?? 1, max = choose.max ?? choose.options.length;
+      if (picked.length < min || picked.length > max) return { ok: false, errors: { pick: min === max ? `Pick ${min}.` : `Pick ${min} to ${max}.` } };
+      S.stuck.picked = picked; S.stuck.values = null; return { ok: true };
+    },
     lockStuck(values) {
       if (S.phase !== 'stuck' || S.stuck.locked) throw new JourneyError('nothing to lock');
-      const r = readPredictions(spec.stuck.predictions, values);
+      if (choose && !S.stuck.picked?.length) throw new JourneyError('Pick what you will predict first.');
+      const r = readPredictions(predictionsOf(spec.stuck.predictions), values);
       if (!r.ok) return { ok: false, errors: r.errors };
       S.stuck.values = r.out; S.stuck.locked = true; return { ok: true };
     },
     runStuck() {
       if (S.phase !== 'stuck' || !S.stuck.locked || S.stuck.scored) throw new JourneyError('lock your predictions first');
       const run = runOf(needProject(), S.r1), res = evaluate(run.setup);
-      S.stuck.scored = score(spec.stuck.predictions, S.stuck.values, run.setup, res.outputs);
+      S.stuck.scored = score(predictionsOf(spec.stuck.predictions), S.stuck.values, run.setup, res.outputs);
       S.stuck.outcome = S.stuck.scored.every(s => s.result === 'correct') ? 'held' : 'missed';
     },
     stuck() {                                        // "I'm stuck", or continue after a miss
       if (S.phase !== 'stuck') throw new JourneyError('not now');
+      if (choose && !S.stuck.picked?.length) throw new JourneyError('Pick what you will predict first.');
+      chooseTarget();
       if (!S.stuck.outcome) S.stuck.outcome = 'stuck';
       go('diagnose'); S.diag = { answers: [], result: null }; nextDiagnosticItem();
     },
     skipToDesign() {                                 // predictions held: straight back to the design
       if (S.phase !== 'stuck' || S.stuck.outcome !== 'held') throw new JourneyError('not now');
+      chooseTarget();
       S.trail.skipped = true; go('return');
     },
     answer, hint, showSolution, next,
@@ -212,7 +243,7 @@ export function createRunner(spec, deps, saved) {
     toDesign() { if (S.phase !== 'check' || S.check.stage !== 'result') throw new JourneyError('not now'); S.recheck = false; go('return'); },
     lockReturn(values) {
       if (S.phase !== 'return') throw new JourneyError('not now');
-      const r = readPredictions(spec.return.predictions, values);
+      const r = readPredictions(predictionsOf(spec.return.predictions), values);
       if (!r.ok) return { ok: false, errors: r.errors };
       S.ret.locked = { values: r.out, setup: clone(needProject().setup) }; return { ok: true };
     },
@@ -222,7 +253,7 @@ export function createRunner(spec, deps, saved) {
       if (JSON.stringify(p.setup) !== JSON.stringify(S.ret.locked.setup)) { S.ret.locked = null; throw new JourneyError('Your design changed after you locked: predict again for this design.'); }
       const run = P.saveRun(p, adapter, `Prediction run ${S.ret.rounds.length + 1}`);
       store.put(p);
-      S.ret.rounds.push({ run: run.id, setup: clone(run.setup), scored: score(spec.return.predictions, S.ret.locked.values, run.setup, run.outputs) });
+      S.ret.rounds.push({ run: run.id, setup: clone(run.setup), scored: score(predictionsOf(spec.return.predictions), S.ret.locked.values, run.setup, run.outputs) });
       S.ret.locked = null;
     },
     saveRevision() {                                  // the current design, only if it was predicted and run
@@ -255,7 +286,7 @@ export function createRunner(spec, deps, saved) {
       if (!runs.length) errors.runs = 'Pick the runs that show it.';
       if (Object.keys(errors).length) return { ok: false, errors };
       S.decision = { claim: String(claim).trim(), runs: [...new Set(runs)], rejected: (Array.isArray(rejected) ? rejected : String(rejected).split('\n')).map(t => String(t).trim()).filter(Boolean) };
-      const r2 = runOf(p, S.r2), qs = typeof spec.defend === 'function' ? spec.defend(clone(r2.setup), clone(r2.outputs)) : [];
+      const r2 = runOf(p, S.r2), qs = typeof spec.defend === 'function' ? spec.defend(clone(r2.setup), clone(r2.outputs), { from: clone(runOf(p, S.r1).setup), picked: [...(S.stuck.picked ?? [])], adapter }) : [];
       S.defend = { questions: qs.map(q => {
         const patched = applyPatch(r2.setup, q.change), r = adapter.evaluate(clone(patched));
         const out = r.ok ? readOutput(r.outputs, q.read) : null;
@@ -290,11 +321,12 @@ export function createRunner(spec, deps, saved) {
   }
   const titleOf = c => (graph.has(c) ? graph.node(c).title : c);
   function view() {
-    const base = { phase: S.phase, phases: PHASES, titles: PHASE_TITLES, journey: { id: spec.id, title: spec.title, course: spec.course, semester: spec.semester }, message: S.message, target: { id: target, title: titleOf(target) } };
+    const base = { phase: S.phase, phases: PHASES, titles: PHASE_TITLES, journey: { id: spec.id, title: spec.title, course: spec.course, semester: spec.semester }, message: S.message, target: target ? { id: target, title: titleOf(target) } : null };
     const p = S.projectId ? project() : null;
     switch (S.phase) {
-      case 'brief': return { ...base, brief: spec.brief, setup: clone(spec.anchor.setup), revision: spec.anchor.revision ?? 'Revision 1', bench: spec.bench.page };
-      case 'stuck': return { ...base, predictions: spec.stuck.predictions.map(x => ({ id: x.id, prompt: x.prompt, unit: x.unit ?? '' })), locked: S.stuck.locked, values: S.stuck.values, scored: S.stuck.scored, outcome: S.stuck.outcome, setup: p && runOf(p, S.r1)?.setup, bench: spec.bench.page };
+      case 'brief': return { ...base, brief: spec.brief, setup: clone(spec.anchor.setup), revision: spec.anchor.revision ?? 'Revision 1', bench: spec.bench.page, existing: spec.anchor.project != null };
+      case 'stuck': return { ...base, choose: choose ? { options: clone(choose.options), min: choose.min ?? 1, max: choose.max ?? choose.options.length, picked: S.stuck.picked ? [...S.stuck.picked] : null } : null,
+        predictions: predictionsOf(spec.stuck.predictions).map(x => ({ id: x.id, prompt: x.prompt, unit: x.unit ?? '' })), locked: S.stuck.locked, values: S.stuck.values, scored: S.stuck.scored, outcome: S.stuck.outcome, setup: p && runOf(p, S.r1)?.setup, bench: spec.bench.page };
       case 'diagnose': {
         const d = S.diag.result;
         return { ...base, item: itemView(), asked: S.diag.answers.length, result: d && { ...d, text: DIAGNOSIS_TEXT[d.result], gaps: d.gaps.map(c => ({ id: c, title: titleOf(c) })) } };
@@ -312,7 +344,7 @@ export function createRunner(spec, deps, saved) {
       case 'return': {
         const r1 = p && runOf(p, S.r1);
         return { ...base, missing: !p, bench: spec.bench.page, setup: p ? clone(p.setup) : null, r1: r1 ? clone(r1.setup) : null, changed: p && r1 ? P.setupDiff(r1.setup, p.setup) : [],
-          predictions: spec.return.predictions.map(x => ({ id: x.id, prompt: x.prompt, unit: x.unit ?? '' })), locked: S.ret.locked ? { values: S.ret.locked.values } : null,
+          predictions: predictionsOf(spec.return.predictions).map(x => ({ id: x.id, prompt: x.prompt, unit: x.unit ?? '' })), locked: S.ret.locked ? { values: S.ret.locked.values } : null,
           lockedStale: !!(S.ret.locked && p && JSON.stringify(p.setup) !== JSON.stringify(S.ret.locked.setup)), rounds: clone(S.ret.rounds),
           ...(() => { const last = lastTested(p), cur = currentTested(p);
             return { lastTested: last ? { run: last.run, setup: clone(last.setup) } : null, currentTested: cur ? cur.run : null, sinceTested: last && p ? P.setupDiff(last.setup, p.setup) : [] }; })() };
@@ -328,7 +360,7 @@ export function createRunner(spec, deps, saved) {
   function portfolio() {
     const p = needProject(), r1 = runOf(p, S.r1), r2 = S.r2 ? runOf(p, S.r2) : null;
     const events = ledger.events().filter(e => e.journey === spec.id);
-    const trail = [...new Set([target, ...(S.trail.taught || []), ...(S.diag?.answers || []).map(a => a.competency)])];
+    const trail = [...new Set([target, ...(S.trail.taught || []), ...(S.diag?.answers || []).map(a => a.competency)])].filter(Boolean);
     const dec = S.decisionId ? p.decisions.find(d => d.id === S.decisionId) : null;
     return {
       format: 'openpath.portfolio', version: 1, learner: ledger.learner,

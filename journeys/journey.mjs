@@ -2,9 +2,13 @@
 // and passes the learner's input back; no journey is named here.
 //   journey.html?j=<id>         a journey from the registry (content/journeys/index.mjs)
 //   journey.html?src=<path.mjs>  a journey module by relative path (tests and authoring)
+//   journey.html?open=<domain>&project=<id>   the learner's own project on an open bench (docs/OPEN_LOOP.md): the bench
+//                                is found by domain in content/benches.mjs (or &learn=<path.mjs>, tests and authoring)
 import { JOURNEYS } from '../content/journeys/index.mjs';
-import { listJourneys, loadJourney } from './load.mjs';
+import { BENCHES } from '../content/benches.mjs';
+import { listJourneys, loadJourney, loadContent, listBenches } from './load.mjs';
 import { createRunner } from '../core/journey.mjs';
+import { openSpec } from '../core/open-loop.mjs';
 import { openLedger, describeStatus } from '../core/ledger.mjs';
 import * as P from '../core/project.mjs';
 
@@ -12,8 +16,23 @@ const $ = id => document.getElementById(id);
 const app = $('app');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const num = v => typeof v !== 'number' || !Number.isFinite(v) ? esc(v ?? '–') : Math.abs(v) >= 1000 ? v.toFixed(0) : Math.abs(v) >= 100 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(3) : v === 0 ? '0' : v.toPrecision(3);
-const fail = text => { app.innerHTML = `<div class="card"><h2>This journey cannot open</h2><p class="msg">${esc(text)}</p><a class="button" href="./index.html">All journeys</a></div>`; document.body.dataset.ready = 'error'; };
+const fail = (text, { title = 'This journey cannot open', bench = null } = {}) => { app.innerHTML = `<div class="card" id="cannot-open"><h2>${esc(title)}</h2><p class="msg">${esc(text)}</p><div class="actions">${bench ? `<a class="button" id="bench" href="${esc(bench)}">Back to my design on the bench</a>` : ''}<a class="button" href="./index.html">All journeys</a></div></div>`; document.body.dataset.ready = 'error'; };
+class OpenError extends Error { constructor(text, opts) { super(text); this.opts = opts; } }
+const modulePath = p => { if (!/^[\w./-]+\.mjs$/.test(p) || p.includes('//')) throw new Error('a module path must be a relative path to a .mjs module'); return new URL(p, location.href).href; };
 
+// The learner's own project on an open bench: the spec is built from the bench's LEARN and the project.
+async function openOwn(q) {
+  const domain = q.get('open'), id = q.get('project'), src = q.get('learn');
+  const learn = src ? (await import(modulePath(src))).LEARN : (await listBenches(BENCHES)).find(l => l.domain === domain);
+  if (!learn || learn.domain !== domain) throw new OpenError('Predict and learn is not ready for this bench yet. Your project is safe on the bench; the worked examples on the journeys page show how the loop goes.', { title: 'Not ready for this bench yet' });
+  const store = P.openStore(domain), project = id ? store.get(id) : store.current();
+  if (!project) throw new OpenError('This project is not saved in this browser. Open it on the bench, then press Predict and learn again.', { title: 'Project not found', bench: learn.page });
+  const [adapter, content] = await Promise.all([learn.adapter(), loadContent({ content: learn.content })]);
+  const r = adapter.evaluate(JSON.parse(JSON.stringify(project.setup)));
+  if (!r.ok) throw new OpenError(`Your design cannot be run yet: ${r.reason} Change it on the bench, then come back.`, { title: 'Your design cannot run yet', bench: learn.page });
+  const spec = openSpec({ learn, project, graph: content.graph, items: content.items, results: r.outputs });
+  return { spec, loaded: { adapter, ...content } };
+}
 async function findSpec() {
   const q = new URLSearchParams(location.search), src = q.get('src'), id = q.get('j');
   if (src) {
@@ -131,13 +150,18 @@ const benchLink = v => (v.bench ? `<div class="card"><p class="quiet">Your desig
 const PHASE = {
   brief: v => `<div><p class="eyebrow">${esc([v.journey.course, v.journey.semester ? `Semester ${v.journey.semester}` : ''].filter(Boolean).join(' · '))}</p><h1>${esc(v.journey.title)}</h1></div>
     <div class="card"><h2>The task</h2><p class="lead">${esc(v.brief)}</p></div>
-    <div class="card"><h2>Starting design</h2>${setupList(v.setup)}<p class="quiet">Starting the journey saves this design as ${esc(v.revision)} on a new project in the bench. You will come back to it.</p>
+    <div class="card"><h2>${v.existing ? 'Your design as it stands' : 'Starting design'}</h2>${setupList(v.setup)}<p class="quiet">${v.existing
+      ? `Starting saves this design as ${esc(v.revision)}, a run on your own project “${esc(v.journey.course)}”. Nothing else in the project changes.`
+      : `Starting the journey saves this design as ${esc(v.revision)} on a new project in the bench. You will come back to it.`}</p>
       <div class="actions"><button type="button" class="primary" id="start">Start · save ${esc(v.revision)}</button></div></div>`,
-  stuck: v => `<div class="card"><h2>Predict before you run</h2><p class="quiet">Your predictions lock before the bench runs. A bare number is read in the unit shown.</p>
+  stuck: v => `${v.choose && !v.locked ? `<div class="card" id="pick-card"><h2>What will you predict?</h2><p class="quiet">Pick ${v.choose.min === v.choose.max ? v.choose.max : `${v.choose.min} to ${v.choose.max}`} of what your design does. You predict them before the bench runs.</p>
+      <fieldset class="checks" id="pick"><legend class="field">Outputs of your design</legend>${v.choose.options.map(o => `<label><input type="checkbox" value="${esc(o.id)}" ${v.choose.picked?.includes(o.id) ? 'checked' : ''}> ${esc(o.prompt)}${o.unit ? ` (${esc(o.unit)})` : ''}</label>`).join('')}${err('pick', flash?.errors)}</fieldset>
+      <div class="actions"><button type="button" class="${v.choose.picked ? '' : 'primary'}" id="pick-go">${v.choose.picked ? 'Change what I predict' : 'Predict these'}</button></div></div>` : ''}
+    ${v.choose && !v.choose.picked ? message() : `<div class="card"><h2>Predict before you run</h2><p class="quiet">Your predictions lock before the bench runs. A bare number is read in the unit shown.</p>
       ${v.predictions.map(p => numberField(p.id, p.prompt, p.unit, { value: v.values?.[p.id] ?? '', disabled: v.locked, errors: flash?.errors })).join('')}
       ${message()}
       ${!v.locked ? `<div class="actions"><button type="button" class="primary" id="lock">Lock predictions</button><button type="button" id="stuck">I’m stuck</button></div>`
-        : !v.scored ? `<div class="actions"><button type="button" class="primary" id="run">Run the bench</button></div>` : ''}</div>
+        : !v.scored ? `<div class="actions"><button type="button" class="primary" id="run">Run the bench</button></div>` : ''}</div>`}
     ${v.scored ? `<div class="card">${scoredTable(v.scored, 'Your prediction against the engine')}
       ${v.outcome === 'missed' ? `<p>A miss is useful: it shows where to look. A few short questions will find what is blocking you.</p><div class="actions"><button type="button" class="primary" id="stuck">Find what is blocking me</button></div>`
         : `<p>Your predictions held.</p><div class="actions"><button type="button" class="primary" id="skip">Back to my design</button><button type="button" id="stuck">I’m still stuck</button></div>`}</div>` : ''}
@@ -203,7 +227,7 @@ const PHASE = {
 const download = (name, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; a.click(); URL.revokeObjectURL(a.href); };
 const WIRE = {
   brief: () => on('#start', act(() => runner.start())),
-  stuck: () => { on('#lock', act(() => runner.lockStuck(fields()))); on('#run', act(() => runner.runStuck())); on('#stuck', act(() => runner.stuck())); on('#skip', act(() => runner.skipToDesign())); },
+  stuck: () => { on('#pick-go', act(() => runner.choose([...app.querySelectorAll('#pick input:checked')].map(c => c.value)))); on('#lock', act(() => runner.lockStuck(fields()))); on('#run', act(() => runner.runStuck())); on('#stuck', act(() => runner.stuck())); on('#skip', act(() => runner.skipToDesign())); },
   check: () => { on('#reteach', act(() => runner.reteach())); on('#design', act(() => runner.toDesign())); },
   return: () => { on('#lock', act(() => runner.lockReturn(fields()))); on('#run', act(() => runner.runReturn())); on('#save', act(() => runner.saveRevision())); on('#reload', act(() => {}));
     on('#save-tested', act(() => runner.saveTestedRevision()));
@@ -218,8 +242,10 @@ const WIRE = {
 };
 // start once everything above and below is defined
 try {
-  spec = await findSpec();
-  const loaded = await loadJourney(spec);
+  const q = new URLSearchParams(location.search);
+  let loaded;
+  if (q.get('open')) ({ spec, loaded } = await openOwn(q));
+  else { spec = await findSpec(); loaded = await loadJourney(spec); }
   deps = { adapter: loaded.adapter, graph: loaded.graph, items: loaded.items, ledger: openLedger(), store: P.openStore(spec.bench.domain) };
   if (loaded.skipped.length || loaded.problems.length) console.warn('journey content', loaded.skipped, loaded.problems);
   key = `openpath.journey.${spec.id}`;
@@ -234,5 +260,5 @@ try {
   addEventListener('pageshow', e => { if (e.persisted) render(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') render(); });
   window.__journey = { state: () => runner.state, items: deps.items, adapter: deps.adapter, ledger: deps.ledger };
-} catch (e) { fail(e.message); }
+} catch (e) { fail(e.message, e.opts); }
 document.body.dataset.ready = document.body.dataset.ready || 'true';

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fixture stand · OpenPath Labs (test)</title>
+  <link rel="stylesheet" href="../../../core/workbench.css">
+  <style>main{max-width:720px;margin:0 auto;padding:14px;display:grid;gap:14px}label{display:grid;gap:4px;font-weight:600}input,select{min-height:44px;font-size:1rem}</style>
+</head>
+<body>
+<!-- Test fixture bench: a minimal open bench with visible controls and the shared Experiments panel. Not product. -->
+<main>
+  <h1>Fixture stand</h1>
+  <section class="panel" id="controls">
+    <label>Material <select id="material"><option value="aluminium">aluminium</option><option value="steel">steel</option></select></label>
+    <label>Width b (mm) <input id="b" inputmode="decimal"></label>
+    <label>Depth h (mm) <input id="h" inputmode="decimal"></label>
+    <p id="out" role="status"></p>
+  </section>
+  <section class="panel" id="experiments"></section>
+</main>
+<script type="module" src="./bench.mjs"></script>
+</body>
+</html>

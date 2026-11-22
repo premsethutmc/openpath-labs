@@ -3,13 +3,20 @@
 //   notebook(el, { adapter, getSetup, applySetup, storage? }) → { sync(), render(), project() }
 //   getSetup()      the bench's current setup (plain data)
 //   applySetup(s)   load a setup into the bench's editor (opening a project, a fork, an import)
+//   learn           optional: path of a LEARN module for the learning page (?learn=, tests and authoring only);
+//                   normally the page finds the bench by its domain in content/benches.mjs
+// "Predict and learn" opens the learning loop on the open project (docs/OPEN_LOOP.md). It is not shown when the bench
+// keeps its projects outside this browser's store (a scratch bench with its own storage), because the page reads that store.
 import * as P from './project.mjs';
+const LEARN_PAGE = new URL('../journeys/journey.html', import.meta.url).pathname;
+export const learnHref = (domain, id, learn) => `${LEARN_PAGE}?open=${encodeURIComponent(domain)}&project=${encodeURIComponent(id)}${learn ? `&learn=${encodeURIComponent(learn)}` : ''}`;
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const num = v => typeof v !== 'number' ? (v ?? '–') : !Number.isFinite(v) ? '–' : Math.abs(v) >= 100 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(3) : v === 0 ? '0' : v.toPrecision(3);
 const VERDICT = { pass: 'yes', fail: 'no', 'cannot-assess': 'cannot assess', 'not-applicable': 'n/a' };
 
-export function notebook(el, { adapter, getSetup, applySetup, storage }) {
+export function notebook(el, { adapter, getSetup, applySetup, storage, learn }) {
+  const shared = !storage || storage === globalThis.localStorage;
   const store = P.openStore(adapter.domain, storage);
   let project = store.current();
   if (!project) { project = store.put(P.createProject({ domain: adapter.domain, name: `${adapter.title} 1`, setup: getSetup() })); store.open(project.id); }
@@ -34,6 +41,7 @@ export function notebook(el, { adapter, getSetup, applySetup, storage }) {
       <div class="row"><label class="nb-field grow">Project <select class="nb-open" aria-label="Open project">${list.map(p => `<option value="${p.id}" ${p.id === project.id ? 'selected' : ''}>${esc(p.name)} · ${p.runs} run${p.runs === 1 ? '' : 's'}</option>`).join('')}</select></label></div>
       <div class="row"><input class="nb-rename grow" aria-label="Project name" value="${esc(project.name)}"><button type="button" class="nb-fork">Fork</button><button type="button" class="nb-new">New project</button></div>
       <p class="note">${project.origin === 'scratch' ? 'Started from scratch' : project.origin.startsWith('fork:') ? `Forked from ${esc(project.origin.slice(5))}` : esc(project.origin)} · saved in this browser</p>
+      ${shared && project.id ? `<div class="row"><a class="button nb-learn" style="display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #2c3e4a;font-weight:600;text-decoration:none;color:inherit" href="${esc(learnHref(adapter.domain, project.id, learn))}">Predict and learn</a><span class="note">Predict what your design will do, learn from the miss, and improve it.</span></div>` : ''}
       <div class="row"><input class="nb-name grow" aria-label="Run name" placeholder="Run name (optional)"><button type="button" class="primary nb-save">Save run</button></div>
       ${msg ? `<p class="msg ${msg.ok ? 'okmsg' : ''}" role="alert">${esc(msg.text)}</p>` : ''}
       <ul class="nb-runs">${runs.map((r, i) => { const rep = P.reproduceRun(r, adapter); return `<li><label><input type="checkbox" data-cmp="${i}" ${sel.includes(i) ? 'checked' : ''}> <b>${esc(r.name)}</b></label>
@@ -43,6 +51,7 @@ export function notebook(el, { adapter, getSetup, applySetup, storage }) {
       ${cmp}
       <div class="row"><button type="button" class="nb-export">Export project</button><label class="nb-import">Import project<input type="file" accept="application/json,.json"></label></div>`;
     const $ = s => el.querySelector(s);
+    if ($('.nb-learn')) $('.nb-learn').onclick = () => sync();
     $('.nb-open').onchange = e => { open(store.get(e.target.value)); msg = null; render(); };
     $('.nb-rename').onchange = e => { project.name = e.target.value.trim() || project.name; store.put(project); render(); };
     $('.nb-fork').onclick = () => { sync(); const f = store.put(P.forkProject(project)); open(f); say(`Forked into “${f.name}”: same setup, no runs yet.`, true); };

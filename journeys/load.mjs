@@ -25,3 +25,9 @@ export async function listJourneys(registry) {
   const mods = await settle(registry);
   return mods.filter(r => r.ok && r.mod?.default?.id).map(r => r.mod.default);
 }
+
+// Open benches (content/benches.mjs): every LEARN descriptor that loads; one that is missing is left out.
+export async function listBenches(registry) {
+  const mods = await settle(registry);
+  return mods.filter(r => r.ok && r.mod?.LEARN?.domain).map(r => r.mod.LEARN);
+}

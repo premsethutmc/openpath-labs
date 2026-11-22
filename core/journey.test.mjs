@@ -197,8 +197,8 @@ test('runner: help on a prerequisite is kept apart from the unaided check on the
 });
 
 test('runner files contain no journey-specific words', () => {
-  const files = ['core/journey.mjs', 'core/ledger.mjs', 'core/diagnostic.mjs', 'core/graph.mjs', ...readdirSync(new URL('../journeys/', import.meta.url)).map(f => `journeys/${f}`)];
-  const words = /support|pipe|moment|mount|statics|fluids/i, hits = [];
+  const files = ['core/journey.mjs', 'core/ledger.mjs', 'core/diagnostic.mjs', 'core/graph.mjs', 'core/open-loop.mjs', ...readdirSync(new URL('../journeys/', import.meta.url)).map(f => `journeys/${f}`)];
+  const words = /support|pipe|moment|mount|statics|fluids|playground|circuit|frame|truss/i, hits = [];
   for (const f of files) readFileSync(new URL(`../${f}`, import.meta.url), 'utf8').split('\n').forEach((line, i) => { if (words.test(line)) hits.push(`${f}:${i + 1}: ${line.trim().slice(0, 80)}`); });
   assert.deepEqual(hits, []);
 });
