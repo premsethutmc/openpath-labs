@@ -106,7 +106,7 @@ test('defence from levers: changed levers go back to Revision 1; with none chang
   const R1 = { ...MINE, design: { ...MINE.design } }, R2 = { ...MINE, design: { material: 'steel', shape: 'rect', b: 35, h: 50 } };
   let qs = defendFrom(LEARN, R2, { from: R1, picked: ['deflection', 'stress'], adapter });
   assert.deepEqual(qs.map(q => [q.read, q.change.design.material, q.change.design.h]), [['deflection', 'aluminium', 50], ['stress', 'steel', 42]]);
-  assert.match(qs[0].prompt, /^What would Dial reading be if the material went back to its Revision 1 value \(aluminium instead of steel\)\?$/);
+  assert.match(qs[0].prompt, /^What would the dial reading be if the material went back to its Revision 1 value \(aluminium instead of steel\)\?$/);
   assert.match(qs[1].prompt, /the depth went back to its Revision 1 value \(42 mm instead of 50 mm\)/);
   // a revert that the bench refuses is left out (R1 outside the envelope: 90 mm deep is not a valid design)
   qs = defendFrom(LEARN, R2, { from: { ...R1, design: { ...R1.design, h: 90 } }, picked: ['stress'], adapter });

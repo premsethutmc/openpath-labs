@@ -57,7 +57,11 @@ export function setPath(setup, path, value) {
 }
 // A lever may carry apply(setup, value) when one change moves more than one path (a new shape brings its own dimensions;
 // the gauges that sat under the machine move with it). applyLever uses it, or sets the path.
-export const applyLever = (setup, lever, value) => (lever.apply ? lever.apply(setup, value) : setPath(setup, lever.path, value));
+// lever is a lever object or a path (the shared LEARN shape is applyLever(setup, path, value)); a path finds its lever.
+export const applyLever = (setup, lever, value) => {
+  if (typeof lever === 'string') lever = levers(setup).find(l => l.path === lever) ?? { path: lever };
+  return lever.apply ? lever.apply(setup, value) : setPath(setup, lever.path, value);
+};
 const valid = s => evaluateReading(s).ok;
 
 export function levers(setup) {
