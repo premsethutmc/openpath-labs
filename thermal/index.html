@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Thermal bench · OpenPath Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="../core/workbench.css">
+  <link rel="stylesheet" href="./thermal.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">‹ Labs</a>
+  <span class="crumb">Workshop · thermal bench: heat transfer</span>
+</header>
+
+<nav class="objects scroll" aria-label="Start from" id="starts"></nav>
+
+<main class="wb">
+  <section class="wb-main">
+    <div class="wb-title"><h1 id="title">Thermal bench</h1><p id="subtitle"></p></div>
+    <div class="instrument"><svg id="path" viewBox="0 0 600 232" role="img" aria-labelledby="path-title"><title id="path-title">The heat path, its temperature profile, thermometers and resistance shares</title></svg></div>
+    <div class="solve" id="status" role="status" aria-live="polite"></div>
+    <ul class="checks" id="checks"></ul>
+    <dl class="readings" id="readings"></dl>
+  </section>
+
+  <section class="side">
+    <nav class="dock" aria-label="Modules"></nav>
+    <section class="module" data-module="build" data-title="Build" id="m-build"></section>
+    <section class="module" data-module="measure" data-title="Measure" id="m-measure"></section>
+    <section class="module" data-module="limits" data-title="Limits" id="m-limits"></section>
+    <section class="module" data-module="explain" data-title="Explain" id="m-explain"></section>
+    <section class="module" data-module="sweep" data-title="Sweep" id="m-sweep"></section>
+    <section class="module" data-module="transient" data-title="Transient" id="m-transient"></section>
+    <section class="module" data-module="learn" data-title="Learn" id="m-learn"></section>
+    <section class="module" data-module="experiments" data-title="Experiments" id="m-experiments"></section>
+  </section>
+</main>
+<script type="module" src="./thermal.mjs"></script>
+</body>
+</html>

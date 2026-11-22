@@ -7,10 +7,10 @@ OpenPath Labs is a workshop, not a set of fixed labs: the learner builds the set
 | Layer | Files | Shared across domains? |
 |---|---|---|
 | Project and evidence record: setup, saved runs (frozen setup + outputs with units and source + verdicts), reproduce, compare, fork, file export/import | `core/project.mjs` | Yes — no physics |
-| Experiments panel (projects, runs, compare, fork, export/import) | `core/notebook.mjs` | Yes — used by the workshop lathe, the fluid line bench, the machine design bench, Force Playground, the mount lab and the Pump House fault lab |
+| Experiments panel (projects, runs, compare, fork, export/import) | `core/notebook.mjs` | Yes — used by the workshop lathe, the fluid line bench, the machine design bench, the thermal bench, Force Playground, the mount lab and the Pump House fault lab |
 | Workbench layout (instrument, readings, one module open) | `core/workbench.mjs`, `core/workbench.css` | Yes |
-| Bench editor + adapter `{ domain, title, evaluate(setup) }` | `circuit/` (fluids), `machine/` (machine design), `playground/` (structures) | No — one per domain |
-| Physics | `engines/hydraulics/line.mjs` (uses `hydraulics.mjs`), `engines/machine/shaft.mjs` (uses `engines/solids/frame.mjs`), `engines/solids/` | No — specific to each domain |
+| Bench editor + adapter `{ domain, title, evaluate(setup) }` | `circuit/` (fluids), `machine/` (machine design), `thermal/` (heat transfer), `playground/` (structures) | No — one per domain |
+| Physics | `engines/hydraulics/line.mjs` (uses `hydraulics.mjs`), `engines/machine/shaft.mjs` (uses `engines/solids/frame.mjs`), `engines/thermal/thermal.mjs`, `engines/solids/` | No — specific to each domain |
 
 An adapter returns `{ ok:false, reason }` for a setup its model does not support; such a setup is explained on screen and cannot be saved as a run. There is no universal solver.
 
@@ -38,6 +38,16 @@ The Experiments panel works the same way: save the current structure as a run, c
 - Generic question tools, no lesson code: **Explain** (what governs, the facts with the computed equation, and the computed one-step changes that help most), **What moves…** (sensitivity of any result to every input, including operating speed, attached masses, Kt and surface finish), **Sweep** (any input over a range against any result, with the best and the worst value — a speed sweep of the whirl shows the resonance peak at the critical speed).
 - Setups saved before stage 2 have no speed: they evaluate exactly as before and their runs still reproduce (fixture test).
 - Not modelled: loads in two planes, axial loads, bearing stiffness and damping, shear deflection, gyroscopic effects and higher modes, variable-amplitude loading, first-cycle yield with Kt.
+
+## Thermal bench (`thermal/`) — heat transfer along one path
+
+- Empty bench or preset (cooling a 20 W device with a fin array, thin hot-water pipe with a PTFE sleeve, cold-room wall), one editor; presets are edit scripts.
+- Geometry: plane wall (area) or pipe (inner radius, length). Start face: a fixed temperature or a heat source (W); ambient temperature.
+- Layers, start to ambient: conduction (14 tabulated materials, Incropera Tables A.1/A.3, or your own k), side-by-side materials in one plane layer, contact resistance, convection at the first or last surface (h entered, or natural convection on a vertical plate or horizontal pipe, forced flow along a plate or across a pipe — air, stated ranges, refused outside them) with optional radiation (linearised h_r, iterated), and a fin array on the outer surface (rectangular or pin fins, insulated or convective tip; efficiency, effectiveness, tip temperature).
+- Measure: thermometers on the start face or any interface (or tap the drawing); explain the drop between two thermometers layer by layer (ΔT = Q·R, the rows add up to the difference of the readings). The drawing shows the temperature profile and each resistance's share of the total.
+- Limits are the learner's: highest start-face temperature, highest outer-surface temperature, most heat flow allowed, least heat flow needed.
+- Same generic question tools as the machine bench: **Explain** (what governs, which resistance limits the heat flow, fin and film facts, the critical insulation radius on pipes with a re-solved check, the computed changes that help most), **What moves…**, **Sweep** (any input against any result; highest and lowest point, peaks flagged). **Transient**: an optional lumped body heating or cooling in the same ambient (refused when Bi > 0.1).
+- Not modelled (explained when attempted): convection between two solid layers, heat sources into a fluid film, fins on pipes (annular), side-by-side layers in a pipe, fins closer than 2 mm (fin-channel flow), internal pipe-flow correlations, film temperatures outside 250–500 K; also 2D/3D conduction, heat generation inside a layer, radiation exchange between surfaces, heat exchangers.
 
 ## Workshop lathe and fit bench (`workshop/`) on the shared record
 
