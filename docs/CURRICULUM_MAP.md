@@ -209,4 +209,4 @@ Run all tests: `node --test --test-concurrency=1 tests/*.test.mjs engines/**/*.t
 | 2026-11-22 | #13 | c3ca460 | Stage 3 started: thermal bench | engines/thermal/thermal.test.mjs, thermal/model.test.mjs, tests/thermal.e2e.mjs |
 
 Totals at c3ca460: 155 unit tests and 37 browser tests passing.
-| 2026-11-22 | draft (plan/four-year-journey) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps. No code | Docs only; tests unchanged |
+| 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps. No code | Docs only; tests unchanged |
