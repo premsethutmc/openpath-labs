@@ -1,6 +1,6 @@
 # Mechanical engineering curriculum map
 
-*Blueprint for OpenPath Labs. Map updated 22 Nov 2026 (main after PRs #2–#14).*
+*Blueprint for OpenPath Labs — the single source of truth. Every merge adds a line to the change log at the end, with the PR, the merge commit and how to verify it. Map updated 22 Nov 2026 (main after PRs #2–#14).*
 
 ## Goal
 
@@ -111,3 +111,22 @@ Not yet: 3D CAD or 3D finite-element stress analysis, a general multi-physics so
 
 - Anna University B.E. Mechanical Engineering, Regulations 2021, curriculum and syllabi (non-autonomous affiliated colleges), as published by [K.G. Institute of Technology](https://www.kgkite.ac.in/wp-content/uploads/2023/12/B.E.Mechanical-Engineering-R2021-Syllabus.pdf).
 - Shared doc version: https://claude.ai/artifact/1PY9sJa947eweL8eCmvK4Z
+
+## Change log (verify any line with `git show <commit>` and the tests named)
+
+Run all tests: `node --test --test-concurrency=1 tests/*.test.mjs engines/**/*.test.mjs core/*.test.mjs */*.test.mjs` and `PLAYWRIGHT_BROWSERS_PATH=<browsers> node --test --test-concurrency=1 tests/*.e2e.mjs`.
+
+| Date | PR | Merge commit | What changed | Proof (tests) |
+|---|---|---|---|---|
+| 2026-11-21 | #7 | dee5133 | Pump set drive check: two verdicts (flow, motor); cavitation → cannot assess | pumpset/model.test.mjs, tests/pumpset.e2e.mjs |
+| 2026-11-21 | #8 | 90e9fc3 | Shared project/evidence record; fluid line bench; Force Playground on the record | core/project.test.mjs, engines/hydraulics/line.test.mjs, circuit/model.test.mjs, tests/workshop-open.e2e.mjs |
+| 2026-11-21 | #9 | d619c60 | Machine design bench (shafts): learner limits, Explain, sensitivity, sweep | engines/machine/shaft.test.mjs, machine/model.test.mjs, tests/machine.e2e.mjs |
+| 2026-11-21 | #10 | 3cfc1ae | Workshop lathe and fits on the shared record (includes #6) | workshop/model.test.mjs, tests/workshop.e2e.mjs |
+| 2026-11-21 | #11 | 611701d | Whole-reading verification incl. uncertainty; old attempts shown as history | workshop/model.test.mjs, tests/workshop-legacy.e2e.mjs |
+| 2026-11-22 | #2 | 264302e | Engine World: signed airflow at the intake valve | tests/shaft.e2e.mjs |
+| 2026-11-22 | #12 | 245cf4a | Fault lab and mount lab on the shared record (includes #3, #4); protocol replaces journal | pumps/faults.test.mjs, mount/model.test.mjs, core/protocol.test.mjs, tests/pumpfault.e2e.mjs, tests/mount.e2e.mjs |
+| 2026-11-22 | #14 | 670a1bf | Stage 2: fatigue, bearing life, critical speed, unbalance on the shaft bench | engines/machine/*.test.mjs, machine/model.test.mjs, tests/machine-dynamics.e2e.mjs |
+| 2026-11-22 | #13 | c3ca460 | Stage 3 started: thermal bench | engines/thermal/thermal.test.mjs, thermal/model.test.mjs, tests/thermal.e2e.mjs |
+
+Totals at c3ca460: 155 unit tests and 37 browser tests passing.
+
