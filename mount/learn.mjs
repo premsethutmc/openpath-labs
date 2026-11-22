@@ -58,9 +58,10 @@ export function setPath(setup, path, value) {
 // A lever may carry apply(setup, value) when one change moves more than one path (a new shape brings its own dimensions;
 // the gauges that sat under the machine move with it). applyLever uses it, or sets the path.
 // lever is a lever object or a path (the shared LEARN shape is applyLever(setup, path, value)); a path finds its lever.
-export const applyLever = (setup, lever, value) => {
+// ctx ({ from }, optional): the Revision 1 setup, when a defence question puts a lever back to its Revision 1 value.
+export const applyLever = (setup, lever, value, ctx) => {
   if (typeof lever === 'string') lever = levers(setup).find(l => l.path === lever) ?? { path: lever };
-  return lever.apply ? lever.apply(setup, value) : setPath(setup, lever.path, value);
+  return lever.apply ? lever.apply(setup, value, ctx) : setPath(setup, lever.path, value);
 };
 const valid = s => evaluateReading(s).ok;
 
@@ -72,7 +73,10 @@ export function levers(setup) {
   };
   const num = (lever, lo, hi, step) => { if (hi > lo) out.push({ ...lever, kind: 'number', min: lo, max: hi, step }); };
   opt({ path: 'design.material', label: 'Material' }, Object.keys(MATERIALS), m => MATERIALS[m].name);
-  opt({ path: 'design.shape', label: 'Section shape', apply: (s, v) => setPath(s, 'design', v === s.design.shape ? s.design : { material: s.design.material, shape: v, ...DEFAULT_DIMS[v] }) }, Object.keys(DIMS), v => SECTION[v]);
+  // a new shape brings the bench's default dimensions, as the Design tab does; put back to Revision 1's shape, it brings
+  // back Revision 1's own dimensions (the section the student had), so a defence question about it can be worked by hand
+  const shapeDims = (s, v, ctx) => (ctx?.from?.design?.shape === v ? Object.fromEntries(DIMS[v].map(([k]) => [k, ctx.from.design[k]])) : DEFAULT_DIMS[v]);
+  opt({ path: 'design.shape', label: 'Section shape', apply: (s, v, ctx) => setPath(s, 'design', v === s.design.shape ? s.design : { material: s.design.material, shape: v, ...shapeDims(s, v, ctx) }) }, Object.keys(DIMS), v => SECTION[v]);
   for (const [k, label, lo, hi] of DIMS[d.shape] ?? []) {
     // keep only values the bench accepts (walls thinner than the section, inside the envelope)
     const ok = v => valid(setPath(setup, `design.${k}`, v)), vals = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).filter(ok);

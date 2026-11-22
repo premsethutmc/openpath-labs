@@ -148,38 +148,41 @@ function paintSplit() {
     $('ss-hidden').textContent = $('ss-chart-hidden').textContent = 'This design is outside the model’s limits (see Design), so it is not evaluated.'; return;
   }
   const r = splitReadout(S.design, S.mount, S.bench ?? undefined), m = MATERIALS[S.design.material], b = B(), T = tracks(), yw = S.bench ? strengthWord(m) : 'yield';
-  $('ss-cond').textContent = `Model: ${b.load} N at ${S.mount} mm, both judged at the mount. Log bars: deflection ${T.defl.join('–')} mm, stress ${T.stress.join('–')} MPa.`;
+  $('ss-cond').textContent = `Model: ${b.load} N at ${S.mount} mm, ${r.stressAt === S.mount ? 'both judged at the mount' : `deflection judged at the mount, stress where the bending moment is largest (${r.stressAt} mm from the left end)`}. Log bars: deflection ${T.defl.join('–')} mm, stress ${T.stress.join('–')} MPa.`;
   const dv = `${f(r.deflection, 3)} mm vs ${b.limits.deflection} mm limit`, sv = `${f(r.stress, 1)} MPa vs ${f(r.allowable, 0)} MPa (${yw} ÷ ${b.limits.yieldFactor})`;
   track($('ss-defl-bar'), r.deflection, T.defl, r.stiff, `${dv}, ${r.stiff ? 'pass' : 'fail'}`, [[b.limits.deflection, 'limit']]);
-  track($('ss-stress-bar'), r.stress, T.stress, r.strong, `${sv}, ${r.strong ? 'pass' : 'fail'}`, [[r.allowable, 'allow'], [r.yield, 'yield']]);
+  track($('ss-stress-bar'), r.stress, T.stress, r.strong, `${sv}, ${r.strong ? 'pass' : 'fail'}`, [[r.allowable, 'allow'], [r.yield, yw === 'yield' ? 'yield' : 'strength']]);
   $('ss-defl-val').textContent = dv; $('ss-stress-val').textContent = sv;
   for (const [id, ok] of [['ss-defl-verdict', r.stiff], ['ss-stress-verdict', r.strong]]) { $(id).textContent = ok ? 'PASS' : 'FAIL'; $(id).className = ok ? 'ok' : 'no'; }
   $('ss-ei').textContent = `E·I = ${kNm2(r.EI)}`; $('ss-z').textContent = `I/c = ${mm3(r.Z)}`;
   $('ss-fos').innerHTML = `Factor of safety on ${yw} <b id="ss-fos-val">${f(r.fos, 2)}</b> = ${r.yield} ÷ ${f(r.stress, 1)} MPa (needs ≥ ${b.limits.yieldFactor})${r.beyondYield ? ` · <b class="no">below 1: past ${yw}, not modelled</b>` : ''}`;
-  paintStressStrain({ ...m, yield: strengthNow(S.design) });
+  paintStressStrain({ ...m, yield: strengthNow(S.design) }, yw);
 }
-function paintStressStrain(m) {
-  const k = B().limits.yieldFactor, st = standNow(), g = stressStrainPoint(m, st.at(S.strainX).strain * 1e6, k), p = stressStrainPoint(m, Math.abs(g.strain), k);
+// yw: the strength the line runs to, in words: “yield” for ductile metals (and the mission), “failure strength” for brittle
+// or natural materials on the open bench (timber, cast iron, bamboo do not yield; they crack or crush).
+function paintStressStrain(m, yw = 'yield') {
+  const k = B().limits.yieldFactor, brittle = yw !== 'yield', st = standNow(), g = stressStrainPoint(m, st.at(S.strainX).strain * 1e6, k), p = stressStrainPoint(m, Math.abs(g.strain), k);
   const W = 320, H = 190, x0 = 46, y0 = 160, xm = 1.6 * p.yieldStrain, ym = 1.3 * m.yield, X = e => x0 + e / xm * (W - x0 - 10), Y = s => y0 - s / ym * (y0 - 14);
   const xy = X(p.yieldStrain), beyond = p.beyondYield, px = beyond ? W - 18 : X(p.strain), py = beyond ? 22 : Y(p.stress);
-  $('ss-chart-t').textContent = `${m.name}: stress against strain, linear to yield at ${m.yield} MPa (${f(p.yieldStrain, 0)} µε); past yield not modelled`;
+  $('ss-chart-t').textContent = `${m.name}: stress against strain, linear to ${yw} at ${m.yield} MPa (${f(p.yieldStrain, 0)} µε); past ${yw} not modelled`;
   $('ss-chart').innerHTML = `<title id="ss-chart-t">${$('ss-chart-t').textContent}</title>
     <defs><pattern id="ss-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v6" stroke="#22323d" stroke-width="2"/></pattern></defs>
     <rect x="${xy}" y="14" width="${W - 10 - xy}" height="${y0 - 14}" fill="url(#ss-hatch)"/>
-    <text x="${(xy + W - 10) / 2}" y="${y0 - 18}" text-anchor="middle">not modelled</text><text x="${(xy + W - 10) / 2}" y="${y0 - 7}" text-anchor="middle">beyond yield</text>
+    <text x="${(xy + W - 10) / 2}" y="${y0 - 18}" text-anchor="middle">not modelled</text><text x="${(xy + W - 10) / 2}" y="${y0 - 7}" text-anchor="middle">beyond ${yw}</text>
     <line class="ax" x1="${x0}" y1="${y0}" x2="${W - 10}" y2="${y0}"/><line class="ax" x1="${x0}" y1="${y0}" x2="${x0}" y2="14"/>
     <line x1="${x0}" y1="${y0}" x2="${xy}" y2="${Y(m.yield)}" stroke="#4fc3f7" stroke-width="2.5"/>
-    <line x1="${x0}" x2="${W - 10}" y1="${Y(m.yield)}" y2="${Y(m.yield)}" stroke="#ff5a4f" stroke-dasharray="4 3"/><text x="${x0 + 4}" y="${Y(m.yield) - 4}" fill="#ff5a4f">yield ${m.yield} MPa</text>
-    <line x1="${x0}" x2="${W - 10}" y1="${Y(p.allowable)}" y2="${Y(p.allowable)}" stroke="#f0b429" stroke-dasharray="4 3"/><text x="${X(p.yieldStrain / 2) + 8}" y="${Y(p.allowable) - 4}" fill="#f0b429">allowable ${f(p.allowable, 0)} MPa (yield ÷ ${k})</text>
+    <line x1="${x0}" x2="${W - 10}" y1="${Y(m.yield)}" y2="${Y(m.yield)}" stroke="#ff5a4f" stroke-dasharray="4 3"/><text x="${x0 + 4}" y="${Y(m.yield) - 4}" fill="#ff5a4f">${yw} ${m.yield} MPa</text>
+    <line x1="${x0}" x2="${W - 10}" y1="${Y(p.allowable)}" y2="${Y(p.allowable)}" stroke="#f0b429" stroke-dasharray="4 3"/><text x="${X(p.yieldStrain / 2) + 8}" y="${Y(p.allowable) - 4}" fill="#f0b429">allowable ${f(p.allowable, 0)} MPa (${yw} ÷ ${k})</text>
     <text x="${X(p.yieldStrain * 0.5) + 8}" y="${Y(m.yield * 0.5) + 16}" fill="#4fc3f7">σ = E·ε, E ${f(m.E / 1000, 0)} GPa</text>
     <line x1="${xy}" x2="${xy}" y1="${y0}" y2="${Y(m.yield)}" stroke="#4a5f6c" stroke-dasharray="2 3"/><text x="${xy}" y="${y0 + 12}" text-anchor="middle">${f(p.yieldStrain, 0)}</text>
     <text x="${x0}" y="${y0 + 12}" text-anchor="middle">0</text><text x="${W - 10}" y="${y0 + 24}" text-anchor="end">strain ε (µε)</text><text x="6" y="10">stress σ (MPa)</text>
     ${beyond ? `<path d="M${px - 6} ${py - 6}l12 12M${px + 6} ${py - 6}l-12 12" stroke="#ff5a4f" stroke-width="2.5"/><text x="${px - 8}" y="${py + 18}" text-anchor="end" fill="#ff5a4f">reading off the model</text>`
       : `<circle id="ss-dot" cx="${px}" cy="${py}" r="5" fill="#ff8a3d" stroke="#0b1117" stroke-width="1.5"/>`}`;
   $('ss-point').textContent = !S.loaded ? `Strain gauge at ${S.strainX} mm, load off: ε = 0 µε, σ = 0 MPa. Apply the load on the Test stand to move the point.`
-    : `Strain gauge at ${S.strainX} mm under load: ε = ${f(p.strain, 0)} µε → σ = E·ε = ${f(p.stress, 1)} MPa, ${f(p.fractionOfYield * 100, 0)} % of yield.`;
+    : `Strain gauge at ${S.strainX} mm under load: ε = ${f(p.strain, 0)} µε → σ = E·ε = ${f(p.stress, 1)} MPa, ${f(p.fractionOfYield * 100, 0)} % of ${yw}.`;
   $('ss-beyond').hidden = !beyond;
-  $('ss-beyond').textContent = beyond ? `Beyond yield: σ = E·ε would give ${f(p.stress, 0)} MPa, more than the ${m.yield} MPa yield strength. The linear model does not apply here; the real metal would yield and keep a permanent bend. That number is not a prediction.` : '';
+  $('ss-beyond').textContent = beyond ? brittle ? `Beyond its failure strength: σ = E·ε would give ${f(p.stress, 0)} MPa, more than the ${m.yield} MPa it can take. The linear model does not apply here; the real ${m.name.split(' (')[0].toLowerCase()} would crack or crush. That number is not a prediction.`
+    : `Beyond yield: σ = E·ε would give ${f(p.stress, 0)} MPa, more than the ${m.yield} MPa yield strength. The linear model does not apply here; the real metal would yield and keep a permanent bend. That number is not a prediction.` : '';
 }
 // Two saved readings as ratios B ÷ A: deflection against 1 ÷ (E·I change), stress against 1 ÷ (I/c change) and E.
 const splitRuns = () => nb.project().runs.filter(r => r.setup?.design && r.outputs?.deflection && r.outputs?.stress);
@@ -227,7 +230,7 @@ const cell = (ok, txt) => `<td class="${ok === null ? 'na' : ok ? 'ok' : 'no'}">
 function paintRuns() {
   const rows = S.runs.map(r => {
     const L = r.bench.limits, aOk = r.loaded && r.dialX === r.mount ? r.deflection <= L.deflection : null, yOk = r.loaded && r.strainX === r.mount ? r.stress <= r.strength / L.yieldFactor : null;
-    return `<tr><th>${r.name}</th><td>${f(r.deflection, 3)} mm @${r.dialX}</td>${cell(aOk, aOk === null ? 'n/a' : aOk ? 'within' : 'outside')}<td>${f(r.strain, 0)} µε @${r.strainX}</td><td>${f(r.stress, 1)} MPa${Math.abs(r.stress) > r.strength ? ' <b class="no">beyond yield: not modelled</b>' : ''}</td>${cell(yOk, yOk === null ? 'n/a' : yOk ? 'OK' : 'over')}${cell(r.mass <= L.mass, `${f(r.mass, 2)} kg`)}</tr>`;
+    return `<tr><th>${r.name}</th><td>${f(r.deflection, 3)} mm @${r.dialX}</td>${cell(aOk, aOk === null ? 'n/a' : aOk ? 'within' : 'outside')}<td>${f(r.strain, 0)} µε @${r.strainX}</td><td>${f(r.stress, 1)} MPa${Math.abs(r.stress) > r.strength ? ` <b class="no">beyond ${MATERIALS[r.design.material].ductile ? 'yield' : 'its failure strength'}: not modelled</b>` : ''}</td>${cell(yOk, yOk === null ? 'n/a' : yOk ? 'OK' : 'over')}${cell(r.mass <= L.mass, `${f(r.mass, 2)} kg`)}</tr>`;
   }).join('');
   $('runs').innerHTML = S.runs.length ? `<table class="cmp"><thead><tr><th>Reading</th><th>Dial</th><th>Alignment ≤ ${B().limits.deflection} mm</th><th>Strain</th><th>σ = E·ε</th><th>≤ ${S.bench ? 'strength' : 'yield'} ÷ ${B().limits.yieldFactor}</th><th>Mass ≤ ${B().limits.mass} kg</th></tr></thead><tbody>${rows}</tbody></table><p class="note">“n/a”: the gauge was not at the machine mount (or the load was off), so this reading cannot judge that limit.</p>` : '<p class="note">No readings yet.</p>';
   const opts = S.runs.map(r => `<option value="${r.name}">${r.name}</option>`).join('');

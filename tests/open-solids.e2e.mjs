@@ -33,7 +33,8 @@ const CI = { E: 100000, strength: 200, rho: 7200 };   // grey cast iron: the low
 const mountHand = (() => {
   const { span: L, load: P, mount: a, b: B, h: H } = MOUNT, b = L - a, I = B * H ** 3 / 12, c = H / 2;
   const defl = P * a ** 3 * b ** 3 / (3 * CI.E * I * L ** 3), M = 2 * P * a * a * b * b / L ** 3, stress = M * c / I;
-  return { I, defl, stress, strain: stress / CI.E * 1e6, mass: CI.rho * B * H * 1e-9 * L, fos: CI.strength / stress };
+  const peak = P * a * b * b / L ** 2 * c / I;   // the largest moment of a clamped beam is at the nearer clamp: P·a·b²/L²
+  return { I, defl, stress, strain: stress / CI.E * 1e6, mass: CI.rho * B * H * 1e-9 * L, fos: CI.strength / stress, fosPeak: CI.strength / peak };
 })();
 
 for (const V of VIEWPORTS) test(`open solids benches · ${V.label}: own truss and own mount, checked by hand, saved and reproducible`, async () => {
@@ -120,7 +121,9 @@ for (const V of VIEWPORTS) test(`open solids benches · ${V.label}: own truss an
     near(n(props.match(/I = ([\d,]+) mm⁴/)[1]), mountHand.I, 1, 'I (mm⁴)');
     near(n(props.match(/mass ([\d.]+) kg/)[1]), mountHand.mass, 0.006, 'mass (kg)');
     assert.match(props, /limit 40 kg/);
-    near(n(await page.locator('#ss-fos-val').textContent()), mountHand.fos, 0.006, 'factor of safety at the machine');
+    // the readout judges the stress where the bending moment is largest: at the left clamp, not under the machine
+    near(n(await page.locator('#ss-fos-val').textContent()), mountHand.fosPeak, 0.006, 'factor of safety at the left clamp');
+    assert.match(await page.locator('#ss-cond').textContent(), /stress where the bending moment is largest \(0 mm from the left end\)/);
     await tab('stand');
     await tap(page.locator('#load-on'));
     await page.locator('#dial-x').selectOption({ label: `${MOUNT.mount} mm` });

@@ -65,9 +65,11 @@ const same = (a, b) => (typeof a === 'number' && typeof b === 'number' ? Math.ab
 // Defence questions for Revision 2 (`setup`) against Revision 1 (`from`), asked about the picked outputs in turn.
 // One lever change as a runner patch. A lever may carry apply(setup, value) (one change that moves several paths), or the
 // bench may give applyLever(setup, path, value) (its own edit function); the whole new setup is then the patch.
-function leverPatch(learn, setup, l, value) {
-  if (typeof l.apply === 'function') return clone(l.apply(clone(setup), value));
-  if (typeof learn.applyLever === 'function') { try { const s = learn.applyLever(clone(setup), l.path, value); if (s && typeof s === 'object') return clone(s); } catch { return null; } }
+// ctx ({ from }: the Revision 1 setup) is passed on a revert, so a lever that moves several paths can put back what
+// Revision 1 had (a section shape with its own Revision 1 dimensions) rather than the bench's defaults.
+function leverPatch(learn, setup, l, value, ctx) {
+  if (typeof l.apply === 'function') return clone(l.apply(clone(setup), value, ctx && clone(ctx)));
+  if (typeof learn.applyLever === 'function') { try { const s = learn.applyLever(clone(setup), l.path, value, ctx && clone(ctx)); if (s && typeof s === 'object') return clone(s); } catch { return null; } }
   return patchAt(setup, l.path, value);
 }
 
@@ -81,7 +83,7 @@ export function defendFrom(learn, setup, { from, picked = [], adapter } = {}, ou
   for (const l of levers) {
     const was = getAt(from, l.path), now = getAt(setup, l.path);
     if (from == null || was === undefined || same(was, now)) continue;
-    const change = leverPatch(learn, setup, l, was), read = reads[qs.length % reads.length];
+    const change = leverPatch(learn, setup, l, was, { from }), read = reads[qs.length % reads.length];
     if (valid(change, read)) qs.push(ask(qs.length, o => `What would ${o.what ?? inSentence(o.label)} be if ${inSentence(l.label)} went back to its Revision 1 value (${show(l, was)} instead of ${show(l, now)})?`, change));
   }
   if (qs.length) return qs;

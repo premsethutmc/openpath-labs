@@ -1,7 +1,7 @@
 // Stiffness vs strength — pure helpers for the Mount bench's readout, stress–strain view and two-run comparison.
 // They read the existing model (stand(), SPEC, materials, sections) and never change it. Units: mm, N, MPa, µε.
 //   deflection under the load  δ = P·a²·b² / (3·E·I·L)   → set by E·I (stiffness)
-//   bending stress at the mount σ = M·c / I = M / (I/c)  → set by the load and the section, not by E (strength demand)
+//   bending stress at the peak σ = M·c / I (under the mount on the mission's stand) = M / (I/c)  → set by the load and the section, not by E (strength demand)
 //   factor of safety on yield  FoS = yield ÷ σ           → required ≥ SPEC.yieldFactor (allowable = yield ÷ 2)
 //   linear elastic (Hooke)      σ = E·ε, valid only for σ ≤ yield; nothing beyond yield is modelled
 import { SPEC, stand, sectionOf, benchOf, strengthOf } from './model.mjs';
@@ -16,12 +16,16 @@ export function properties(design, bench) {
   return { E: m.E, I: s.I, c: s.c, EI: m.E * s.I, Z: s.I / s.c, yield: fy, allowable: fy / k };
 }
 
-// The design under the operating load at mount position `mount`, judged at the mount (deflection and peak moment are both there).
+// The design under the operating load at mount position `mount`. The deflection is judged at the mount (the alignment
+// limit is at the machine). The stress is judged where the bending moment is largest (`stressAt`, mm from the left end):
+// on the mission's simply supported stand that is under the machine, the mount; on the open bench a cantilever or a
+// clamped end has its largest moment at a support, where the stress under the machine may be small or nothing at all.
 export function splitReadout(design, mount, bench) {
   const B = bench ? benchOf({ bench }) : null, tol = B ? B.limits.deflection : SPEC.tolerance;
   const st = stand(design, B ? { mount, loaded: true, span: B.span, load: B.load, supports: B.supports } : { mount, loaded: true }), at = st.at(mount), p = properties(design, bench);
-  const deflection = at.deflection, stress = Math.abs(at.stress), strain = Math.abs(at.strain) * 1e6;
-  return { ...p, mount, load: B ? B.load : SPEC.load,
+  const peak = B ? st.M.reduce((k, m, i) => (Math.abs(m) > Math.abs(st.M[k]) ? i : k), mount / SPEC.step) : mount / SPEC.step;
+  const pk = st.at(peak * SPEC.step), deflection = at.deflection, stress = Math.abs(pk.stress), strain = Math.abs(pk.strain) * 1e6;
+  return { ...p, mount, stressAt: peak * SPEC.step, load: B ? B.load : SPEC.load,
     deflection, tolerance: tol, deflectionRatio: deflection / tol, stiff: deflection <= tol,
     stress, strain, stressRatio: stress / p.allowable, strong: stress <= p.allowable,
     fos: factorOfSafety(p.yield, stress), fosRequired: B ? B.limits.yieldFactor : SPEC.yieldFactor, beyondYield: stress > p.yield };
