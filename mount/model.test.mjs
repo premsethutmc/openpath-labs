@@ -80,3 +80,16 @@ test('honest bounds: envelope, wall thickness, mount range', () => {
   assert.throws(() => stand(ORIGINAL, { mount: 50, loaded: true }), /within/);
   assert.throws(() => stand(ORIGINAL, { mount: 225, loaded: true }), /grid/);
 });
+
+test('every test-stand reading is a reproducible run on the shared record', async () => {
+  const P = await import('../core/project.mjs');
+  const { READING_ADAPTER, evaluateReading, ORIGINAL: O, SPEC: SP } = await import('./model.mjs');
+  const proj = P.createProject({ domain: 'mount-stand', setup: { design: { ...O }, mount: SP.guidedMount, loaded: true, dialX: SP.guidedMount, strainX: SP.guidedMount } });
+  const a = P.saveRun(proj, READING_ADAPTER, 'original, loaded');
+  assert.equal(a.verdicts.alignment.value, 'fail'); assert.equal(a.outputs.deflection.source, 'measured');
+  proj.setup.loaded = false; const b = P.saveRun(proj, READING_ADAPTER, 'original, unloaded');
+  assert.equal(b.verdicts.alignment.value, 'not-applicable');
+  assert.deepEqual(P.compareRuns(a, b).changed.map(d => d.path), ['loaded']);
+  for (const r of P.deserialize(P.serialize(proj), 'mount-stand').runs) assert.ok(P.reproduceRun(r, READING_ADAPTER).ok);
+  assert.match(evaluateReading({ ...proj.setup, design: { ...O, b: 90 } }).reason, /cannot be tested: outside the mounting envelope/);
+});

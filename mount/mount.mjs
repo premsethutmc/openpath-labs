@@ -1,14 +1,17 @@
 // "The Mount That Didn't Break" — UI. Model: ./model.mjs (Solids engine). Shared: ../core/workbench.mjs (layout),
-// ../core/experiment.mjs (journal: predictions locked before results, saved runs with units, comparisons, feedback gates).
-import { SPEC, ORIGINAL, MATERIAL_IDS, GAUGE_POSITIONS, stand, verdict, check, sectionOf, massOf } from './model.mjs';
+// ../core/protocol.mjs (predictions locked before results, feedback gates) and ../core/project.mjs via
+// ../core/notebook.mjs (every test-stand reading is a reproducible run on the shared experiment record).
+import { SPEC, ORIGINAL, MATERIAL_IDS, GAUGE_POSITIONS, stand, verdict, check, sectionOf, massOf, READING_ADAPTER, READING_LABELS } from './model.mjs';
 import { MATERIALS } from '../core/materials.mjs';
 import { workbench } from '../core/workbench.mjs';
-import { Journal, compareRuns, changedInputs, checkAnswers } from '../core/experiment.mjs';
+import { Protocol, checkAnswers } from '../core/protocol.mjs';
+import { notebook } from '../core/notebook.mjs';
+import * as P from '../core/project.mjs';
 
 const $ = id => document.getElementById(id);
 const f = (n, d = 1) => n.toFixed(d);
 const clone = o => JSON.parse(JSON.stringify(o));
-const J = new Journal();
+const J = new Protocol();
 const WB = workbench('mount', { initial: 'mission' });
 const ALLOW = m => MATERIALS[m].yield / SPEC.yieldFactor;
 const SHAPES = { rect: 'Solid rectangle', rhs: 'Hollow rectangle', I: 'I-section' };
@@ -35,16 +38,11 @@ function takeReading() {
   const r = { name: `R${S.runs.length + 1} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
     attempt: S.stage === 'transfer' || S.stage === 'finished' ? S.transfer.attempt : 0, afterLock: (S.stage === 'transfer' || S.stage === 'finished') && S.transfer.locked,
     dialX: S.dialX, strainX: S.strainX, deflection: dd.deflection, strain: ss.strain * 1e6, stress: ss.strain * MATERIALS[S.design.material].E, mass: st.mass };
-  const sec = sectionOf(S.design);
-  J.saveRun(r.name, {
-    inputs: { material: { value: S.design.material, unit: '', label: 'Material' }, shape: { value: S.design.shape, unit: '', label: 'Section' },
-      ...Object.fromEntries(DIMS[S.design.shape].map(([k, l]) => [k, { value: S.design[k], unit: 'mm', label: l }])),
-      I: { value: Math.round(sec.I), unit: 'mm⁴', label: 'Second moment of area I' }, E: { value: MATERIALS[S.design.material].E, unit: 'MPa', label: 'Elastic modulus E' },
-      mount: { value: S.mount, unit: 'mm', label: 'Machine mount position' }, load: { value: S.loaded ? SPEC.load : 0, unit: 'N', label: 'Load' },
-      dialX: { value: S.dialX, unit: 'mm', label: 'Dial gauge position' }, strainX: { value: S.strainX, unit: 'mm', label: 'Strain gauge position' } },
-    outputs: { deflection: { value: r.deflection, unit: 'mm', label: 'Dial reading (deflection)' }, strain: { value: r.strain, unit: 'µε', label: 'Strain reading' },
-      stress: { value: r.stress, unit: 'MPa', label: 'Stress from strain (E·ε)' }, mass: { value: r.mass, unit: 'kg', label: 'Support mass' } },
-  });
+  // every reading goes onto the shared experiment record and is recomputed from its setup when reopened
+  nb.sync();
+  const run = P.saveRun(nb.project(), READING_ADAPTER, r.name);
+  nb.sync(); nb.render();
+  r.runId = run.id;
   S.runs.push(r);
   $('r-dial').textContent = `${f(r.deflection, 3)} mm @ ${r.dialX}`; $('r-strain').textContent = `${f(r.strain, 0)} µε @ ${r.strainX}`;
   paintRuns(); mission(); document.body.dataset.runs = String(S.runs.length);
@@ -138,10 +136,11 @@ function paintRuns() {
   paintCompare();
 }
 function paintCompare() {
-  const a = J.run($('cmp-a').value), b = J.run($('cmp-b').value);
+  const byName = n => { const r = runByName(n); return r ? nb.project().runs.find(x => x.id === r.runId) : null; };
+  const a = byName($('cmp-a').value), b = byName($('cmp-b').value);
   if (!a || !b) { $('cmp').innerHTML = ''; return; }
-  const rows = compareRuns(a, b);
-  const changed = changedInputs(a, b).map(k => (a.inputs[k] || b.inputs[k]).label);
+  const c = P.compareRuns(a, b), rows = c.outputs.filter(o => typeof o.a === 'number').map(o => ({ ...o, rel: o.a ? (o.b - o.a) / Math.abs(o.a) : null }));
+  const changed = [...new Set(c.changed.map(d => READING_LABELS[d.path] ?? d.path))];
   $('cmp').innerHTML = `<p class="note">Changed between the two: <b>${changed.length ? changed.join(', ') : 'nothing'}</b>${changed.length > 1 ? ' — more than one thing changed, so the effect of each is mixed together.' : ''}</p><table class="cmp"><thead><tr><th></th><th>A</th><th>B</th><th>Change</th></tr></thead><tbody>${rows.map(r => `<tr><th>${r.label}</th><td>${f(r.a, 3)} ${r.unit}</td><td>${f(r.b, 3)} ${r.unit}</td><td>${r.rel === null ? '' : `${r.rel >= 0 ? '+' : '−'}${f(Math.abs(r.rel * 100), 1)} %`}</td></tr>`).join('')}</tbody></table>`;
 }
 
@@ -315,6 +314,11 @@ function wireMission() {
 }
 
 function refresh() { paintStand(); draw(); paintDesign(); paintRuns(); mission(); }
+// Experiments panel: the bench as it stands now. The load is only recorded as on when the stand allows it, and the
+// mount position stays with the mission stage, so the record cannot be used to get round the unseen case's lock.
+const nb = notebook($('experiments'), { adapter: READING_ADAPTER,
+  getSetup: () => ({ design: clone(S.design), mount: S.mount, loaded: S.loaded && !standLocked(), dialX: S.dialX, strainX: S.strainX }),
+  applySetup: s => { S.design = clone(s.design); S.dialX = s.dialX; S.strainX = s.strainX; S.loaded = false; refresh(); } });
 // ---------- test stand wiring ----------
 $('dial-x').innerHTML = GAUGE_POSITIONS.map(x => `<option value="${x}">${x} mm</option>`).join('');
 $('strain-x').innerHTML = $('dial-x').innerHTML;
@@ -326,5 +330,6 @@ $('load-off').onclick = () => { S.loaded = false; draw(); };
 $('take').onclick = takeReading;
 $('cmp-a').onchange = paintCompare; $('cmp-b').onchange = paintCompare;
 refresh();
-window.__mount = { journal: () => J };
+nb.render();
+window.__mount = { protocol: () => J, runs: () => nb.project().runs };
 document.body.dataset.ready = 'true'; document.body.dataset.stage = 'investigate';

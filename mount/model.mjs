@@ -70,3 +70,25 @@ export function verdict(design, mount) {
     get all() { return this.alignment && this.yield && this.mass; },
   };
 }
+
+// ---------- shared experiment record (core/project.mjs) ----------
+// One reading on the test stand: the design, where the machine sits, load on or off, and where the gauges are.
+export const READING_LABELS = { mount: 'Machine mount position', loaded: 'Load', dialX: 'Dial gauge position', strainX: 'Strain gauge position',
+  'design.material': 'Material', 'design.shape': 'Section', 'design.b': 'Width b', 'design.h': 'Depth h', 'design.t': 'Wall t', 'design.tw': 'Web tw', 'design.tf': 'Flange tf' };
+export function evaluateReading(s) {
+  if (!s?.design) return { ok: false, reason: 'Put a support on the test stand first.' };
+  const c = check(s.design); if (!c.ok) return { ok: false, reason: `This support cannot be tested: ${c.errors.join('; ')}.` };
+  if (!GAUGE_POSITIONS.includes(s.dialX) || !GAUGE_POSITIONS.includes(s.strainX) || !GAUGE_POSITIONS.includes(s.mount)) return { ok: false, reason: 'gauges and the mount sit at the marked stations' };
+  const st = stand(s.design, { mount: s.mount, loaded: !!s.loaded }), dd = st.at(s.dialX), ss = st.at(s.strainX), E = MATERIALS[s.design.material].E;
+  const strain = ss.strain * 1e6, stress = ss.strain * E, allow = MATERIALS[s.design.material].yield / SPEC.yieldFactor;
+  const na = why => ({ value: 'not-applicable', reason: why });
+  return { ok: true,
+    outputs: { deflection: { label: 'Dial reading (deflection)', value: dd.deflection, unit: 'mm', source: 'measured' }, strain: { label: 'Strain reading', value: strain, unit: 'µε', source: 'measured' },
+      stress: { label: 'Stress from strain (E·ε)', value: stress, unit: 'MPa', source: 'measured' }, mass: { label: 'Support mass', value: st.mass, unit: 'kg', source: 'simulated' },
+      I: { label: 'Second moment of area I', value: sectionOf(s.design).I, unit: 'mm⁴', source: 'simulated' }, E: { label: 'Elastic modulus E', value: E, unit: 'MPa', source: 'table' } },
+    verdicts: {
+      alignment: !s.loaded ? na('no load on the stand') : s.dialX !== s.mount ? na('dial gauge not at the mount') : { value: dd.deflection <= SPEC.tolerance ? 'pass' : 'fail', reason: `deflection ≤ ${SPEC.tolerance} mm at the mount` },
+      strength: !s.loaded ? na('no load on the stand') : s.strainX !== s.mount ? na('strain gauge not at the mount') : { value: stress <= allow ? 'pass' : 'fail', reason: `stress ≤ yield ÷ ${SPEC.yieldFactor}` },
+      mass: { value: st.mass <= SPEC.massLimit ? 'pass' : 'fail', reason: `mass ≤ ${SPEC.massLimit} kg` } } };
+}
+export const READING_ADAPTER = { domain: 'mount-stand', title: 'Mount', evaluate: evaluateReading };

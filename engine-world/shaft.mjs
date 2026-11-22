@@ -4,7 +4,7 @@
 import { BENCH_STOCK, BENCH_INPUTS, compare, solverRunner, setupForRunner, intakeEvidence, judge, CLEAR_BAR, LATE_FROM, airShift } from './bench-setup.mjs';
 import { K12M, K12M_PUBLISHED } from '../engines/thermofluids/gasdyn.mjs';
 import { piston } from '../engines/motion/crank.mjs';
-import { Journal } from '../core/experiment.mjs';
+import { Protocol } from '../core/protocol.mjs';
 
 const $ = id => document.getElementById(id);
 const f = (n, d = 1) => (Math.abs(n) >= 1000 ? Math.round(n).toLocaleString('en-IN') : n.toFixed(d));
@@ -20,7 +20,7 @@ const guided = () => document.body.dataset.mode === 'learn';
 const X = { rpm: 4500, pairs: [], view: 0, angle: 0, playing: false, pv: 'linear', pth: 'full', busy: false, maxCycles: undefined,
   runnerL: GUIDED_L, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {} };
 let worker = null, reqId = 0; const pending = new Map();
-let J = new Journal();   // shared experiment journal: predictions locked before each run, runs saved with units
+let J = new Protocol();   // shared learning protocol: predictions locked before each run
 function bench(setup, rpm) {
   worker ||= new Worker(new URL('./bench-worker.mjs', import.meta.url), { type: 'module' });
   worker.onmessage = ({ data }) => { if (data.kind === 'shaft') { pending.get(data.label)?.(data.run); pending.delete(data.label); } };
@@ -34,11 +34,6 @@ async function runPair(rpm, kind, prediction, { newA = true, withB = true } = {}
   if (withB && pair.A.valid) {
     J.lock(`pair:${kind}`);
     pair.B = await bench(setupForRunner(X.runnerL), rpm); pair.prediction = prediction;
-  }
-  for (const [lab, r] of [['A', pair.A], ['B', pair.B]]) if (r?.valid && !r.saved) {
-    J.saveRun(`${kind} ${lab} ${rpm} rpm #${++reqId}`, { inputs: { speed: { value: rpm, unit: 'rpm' }, runner: { value: Math.round(solverRunner(r.setup) * 100), unit: 'cm', label: 'Intake runner' } },
-      outputs: { torque: { value: r.torque, unit: 'N·m' }, power: { value: r.power / 1000, unit: 'kW' }, ve: { value: r.ve * 100, unit: '%' }, imep: { value: r.imep / 1e5, unit: 'bar' } } });
-    r.saved = true;
   }
   X.view = X.pairs.indexOf(pair); X.busy = false; X.prediction = null; paint();
 }
@@ -315,7 +310,7 @@ function wire() {
   const rs = $('x-reset'); if (rs) rs.onclick = () => { J.retract('pair:first'); X.pairs[0].B = null; X.prediction = null; paint(); };
   const rd = $('x-redo'); if (rd) rd.onclick = () => drop('repeat');
   const ru = $('x-redoUnseen'); if (ru) ru.onclick = () => drop('unseen');
-  const rr = $('x-restart'); if (rr) rr.onclick = () => { J = new Journal(); Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {}, runnerL: GUIDED_L }); paint(); };
+  const rr = $('x-restart'); if (rr) rr.onclick = () => { J = new Protocol(); Object.assign(X, { pairs: [], view: 0, prediction: null, nextRpm: null, why: null, unseenRpm: null, cite: {}, air: {}, runnerL: GUIDED_L }); paint(); };
 }
 
 export function initShaft() {
@@ -329,7 +324,7 @@ export function initShaft() {
   document.querySelectorAll('[data-xpth]').forEach(b => b.onclick = () => { X.pth = b.dataset.xpth; document.querySelectorAll('[data-xpth]').forEach(c => c.setAttribute('aria-checked', String(c === b))); drawPTheta(); });
   new MutationObserver(() => paint()).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
   paint();
-  window.__shaft = { X, journal: () => J, setMaxCycles: n => { X.maxCycles = n; } };   // used by browser tests
+  window.__shaft = { X, protocol: () => J, setMaxCycles: n => { X.maxCycles = n; } };   // used by browser tests
   return {
     // When the experiment owns the clock, the 3D cutaway follows its crank angle.
     tick(dt, moduleOpen) {

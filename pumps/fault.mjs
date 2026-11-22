@@ -1,9 +1,11 @@
 // Pump House fault lab — UI. Physics and faults: ./faults.mjs (Pump House only).
-// Shared with Engine World: ../core/workbench.mjs (layout) and ../core/experiment.mjs (journal: predictions locked
-// before results, named runs with units, run comparison, feedback before the next case).
-import { casesForSeed, repair, cleanExpected, SECTIONS, ACTIONS, elevations } from './faults.mjs';
+// Shared: ../core/workbench.mjs (layout), ../core/protocol.mjs (prediction locked before measuring, feedback before
+// the next case) and ../core/project.mjs via ../core/notebook.mjs (finished cases saved as reproducible runs).
+import { casesForSeed, repair, cleanExpected, SECTIONS, ACTIONS, elevations, CASE_ADAPTER } from './faults.mjs';
 import { workbench } from '../core/workbench.mjs';
-import { Journal, compareRuns, checkAnswers } from '../core/experiment.mjs';
+import { Protocol, checkAnswers } from '../core/protocol.mjs';
+import { notebook } from '../core/notebook.mjs';
+import * as P from '../core/project.mjs';
 
 const $ = id => document.getElementById(id);
 const f = (n, d = 1) => n.toFixed(d);
@@ -12,13 +14,14 @@ const kPa = pa => `${f(pa / 1000, 2)} kPa`;
 const randomSeed = () => 1 + Math.floor(Math.random() * 1000);
 let seed = (() => { const q = +new URLSearchParams(location.search).get('seed'); return Number.isFinite(q) && q > 0 ? q : randomSeed(); })();
 let CASES = casesForSeed(seed);   // the hidden faults live only in this closure
-let J = new Journal();
+let J = new Protocol();
+let lastCase = {};   // the most recent finished case — the only case data ever written to storage
 const WB = workbench('pump-fault', { initial: 'mission' });
 const SECTION_LABEL = { strainer: 'the inlet strainer', discharge: 'the discharge section' };
 const FAULT_LABEL = { strainer: 'Fouled inlet strainer', discharge: 'Restriction on the discharge side' };
 
 // learner state per case: 'guided' then 'unseen'
-const L = { stage: 'brief', caseId: 'guided', measured: null, answers: {}, action: null, repairs: [] };
+const L = { stage: 'brief', caseId: 'guided', measured: null, answers: {}, action: null, repairs: [], log: [] };   // log: this case's readings, in memory only
 const cur = () => CASES[L.caseId];
 const guided = () => L.caseId === 'guided';
 
@@ -27,12 +30,16 @@ function snapshot(name, state, measured) {
   const outputs = { flow: { value: d.flow * 1000, unit: 'L/s', label: 'Flow' }, head: { value: d.head, unit: 'm', label: 'Pump head' }, power: { value: d.power / 1000, unit: 'kW', label: 'Motor power' }, eff: { value: d.eff * 100, unit: '%', label: 'Efficiency' } };
   if (measured) outputs[`dp_${measured}`] = { value: state.taps[measured] / 1000, unit: 'kPa', label: `Δp across ${SECTION_LABEL[measured]}` };
   const e = elevations(c.cond);
-  return J.saveRun(`${L.caseId}: ${name}`, { inputs: {
+  const run = { name: `${L.caseId}: ${name}`, inputs: {
     headerElevation: { value: e.header, unit: 'm', label: 'Return-header elevation above pump' },
     basinElevation: { value: e.basin, unit: 'm', label: 'Basin water elevation above pump' },
     staticLift: { value: e.staticLift, unit: 'm', label: 'Static lift (header − basin)' },
-    rpm: { value: c.cond.rpm, unit: 'rpm', label: 'Pump speed' } }, outputs });
+    rpm: { value: c.cond.rpm, unit: 'rpm', label: 'Pump speed' } }, outputs };
+  L.log.push(run); return run;
 }
+const logRun = name => L.log.find(r => r.name === name);
+// healthy vs after-repair, quantity by quantity
+const compareLog = (a, b, keys) => keys.map(k => { const x = a.outputs[k], y = b.outputs[k], d = y.value - x.value; return { key: k, label: x.label, unit: x.unit, a: x.value, b: y.value, rel: x.value ? d / Math.abs(x.value) : null }; });
 
 // ---------- diagram ----------
 function diagram(state, gauge) {
@@ -79,8 +86,7 @@ function briefTable() {
   ], ['', 'Healthy (commissioning)', 'Today']);
 }
 function logTable() {
-  const names = J.runNames();
-  $('log').innerHTML = names.length ? names.map(n => { const r = J.run(n); return `<p class="step">${n}</p>${table(Object.values(r.outputs).map(o => [`${o.label}`, `${f(o.value, 2)} ${o.unit}`]), ['', 'Value'])}`; }).join('') : '<p class="note">No runs yet.</p>';
+  $('log').innerHTML = L.log.length ? L.log.map(r => { const n = r.name; return `<p class="step">${n}</p>${table(Object.values(r.outputs).map(o => [`${o.label}`, `${f(o.value, 2)} ${o.unit}`]), ['', 'Value'])}`; }).join('') : '<p class="note">No runs yet.</p>';
 }
 
 // ---------- mission ----------
@@ -128,10 +134,10 @@ function mission() {
   el.innerHTML = h; wire();
 }
 function repairHTML(rp, i) {
-  const c = cur(), rows = compareRuns(J.run(`${L.caseId}: healthy`), J.run(rp.run), ['flow', 'head', 'power', 'eff']);
+  const c = cur(), rows = compareLog(logRun(`${L.caseId}: healthy`), logRun(rp.run), ['flow', 'head', 'power', 'eff']);
   const t = table(rows.map(r => [r.label, `${f(r.a, 2)} ${r.unit}`, `${f(r.b, 2)} ${r.unit}`, `${r.rel >= 0 ? '+' : '−'}${f(Math.abs(r.rel * 100), 1)} %`]), ['', 'Healthy', `After: ${ACTIONS[rp.action].name.toLowerCase()}`, 'vs healthy']);
   if (rp.fixed) return `<p class="step">Repair ${i + 1}</p><p class="fb ok">Flow is back to the healthy value. The repair matched the fault.</p>${t}`;
-  const m = L.measured, still = J.run(rp.run).outputs[`dp_${m}`];
+  const m = L.measured, still = logRun(rp.run).outputs[`dp_${m}`];
   return `<p class="step">Repair ${i + 1}</p><p class="fb no">Nothing changed: flow is still ${f(c.faulted.dashboard.flow * 1000, 2)} L/s (healthy ${f(c.healthy.dashboard.flow * 1000, 2)} L/s), pump head ${f(c.faulted.dashboard.head, 1)} m. ${still ? `The gauge across ${SECTION_LABEL[m]} still reads <b>${f(still.value, 2)} kPa</b>.` : ''} ${rp.action === 'replace-pump' ? 'A new identical pump sits on the same system curve, so it settles at the same point.' : 'The section you repaired was not the one losing the head.'} Look at your measurement again and choose another action.</p>${t}`;
 }
 function doRepair() {
@@ -140,7 +146,11 @@ function doRepair() {
   snapshot(name, r.state, m);
   L.repairs.push({ action: L.action, fixed: r.fixed, run: `${L.caseId}: ${name}` });
   diagram(r.state, { id: m, value: r.state.taps[m] });
-  if (r.fixed) { L.stage = 'done'; J.giveFeedback(L.caseId); } else L.action = null;
+  if (r.fixed) {
+    L.stage = 'done'; J.giveFeedback(L.caseId);
+    lastCase = { case: L.caseId, condition: c.cond.id, fault: c.fault, measured: m, hypothesis: J.prediction(`${L.caseId}:hypothesis`), diagnosis: L.answers.diagnosis, repairs: L.repairs.map(x => x.action) };
+    try { nb.sync(); P.saveRun(nb.project(), CASE_ADAPTER, `${L.caseId === 'guided' ? 'Guided' : 'New'} case — ${FAULT_LABEL[c.fault].toLowerCase()}`); nb.sync(); nb.render(); } catch (e) { console.warn(e.message); }
+  } else L.action = null;
   logTable(); mission();
 }
 function doneHTML() {
@@ -173,15 +183,17 @@ function wire() {
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => { L.action = b.dataset.act; mission(); });
   const r = $('do-repair'); if (r) r.onclick = doRepair;
   const n = $('next-case'); if (n) n.onclick = () => { if (!J.canAdvance('guided')) return; startCase('unseen'); };
-  const rs = $('restart'); if (rs) rs.onclick = () => { seed = randomSeed(); CASES = casesForSeed(seed); J = new Journal(); startCase('guided'); };
+  const rs = $('restart'); if (rs) rs.onclick = () => { seed = randomSeed(); CASES = casesForSeed(seed); J = new Protocol(); startCase('guided'); };
 }
 function startCase(id) {
-  Object.assign(L, { stage: 'brief', caseId: id, measured: null, answers: {}, action: null, repairs: [] });
+  Object.assign(L, { stage: 'brief', caseId: id, measured: null, answers: {}, action: null, repairs: [], log: [] });
   snapshot('healthy', cur().healthy);
   diagram(cur().faulted, null); logTable(); mission();
   document.body.dataset.case = id; document.body.dataset.stage = 'brief'; document.body.dataset.result = '';
   WB.open('mission');
 }
+const nb = notebook($('experiments'), { adapter: CASE_ADAPTER, getSetup: () => JSON.parse(JSON.stringify(lastCase)), applySetup: () => {} });
 startCase('guided');
-window.__fault = { journal: () => J };   // runs and locked predictions only — the hidden fault is not exposed
+nb.render();
+window.__fault = { log: () => L.log, protocol: () => J };   // this case's readings and predictions only — the hidden fault is not exposed
 document.body.dataset.ready = 'true';

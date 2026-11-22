@@ -77,3 +77,15 @@ test('relabelling changed no result: flows, gauge readings and repairs as before
   const d = makeCase(CONDITIONS[1], 'discharge');
   assert.equal(+(d.faulted.dashboard.flow * 1000).toFixed(2), 3.70); assert.equal(+(d.faulted.taps.strainer / 1000).toFixed(2), 8.81);
 });
+
+test('a finished case is a reproducible run on the shared record; an unfinished one is refused', async () => {
+  const P = await import('../core/project.mjs');
+  const { CASE_ADAPTER, evaluateCase } = await import('./faults.mjs');
+  assert.match(evaluateCase({}).reason, /fault stays hidden/);
+  assert.match(evaluateCase({ condition: 'guided', fault: 'strainer', measured: 'strainer', repairs: ['replace-pump'] }).reason, /not repaired/);
+  const proj = P.createProject({ domain: 'pump-fault', setup: { case: 'guided', condition: 'guided', fault: 'discharge', measured: 'discharge', hypothesis: 'strainer', diagnosis: 'discharge', repairs: ['clean-strainer', 'clear-discharge'] } });
+  const r = P.saveRun(proj, CASE_ADAPTER, 'guided');
+  assert.equal(r.verdicts.hypothesis.value, 'fail'); assert.equal(r.verdicts.diagnosis.value, 'pass'); assert.equal(r.verdicts.firstFix.value, 'fail');
+  assert.ok(Math.abs(r.outputs.finalFlow.value - r.outputs.healthyFlow.value) < 1e-12);
+  assert.ok(P.reproduceRun(P.deserialize(P.serialize(proj), 'pump-fault').runs[0], CASE_ADAPTER).ok);
+});

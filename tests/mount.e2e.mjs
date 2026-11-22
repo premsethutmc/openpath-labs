@@ -28,7 +28,7 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
         await page.locator('#shape').getByRole('radio', { name: shape }).click();
         for (const [k, v] of Object.entries(dims)) await page.locator(`[data-dim="${k}"]`).fill(String(v));
       };
-      const last = () => page.evaluate(() => { const j = window.__mount.journal(), r = j.run(j.runNames().at(-1)); return { name: r.name, d: r.outputs.deflection.value, s: r.outputs.stress.value, m: r.outputs.mass.value }; });
+      const last = () => page.evaluate(() => { const r = window.__mount.runs().at(-1); return { name: r.name, d: r.outputs.deflection.value, s: r.outputs.stress.value, m: r.outputs.mass.value }; });
 
       // 1 · investigate the existing support (design locked)
       assert.match(await mission.innerText(), /Aluminium 40×30 solid/);
@@ -123,6 +123,11 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
       // shortcut 2: re-lock the same design and reuse attempt 2's readings — not accepted
       await mission.getByRole('button', { name: 'Redesign and lock again' }).click();
       await tab('Test stand'); assert.ok(await page.getByRole('button', { name: 'Apply operating load' }).isDisabled(), 'load blocked again before the new lock');
+      // the shared Experiments panel cannot be used to record a loaded result before the lock
+      const before = await page.evaluate(() => window.__mount.runs().length);
+      await tab('Experiments'); await page.locator('.nb-save').click();
+      assert.equal(await page.evaluate(() => window.__mount.runs().at(-1).setup.loaded), false);
+      assert.equal(await page.evaluate(() => window.__mount.runs().length), before + 1);
       await tab('Mission');
       await mission.locator('[data-pa="meets"]').click(); await mission.locator('[data-py="meets"]').click();
       await mission.getByRole('button', { name: 'Lock prediction and design' }).click();
@@ -136,6 +141,10 @@ for (const vp of [{ width: 390, height: 860 }, { width: 1280, height: 900 }]) {
       await mission.getByRole('button', { name: 'Submit' }).click();
       await page.waitForFunction(() => document.body.dataset.transfer === 'passed');
       assert.match(await mission.innerText(), /Passed on design 3/);
+      // every reading is on the shared record and reproduces from its setup
+      await tab('Experiments');
+      const n = await page.evaluate(() => window.__mount.runs().length);
+      assert.equal(await page.locator('[data-reproduced="true"]').count(), n); assert.ok(n >= +await page.evaluate(() => document.body.dataset.runs));
       assert.ok(await page.evaluate(() => innerWidth >= document.documentElement.scrollWidth), 'no sideways scroll');
       await page.screenshot({ path: `/tmp/mount-${vp.width}.png`, fullPage: vp.width < 600 });
       assert.deepEqual(errors, []);

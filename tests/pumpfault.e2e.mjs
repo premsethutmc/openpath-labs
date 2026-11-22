@@ -16,7 +16,7 @@ async function launch(vp) {
   return { server, browser, page, errors, go, mission, pick, close: async () => { await browser.close(); server.close(); } };
 }
 const liftUI = page => page.evaluate(() => {
-  const j = window.__fault.journal(), last = j.run(j.runNames().at(-1)).inputs, dim = document.getElementById('lift-dim');
+  const last = window.__fault.log().at(-1).inputs, dim = document.getElementById('lift-dim');
   return { brief: document.getElementById('elev').innerText, label: document.getElementById('lift-label').textContent,
     saved: [last.headerElevation.value, last.basinElevation.value, last.staticLift.value, last.headerElevation.label, last.basinElevation.label, last.staticLift.label, last.staticLift.unit],
     dimSpan: +dim.getAttribute('y1') - +dim.getAttribute('y2') };
@@ -31,7 +31,7 @@ const expectLift = async (page, header, basin, lift) => {
 const snapshotUI = page => page.evaluate(() => ({
   mission: document.getElementById('mission').innerText, readings: document.querySelector('.readings').innerText,
   diagram: document.getElementById('loop').outerHTML, status: document.getElementById('status').innerText,
-  data: { ...document.body.dataset }, log: document.getElementById('log').innerText, journal: JSON.stringify(window.__fault.journal().runs ? [...window.__fault.journal().runs.values()] : []),
+  data: { ...document.body.dataset }, log: document.getElementById('log').innerText, log: JSON.stringify(window.__fault.log()), storage: JSON.stringify(Object.fromEntries(Object.entries(localStorage))),
 }));
 
 test('fault lab: the hidden cause is not exposed — both faults render the same interface until a gauge is placed', async () => {
@@ -81,9 +81,15 @@ test('fault lab 390px: wrong hypothesis, clean-section reading, wrong repair sho
     assert.match(m, /Diagnosis: correct/);
     assert.match(m, /Flow is back to the healthy value/);
     assert.equal(await t.page.locator('#g-q').innerText(), '3.82 L/s');
-    // log uses the shared journal: healthy, faulted, two repairs, with units
+    // this case's readings: healthy, faulted, two repairs, with units
     await t.page.getByRole('tab', { name: 'Run log' }).click();
     assert.match(await t.page.locator('#log').innerText(), /guided: healthy[\s\S]*guided: today, faulted[\s\S]*Δp across the discharge section\s+5\.13 kPa[\s\S]*#1[\s\S]*#2/i);
+    // the finished case is on the shared experiment record and reproduces; the next case's fault is not stored
+    await t.page.getByRole('tab', { name: 'Experiments' }).click();
+    assert.equal(await t.page.locator('[data-reproduced="true"]').count(), 1);
+    assert.match(await t.page.locator('.nb-runs').innerText(), /Guided case — fouled inlet strainer/);
+    const stored = await t.page.evaluate(() => JSON.parse(localStorage.getItem('openpath.projects.pump-fault')).projects[0]);
+    assert.equal(stored.runs.length, 1); assert.equal(stored.setup.case, 'guided');
     await t.page.getByRole('tab', { name: 'Mission' }).click();
     // new case, no hints: discharge fault at 6 m lift
     await t.mission.getByRole('button', { name: 'Next: a new case without hints' }).click();

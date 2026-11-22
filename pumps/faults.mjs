@@ -85,3 +85,27 @@ export const casesForSeed = seed => ({
   guided: makeCase(CONDITIONS[0], FAULTS[seed & 1]),
   unseen: makeCase(CONDITIONS[1 + ((seed >> 2) % 3)], FAULTS[(seed >> 1) & 1]),
 });
+
+// ---------- shared experiment record (core/project.mjs) ----------
+// Only a finished case is recorded: by then the fault has been found and repaired, so writing it down reveals
+// nothing the learner has not already established. Cases in progress are never stored.
+export function evaluateCase(s) {
+  if (!s || !s.condition) return { ok: false, reason: 'Finish a case first: the fault stays hidden until it has been diagnosed and repaired.' };
+  const cond = CONDITIONS.find(c => c.id === s.condition);
+  if (!cond || !FAULTS.includes(s.fault) || !SECTIONS[s.measured] || !Array.isArray(s.repairs) || !s.repairs.every(a => ACTIONS[a])) return { ok: false, reason: 'not a complete fault-lab case' };
+  const c = makeCase(cond, s.fault), results = s.repairs.map(a => repair(c, a)), last = results.at(-1);
+  if (!last?.fixed) return { ok: false, reason: 'this case was not repaired' };
+  const e = elevations(cond), m = s.measured;
+  return { ok: true,
+    outputs: {
+      dp: { label: `Δp measured across ${SECTIONS[m].name.split(' (')[0]}`, value: c.faulted.taps[m] / 1000, unit: 'kPa', source: 'measured' },
+      dpClean: { label: 'Δp a clean section would read at that flow', value: cleanExpected(c, m) / 1000, unit: 'kPa', source: 'simulated' },
+      faultedFlow: { label: 'Flow with the fault', value: c.faulted.dashboard.flow * 1000, unit: 'L/s', source: 'simulated' }, finalFlow: { label: 'Flow after the repair', value: last.state.dashboard.flow * 1000, unit: 'L/s', source: 'simulated' },
+      healthyFlow: { label: 'Healthy flow', value: c.healthy.dashboard.flow * 1000, unit: 'L/s', source: 'simulated' }, repairs: { label: 'Repairs carried out', value: s.repairs.length, unit: '', source: 'input' },
+      staticLift: { label: 'Static lift (header − basin)', value: e.staticLift, unit: 'm', source: 'input' }, rpm: { label: 'Pump speed', value: cond.rpm, unit: 'rpm', source: 'input' } },
+    verdicts: {
+      hypothesis: { label: 'Starting hypothesis (locked before measuring) was the fault?', value: s.hypothesis === s.fault ? 'pass' : 'fail', reason: `hypothesis ${s.hypothesis}, fault ${s.fault}` },
+      diagnosis: { label: 'Diagnosis matched the fault?', value: s.diagnosis === s.fault ? 'pass' : 'fail', reason: `diagnosed ${s.diagnosis}` },
+      firstFix: { label: 'Fixed with the first repair?', value: results[0].fixed ? 'pass' : 'fail', reason: `${s.repairs.length} repair${s.repairs.length === 1 ? '' : 's'}` } } };
+}
+export const CASE_ADAPTER = { domain: 'pump-fault', title: 'Fault case', evaluate: evaluateCase };
