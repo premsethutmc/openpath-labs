@@ -43,3 +43,17 @@
 @media(prefers-reduced-motion:reduce){#meter-fill{transition:none}}
 #scene.editing *{pointer-events:none}
 #scene.editing .hit{pointer-events:stroke}
+/* Moment view */
+#scene .loa{stroke-width:1.2;stroke-dasharray:6 5;stroke-opacity:.7}
+#scene .mlabel{font:600 10.5px "JetBrains Mono",ui-monospace,monospace;paint-order:stroke;stroke:#0d151b;stroke-width:3px}
+.mtable{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:.84rem}
+.mtable th,.mtable td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.mtable th:first-child{text-align:left;font-weight:600;white-space:normal}
+.mtable td{font-family:var(--mono)}
+.mtable thead th{font:600 .7rem var(--mono);color:var(--dim)}
+.mtable tfoot th,.mtable tfoot td{border-bottom:0;font-weight:700;color:var(--ink)}
+.mtable i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+.mcheck{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.88rem;min-height:36px}
+.mcheck input{width:20px;height:20px}
+.mverdict{margin:6px 0 0;font-size:.88rem;color:var(--muted)}.mverdict.ok{color:var(--ok)}
+.moments .note{margin:4px 0 8px;font-size:.82rem;color:var(--muted)}
