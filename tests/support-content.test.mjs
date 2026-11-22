@@ -170,7 +170,7 @@ const setupsFor = d => [100, 200, 250, 300, 450, 500].map(m => ({ design: d, mou
 
 test('journey: contract shape, bench adapter, anchor R1 is the original design and evaluates', async () => {
   assert.equal(J.id, 'support'); assert.equal(J.semester, 2); assert.match(J.course, /ME25C02/);
-  assert.deepEqual({ page: J.bench.page, domain: J.bench.domain }, { page: '../mount/', domain: 'mount-stand' });
+  assert.deepEqual({ page: J.bench.page, domain: J.bench.domain }, { page: '../mount/?project=current', domain: 'mount-stand' });
   assert.equal(await J.bench.adapter(), READING_ADAPTER);
   for (const k of ['2,500 N', '600 mm', '50 × 80 mm', '0.15 mm', 'yield ÷ 2', '2.5 kg']) assert.ok(J.brief.includes(k), k);
   assert.equal(J.anchor.revision, 'R1'); assert.deepEqual(J.anchor.setup.design, ORIGINAL); assert.equal(J.anchor.setup, ANCHOR_SETUP);

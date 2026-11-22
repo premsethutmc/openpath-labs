@@ -99,9 +99,17 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       await btn('Lock predictions').click(); await btn('Run the bench').click();
       assert.equal(await app.locator('.round').count(), 1);
       await app.locator('#bench').click();
-      await page.waitForURL(/\/mount\/$/);
-      await page.locator('body[data-ready="true"]').waitFor();
-      await page.evaluate(async d => { const P = await import('/core/project.mjs'); const st = P.openStore('mount-stand'); const p = st.current(); p.setup = { ...p.setup, design: d }; st.put(p); }, R2_DESIGN);
+      await page.waitForURL(/\/mount\/\?project=current$/);
+      await page.locator('body[data-stage="free"]').waitFor();
+      // the bench opens the learner's own R1 design, unlocked: change it with the real controls and save a reading
+      assert.equal(await page.locator('[data-mat="aluminium"]').getAttribute('aria-checked'), 'true');
+      assert.equal(await page.locator('[data-mat="steel"]').isDisabled(), false);
+      await page.locator('[data-mat="steel"]').click();
+      await page.locator('[data-dim="h"]').fill(String(R2_DESIGN.h));
+      await page.locator('#tab-stand').click();
+      await page.locator('#load-on').click();
+      await page.locator('#take').click();
+      await page.locator('body[data-runs="1"]').waitFor();
       await page.goBack();
       await page.locator('body[data-phase="return"]').waitFor();
       await btn('I’ve saved a change').click();
@@ -140,13 +148,13 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       const [dl] = await Promise.all([page.waitForEvent('download'), btn('Export portfolio (JSON)').click()]);
       const pf = JSON.parse(await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8'));
       assert.equal(pf.format, 'openpath.portfolio');
-      assert.deepEqual([pf.design.from.run, pf.design.to.run, pf.decision.from, pf.decision.to], ['R1', 'R4', 'R1', 'R4']);
+      assert.deepEqual([pf.design.from.run, pf.design.to.run, pf.decision.from, pf.decision.to], ['R1', 'R5', 'R1', 'R5']);
       assert.deepEqual(pf.decision.defence.map(d => d.truth), [t0, t1]);
       assert.deepEqual(pf.trail.taught, ['FIX.product', 'FIX.lever']);
       // the record in the bench's store: version 2 with the decision; the ledger holds the journey's events
       const rec = await page.evaluate(() => ({ store: JSON.parse(localStorage.getItem('openpath.projects.mount-stand')), ledger: JSON.parse(localStorage.getItem('openpath.ledger')) }));
       const proj = rec.store.projects.find(p => p.origin === 'journey:fixture-bracket');
-      assert.equal(proj.version, 2); assert.equal(proj.decisions.length, 1); assert.deepEqual(proj.runs.map(r => r.id), ['R1', 'R2', 'R3', 'R4']);
+      assert.equal(proj.version, 2); assert.equal(proj.decisions.length, 1); assert.deepEqual(proj.runs.map(r => r.id), ['R1', 'R2', 'R3', 'R4', 'R5']);
       const kinds = new Set(rec.ledger.events.map(e => `${e.kind}/${e.provenance}`));
       for (const k of ['evidence/diagnostic', 'shown_solution/practice', 'evidence/practice', 'evidence/check']) assert.ok(kinds.has(k), k);
       assert.deepEqual(errors, []);

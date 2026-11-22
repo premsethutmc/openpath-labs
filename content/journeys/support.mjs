@@ -40,7 +40,7 @@ export function whatIfs(setup) {
 
 export default {
   id: 'support', title: 'The support that holds', semester: 2, course: 'ME25C02 Engineering Mechanics',
-  bench: { page: '../mount/', domain: 'mount-stand', adapter: () => import('../../mount/model.mjs').then(m => m.READING_ADAPTER) },
+  bench: { page: '../mount/?project=current', domain: 'mount-stand', adapter: () => import('../../mount/model.mjs').then(m => m.READING_ADAPTER) },
   brief: `A ${fmt(SPEC.load)} N machine must sit on a support bolted ${SPEC.span} mm apart, inside a ${SPEC.envelope.b} × ${SPEC.envelope.h} mm envelope. `
     + `Under the machine the support may deflect at most ${SPEC.tolerance} mm, its stress must stay at or below yield ÷ ${SPEC.yieldFactor}, and it may weigh at most ${SPEC.massLimit} kg. `
     + `The existing support is a ${describe(ORIGINAL)}, with the machine ${SPEC.guidedMount} mm from the left bolt. Test it, then choose the material and section.`,

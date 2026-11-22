@@ -43,6 +43,8 @@ export const GENERATORS = {
   solution: [step text …],                                   // shown only as help
   key: 'engine' | 'formula' }                                // engine = value computed by an existing engine (solids, hydraulics)
 ```
+Tolerances (`tol` on answers, predictions and defence questions) are **relative** — 0.02 means ±2 % — and absolute only when the true value is 0. Choice `correct` and a misconception's `option` are option indexes.
+
 Checking (`core/ledger.mjs checkResponse`): an unreadable or ambiguous response is **unresolved** (no credit, no penalty, not counted). A number with the wrong unit or none is unresolved. Values within tolerance are correct.
 
 ## Learner ledger (`core/ledger.mjs`)
@@ -55,7 +57,7 @@ Local and pseudonymous: a random learner id in localStorage, with import and exp
   provenance: 'diagnostic' | 'practice' | 'check' | 'retention',
   result: 'correct' | 'incorrect' | 'unresolved', misconception?: id }
 ```
-Derived status per competency: `not-seen`, `helped` (right only with help), `independent-after-help` (a fresh unaided correct answer after help), `independent` (unaided, with no help on that competency). A delayed retention check strengthens the evidence but never reads "mastered".
+Derived status per competency: `not-seen`, `helped` (right only with help), `independent-after-help` (a fresh unaided correct answer after help), `independent` (unaided, with no help on that competency), `not-yet` (answered alone, latest answer wrong). Status follows the latest unaided answer. Practice answers in the teach phase count as help (guided practice). A delayed retention check strengthens the evidence but never reads "mastered".
 
 ## Diagnostic (`core/diagnostic.mjs`)
 
@@ -84,6 +86,10 @@ export default {
 ## Decisions on the project record (`core/project.mjs`)
 
 `addDecision(project, { from, to, claim, runs: [runId], rejected: [text], defence: [{ prompt, answer, truth, result }] })`. This bumps the file to version 2; version 1 files still load.
+
+## Bench pages
+
+A journey's `bench.page` opens the learner's own design: the fluid line bench opens the current project; the Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand).
 
 ## Acceptance (the whole proof)
 

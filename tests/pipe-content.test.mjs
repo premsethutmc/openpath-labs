@@ -52,7 +52,7 @@ test('items: deterministic, well formed, misconceptions distinct from the answer
     for (const m of it.misconceptions) { assert.ok(MISCONCEPTIONS[m.id], `${tag}: unknown misconception ${m.id}`); assert.equal(m.label, MISCONCEPTIONS[m.id]); }
     if (it.answer.kind === 'number') {
       assert.ok(Number.isFinite(it.answer.value) && it.answer.tol > 0 && typeof it.answer.unit === 'string', `${tag} answer`);
-      for (const m of it.misconceptions) assert.ok(Number.isFinite(m.value) && Math.abs(m.value - it.answer.value) > it.answer.tol, `${tag}: ${m.id} ${m.value} within tol of ${it.answer.value}`);
+      for (const m of it.misconceptions) assert.ok(Number.isFinite(m.value) && Math.abs(m.value - it.answer.value) > it.answer.tol * Math.abs(it.answer.value), `${tag}: ${m.id} ${m.value} within tol of ${it.answer.value}`);
     } else {
       assert.equal(it.answer.kind, 'choice');
       const o = it.answer.options;
@@ -163,7 +163,7 @@ test('turbulent friction factors agree with an independent explicit formula (Swa
   for (const s of SEEDS) {
     const it = GENERATORS['fluids.friction-factor'].make(s, 'procedure'), { Re, material, D_mm } = it.figure.params, rr = MATERIALS[material].eps / (D_mm / 1000);
     near(it.answer.value, 0.25 / Math.log10(rr / 3.7 + 5.74 / Re ** 0.9) ** 2, 0.03, `seed ${s}`);
-    assert.ok(it.answer.tol >= 0.03 * it.answer.value, 'a Moody-chart or Swamee–Jain answer is accepted');
+    assert.ok(it.answer.tol >= 0.03, 'a Moody-chart or Swamee–Jain answer is accepted');
   }
 });
 
@@ -212,7 +212,7 @@ test('stuck and return predictions: truths come from the bench, recomputed indep
   near(P['main-loss'].truth(s, o), (o['gauge:p5'].value - o['gauge:p6'].value) * 1000 / (water(s.temp).rho * G), 1e-6, 'main loss = gauge drop / ρg');
   const long = JSON.parse(JSON.stringify(s)); C.setParam(long, 'p6', 'L', 160);
   assert.equal(P['flow-long'].truth(s, o), evalJ(long).outputs.flow.value);
-  assert.ok(Math.abs(P['flow-long'].truth(s, o) - o.flow.value) > P['flow-long'].tol, 'doubling the main makes a visible difference');
+  assert.ok(Math.abs(P['flow-long'].truth(s, o) - o.flow.value) > P['flow-long'].tol * o.flow.value, 'doubling the main makes a visible difference');
   // return predictions on a learner's own revision (bigger bore, a shorter route, a part moved)
   const mine = C.fromPreset('farm'); C.setParam(mine, 'p6', 'D', 0.04); C.setParam(mine, 'p9', 'D', 0.04); C.setParam(mine, 'p6', 'L', 70);
   const om = evalJ(mine).outputs, R = Object.fromEntries(J.return.predictions.map(p => [p.id, p]));
@@ -243,5 +243,5 @@ test('defend: 2–3 what-ifs on the learner\'s own setup, answered by the bench 
   }
   // on the anchor: bigger bore → more flow, longer → less, elbows → slightly less
   const qs = J.defend(J.anchor.setup), base = evalJ(J.anchor.setup).outputs.flow.value, f = q => evalJ({ ...J.anchor.setup, ...q.change }).outputs.flow.value;
-  assert.equal(qs.length, 3); assert.ok(f(qs[0]) > base + qs[0].tol); assert.ok(f(qs[1]) < base - qs[1].tol); assert.ok(f(qs[2]) < base && f(qs[2]) > f(qs[1]));
+  assert.equal(qs.length, 3); assert.ok(f(qs[0]) > base * (1 + qs[0].tol)); assert.ok(f(qs[1]) < base * (1 - qs[1].tol)); assert.ok(f(qs[2]) < base && f(qs[2]) > f(qs[1]));
 });

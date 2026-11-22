@@ -112,7 +112,8 @@ export function createRunner(spec, deps, saved) {
   function answer(response) {
     const it = S.item; if (!it || it.closed) throw new JourneyError('no open question');
     const item = itemOf(it.ref), c = checkResponse(item, response);
-    const helped = it.hints > 0 || it.shown || it.attempts > 0;
+    // guided practice in the teach phase is help (as in the school engine: guided answers are assisted responses)
+    const helped = S.phase === 'teach' || it.hints > 0 || it.shown || it.attempts > 0;
     const kind = helped ? 'assisted_response' : 'evidence';
     record(it, item, { kind, result: c.result, ...(c.misconception ? { misconception: c.misconception } : {}) });
     if (c.result === 'unresolved') { it.feedback = { result: 'unresolved', reason: c.reason }; return it.feedback; }

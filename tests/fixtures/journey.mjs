@@ -3,7 +3,7 @@
 const at = x => ({ mount: x, dialX: x, strainX: x });
 export default {
   id: 'fixture-bracket', title: 'Fixture: the stiff bracket', semester: 2, course: 'TEST 101',
-  bench: { page: '../mount/', domain: 'mount-stand', adapter: () => import('../../mount/model.mjs').then(m => m.READING_ADAPTER) },
+  bench: { page: '../mount/?project=current', domain: 'mount-stand', adapter: () => import('../../mount/model.mjs').then(m => m.READING_ADAPTER) },
   content: { graph: [() => import('./graph.mjs')], items: [() => import('./items.mjs')] },
   brief: 'A bracket carries a machine 200 mm from the left bolt. Keep the dial reading at the machine within 0.15 mm.',
   anchor: { setup: { design: { material: 'aluminium', shape: 'rect', b: 40, h: 30 }, loaded: true, ...at(200) }, revision: 'R1' },

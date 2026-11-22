@@ -3,7 +3,7 @@
 // engines/hydraulics (or the fluid line bench built on it); formula-keyed items use a stated formula and are checked
 // in tests/pipe-content.test.mjs against an independent hand calculation. figure.params holds every input an item
 // uses, so a test (or the page) can recompute it.
-// Answers: number tol is absolute, in the answer's unit; dimensionless numbers use unit ''. choice `correct` and a
+// Answers: number tol is relative (fraction of the answer; absolute only when the answer is 0), as core/ledger.mjs reads it; dimensionless numbers use unit ''. choice `correct` and a
 // misconception's `option` are indexes into `options`.
 import { rng } from '../../core/rng.mjs';
 import { water, G, MATERIALS, FITTINGS, friction, pipeLoss } from '../../engines/hydraulics/hydraulics.mjs';
@@ -28,7 +28,7 @@ export const MISCONCEPTIONS = {
 
 const BORES = [15, 20, 25, 32, 40, 50, 65, 80, 100];            // mm, common nominal bores
 const sig = (x, n = 3) => { if (x === 0 || !Number.isFinite(x)) return String(x); const d = Math.max(0, n - 1 - Math.floor(Math.log10(Math.abs(x)))); return (+x.toFixed(Math.min(d, 12))).toString(); };
-const num = (value, unit, rel = 0.03, abs = 0) => ({ kind: 'number', value, unit, tol: Math.max(Math.abs(value) * rel, abs) });
+const num = (value, unit, rel = 0.03, abs = 0) => ({ kind: 'number', value, unit, tol: value === 0 ? abs : Math.max(rel, abs / Math.abs(value)) });   // relative, per core/ledger.mjs within()
 const mis = (id, value) => ({ id, value, label: MISCONCEPTIONS[id] });
 // choice: options shuffled deterministically; `tags` maps an option text to a misconception id
 function choice(r, correct, wrong, tags = {}) {
@@ -47,7 +47,7 @@ function gen(id, competency, builders) {
     const b = builders[aspect]; if (!b) throw new Error(`${id}: no aspect ${aspect}`);
     const body = b(rng(`${id}:${aspect}:${seed}`));
     // a wrong answer too close to the right one cannot name a misconception: drop such tags (e.g. V = 1 m/s, where V = V²)
-    if (body.answer.kind === 'number' && body.misconceptions) body.misconceptions = body.misconceptions.filter(m => Math.abs(m.value - body.answer.value) > 1.5 * body.answer.tol);
+    if (body.answer.kind === 'number' && body.misconceptions) body.misconceptions = body.misconceptions.filter(m => Math.abs(m.value - body.answer.value) > 1.5 * body.answer.tol * (body.answer.value === 0 ? 1 : Math.abs(body.answer.value)));
     return { id: `${id}:${aspect}:${seed}`, competency, aspect, misconceptions: [], ...body };
   } };
 }

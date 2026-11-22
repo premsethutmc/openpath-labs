@@ -57,11 +57,11 @@ export default {
     + 'falls short. Choose the pipe bore, the route length and the fittings so the line delivers 2.5 L/s within the motor\'s rating.',
   anchor: { setup: anchor, revision: 'R1' },
   stuck: { predictions: [
-    { id: 'flow', prompt: 'Before you run it: what flow will this line deliver to the tank?', unit: 'L/s', tol: 0.25,
+    { id: 'flow', prompt: 'Before you run it: what flow will this line deliver to the tank?', unit: 'L/s', tol: 0.1,
       truth: (setup, results) => results.flow.value },
-    { id: 'main-loss', prompt: 'How much head is lost to friction along the main (the level run between the two gauges)?', unit: 'm', tol: 1.5,
+    { id: 'main-loss', prompt: 'How much head is lost to friction along the main (the level run between the two gauges)?', unit: 'm', tol: 0.1,
       truth: setup => mainLoss(setup) },
-    { id: 'flow-long', prompt: 'If the main were twice as long, what flow would reach the tank?', unit: 'L/s', tol: 0.2,
+    { id: 'flow-long', prompt: 'If the main were twice as long, what flow would reach the tank?', unit: 'L/s', tol: 0.1,
       truth: setup => flowOf(patchLength(setup, 2).setup) },
   ] },
   target: 'ENG.fluids.darcy-weisbach',
@@ -97,8 +97,8 @@ export default {
   apply: { count: 3, transfer: { page: '../circuit/', preset: 'farm-twin' } },
   check: { count: 1 },
   return: { decision: true, predictions: [
-    { id: 'flow', prompt: 'Your revised line: what flow will it deliver to the tank?', unit: 'L/s', tol: 0.25, truth: (setup, results) => results.flow.value },
-    { id: 'main-loss', prompt: 'Your revised line: how much head is lost to friction along the main (the longest pipe)?', unit: 'm', tol: 1, truth: setup => mainLoss(setup) },
+    { id: 'flow', prompt: 'Your revised line: what flow will it deliver to the tank?', unit: 'L/s', tol: 0.1, truth: (setup, results) => results.flow.value },
+    { id: 'main-loss', prompt: 'Your revised line: how much head is lost to friction along the main (the longest pipe)?', unit: 'm', tol: 0.1, truth: setup => mainLoss(setup) },
     { id: 'shaft-power', prompt: 'Your revised line: what shaft power will the pump draw?', unit: 'kW', tol: 0.1, truth: (setup, results) => results.shaftPower ? results.shaftPower.value : NaN },
   ] },
   // "What if" questions on the learner's own setup. `change` holds the patched fields (chain, nextId) — a full
@@ -110,7 +110,7 @@ export default {
       if (!patch) return;
       const r = ADAPTER.evaluate(patch.setup); if (!r.ok) return;
       const v = r.outputs.flow.value;
-      qs.push({ prompt, change: { chain: patch.setup.chain, nextId: patch.setup.nextId }, edits: patch.edits, read: 'flow', tol: Math.max(0.05, 0.05 * v) });
+      qs.push({ prompt, change: { chain: patch.setup.chain, nextId: patch.setup.nextId }, edits: patch.edits, read: 'flow', tol: 0.05 });
     };
     let up = null; try { up = patchBoreUp(setup); } catch { /* a patch outside the bench's limits is not asked */ }
     if (up) { const from = deliveryPipes(setup).map(p => mm(p.D)), to = deliveryPipes(up.setup).map(p => mm(p.D));
