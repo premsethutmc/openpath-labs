@@ -1,0 +1,40 @@
+/* Thermal bench — pieces on top of the shared workbench. */
+.objects{display:flex;gap:6px;padding:8px max(3vw,12px);overflow-x:auto;background:#0d151b;border-bottom:1px solid var(--line);scrollbar-width:none}
+.objects button{flex:none;min-height:38px;font-size:.84rem}
+.objects .buildbtn{border-style:dashed;border-color:var(--act);color:var(--act)}
+#path{display:block;width:100%;height:auto;background:#0d151b}
+#path .ly{stroke:#0d151b;stroke-width:1}
+#path .metal{fill:#6f7d89}#path .solid{fill:#8a5a44}#path .insul{fill:#c9b458}#path .par{fill:#7a6a48}#path .contact{fill:#2c3e4a}
+#path .film{fill:#1f4f6b;fill-opacity:.55}
+#path .lim{stroke:var(--act);stroke-width:2.5}#path .bad{stroke:var(--bad)!important;stroke-width:2.5}
+#path .profile{fill:none;stroke:#ff5a4f;stroke-width:2.5;stroke-linejoin:round}
+#path .tm{fill:#0d151b;stroke:#e6eef3;stroke-width:1.5;cursor:pointer}#path .tm.on{fill:var(--act);stroke:var(--act)}
+#path .num,#path .dim{font:600 10px var(--mono);fill:#8fa3b0}#path .lbl{font:600 11px var(--mono);fill:#e6eef3}
+#path .bud{fill:#26343e;stroke:#0d151b}#path .bud.lim{fill:var(--act)}#path .bl{font:700 9.5px var(--mono);fill:#e6eef3}
+#path .hint{font:500 12px Inter,sans-serif;fill:#8fa3b0}
+.solve{margin:10px 0 0;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-size:.9rem}
+.solve.unsupported{border-color:#5a2420;color:#ffb3ad}.solve.unsupported b{color:var(--bad)}.solve.fail{border-color:#5a2420}.solve.pass{border-color:#2a5c43}
+.checks{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+.checks li{font:600 .76rem var(--mono);padding:4px 8px;border-radius:8px;border:1px solid var(--line);color:var(--warn)}
+.checks li.pass{color:var(--ok)}.checks li.fail{color:var(--bad);border-color:#5a2420}
+.readings{margin-top:8px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.84rem;font-weight:600;color:var(--muted);margin-top:8px}
+.field .unit{font:500 .72rem var(--mono);color:var(--dim)}
+.field input,.field select{min-height:44px;border-radius:10px;border:1px solid #2c3e4a;background:#0b1117;color:var(--ink);font:600 .95rem var(--mono);padding:0 10px;width:100%}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px;align-items:end}
+.parts{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:4px}
+.parts li{display:flex;gap:4px;align-items:center}
+.parts .sel{flex:1;text-align:left;font:600 .8rem var(--mono);min-height:40px;overflow-wrap:anywhere}
+.parts .sel[aria-pressed=true]{background:var(--ink);color:#0b1117}
+.parts .sel.bad{border-color:var(--bad)}
+.parts li > button:not(.sel){min-height:40px;min-width:40px;padding:0;font-size:.9rem}
+.gauges{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:2px}
+.gauges label{display:flex;gap:8px;align-items:center;min-height:40px;font:500 .8rem var(--mono)}.gauges input{width:20px;height:20px;flex:none}
+.movers td button{min-height:36px;font-size:.76rem;padding:0 8px}
+.tbl th:first-child{width:52%}
+.sweepplot{display:block;width:100%;height:auto;background:#0d151b;border-radius:8px;margin-top:8px}
+.sweepplot .q{fill:none;stroke:#4fc3f7;stroke-width:2}.sweepplot .best{fill:var(--act)}.sweepplot .low{fill:var(--ok)}.sweepplot .lbl{font:500 9px var(--mono);fill:#8fa3b0}.sweepplot .ax{stroke:#4a5f6c}
+details.topic{border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:8px}
+details.topic summary{min-height:44px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+details.topic code{display:block;font:500 .8rem var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;background:#0d151b;border-radius:8px;padding:8px;margin:6px 0}
+@media(max-width:560px){#path .lbl{font-size:17px}#path .num,#path .dim,#path .bl{font-size:15px}#path .hint{font-size:20px}}
