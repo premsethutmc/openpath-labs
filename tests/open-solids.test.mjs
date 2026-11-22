@@ -169,3 +169,20 @@ test('Force Playground: reactions balance the loads by hand, and the shelf is a 
   // without v (a run saved before), the five old outputs only
   assert.deepEqual(Object.keys(SOLIDS_ADAPTER.evaluate({ ...s, v: undefined }).outputs), ['sf', 'stress', 'movement', 'load', 'mass']);
 });
+
+test('Mount LEARN: a defence question that puts the section shape back gives Revision 1’s own section, worked by hand', async () => {
+  const { defendFrom } = await import('../core/open-loop.mjs');
+  const bench = { span: 1200, load: 600, supports: 'cantilever', limits: { deflection: 12, yieldFactor: 2, mass: 5 } };
+  const R1 = { design: { material: 'timber', shape: 'rect', b: 50, h: 80 }, mount: 900, loaded: true, dialX: 900, strainX: 900, bench };
+  const R2 = { ...R1, design: { material: 'timber', shape: 'I', b: 50, h: 80, tw: 6, tf: 10 } };
+  const qs = defendFrom(MOUNT, R2, { from: R1, picked: ['maxDeflection', 'fos'], adapter: READING_ADAPTER });
+  assert.equal(qs.length, 1);
+  assert.match(qs[0].prompt, /^What would the largest deflection \(under the operating load\) be if the section shape went back to its Revision 1 value \(Solid rectangle instead of I-section\)\?$/);
+  const back = { ...R2, ...qs[0].change };
+  assert.deepEqual(back.design, R1.design);   // not the bench's default 40 × 30 rectangle
+  // cantilever, load P at a: tip deflection P·a²·(3L − a) / (6·E·I)
+  const I = 50 * 80 ** 3 / 12, hand = 600 * 900 ** 2 * (3 * 1200 - 900) / (6 * 11000 * I);
+  close(READING_ADAPTER.evaluate(back).outputs.maxDeflection.value, hand, 1e-6, 'tip deflection');
+  // without Revision 1 (a lever tried on its own) a new shape still brings the bench's defaults
+  assert.deepEqual(mountApply(R2, MOUNT.levers(R2).find(l => l.path === 'design.shape'), 'rect').design, { material: 'timber', shape: 'rect', b: 40, h: 30 });
+});

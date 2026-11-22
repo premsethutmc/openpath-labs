@@ -96,3 +96,55 @@ export function mountBench(page, kit, brief) {
   };
   return { tab, setDims, benchProps, readDesign };
 }
+
+// ---------- items on the open solids benches, solved by hand from their visible text ----------
+// The statics and solids questions the open loop may ask on the learner's own truss or beam: equilibrium in 2D and what
+// it rests on (free-body diagram, support reactions, moment of a force, a linear equation), factor of safety and what it
+// rests on (yield and the elastic limit, normal stress). Moments of a force reuse the Journey 1 learner (support-hand.mjs).
+// Returns { text } for a number box (value and unit) or { option } for a choice. tests/solids-hand.test.mjs checks this
+// learner against the item generators over many seeds (the browser tests never import them).
+import { solve as solveMoment } from './support-hand.mjs';
+const sig = v => String(+v.toPrecision(6));
+const rad = d => d * Math.PI / 180;
+export function solveItem(prompt, options = []) {
+  let m;
+  const pick = re => { const i = options.findIndex(o => re.test(o.trim())); assert.ok(i >= 0, `no option ${re} in ${JSON.stringify(options)}`); return { option: i }; };
+  const num = (v, unit) => ({ text: `${sig(v)}${unit ? ` ${unit}` : ''}` });
+  if (options.length) {
+    // free-body diagram: one unknown per movement a support stops (pin 2, roller 1, fixed 3)
+    if ((m = prompt.match(/^Draw the free-body diagram of (.+), carrying a known/))) return pick(new RegExp(`^${/two pins/.test(m[1]) ? 4 : 3}$`));
+    if (/Which is the complete free-body diagram/.test(prompt)) return pick(/^The box’s weight, the wall’s upward force and the wall’s moment$/);
+    if ((m = prompt.match(/^What can a (roller|pin|fixed) support push or pull on a beam with\?/)))
+      return pick({ roller: /^one force at right angles to the surface/, pin: /^a force in any direction \(two components\), but no moment$/, fixed: /^a force in any direction and a moment$/ }[m[1]]);
+    if (/You want B’s reaction with one equation/.test(prompt)) return pick(/^ΣM about A = 0/);
+    if ((m = prompt.match(/at or below yield ÷ ([\d.]+)\. What does this mean/))) return pick(new RegExp(`^FoS = yield ÷ stress must be at least ${m[1].replace('.', '\\.')}$`));
+    if ((m = prompt.match(/Rod B has (\d+) times/))) return pick(new RegExp(`^B has 1/${m[1]} of`));
+    if (/Then the load doubles/.test(prompt)) return pick(/past yield/);
+    return solveMoment(prompt, options.map(o => o.trim()));
+  }
+  // equilibrium: ΣM about the pivot or the pin
+  if ((m = prompt.match(/The load presses ([\d,]+) N on it (\d+) mm from the pivot; you push down (\d+) mm from the pivot/))) { const [W, a, b] = m.slice(1).map(n); return num(W * a / b, 'N'); }
+  if ((m = prompt.match(/A crane arm ([\d,]+) mm long is pinned to a mast\. A tie rod runs from the arm’s tip to the mast ([\d,]+) mm above the pin\. A (\d+) kg load hangs at the tip.*g = ([\d.]+)/))) {
+    const [L, h, kg, g] = m.slice(1).map(n); return num(kg * g * L / (L * h / Math.hypot(L, h)), 'N');   // T × (lever arm of the tie) = W × L
+  }
+  if ((m = prompt.match(/^Solve for R: R × ([\d,]+) − ([\d,]+) × ([\d,]+) = 0/))) { const [L, P, a] = m.slice(1).map(n); return num(P * a / L, 'N'); }
+  // a pin–roller beam under a sloping load: the roller cannot push sideways, so the pin takes F cos θ
+  if ((m = prompt.match(/A ([\d,]+) N force pushes down on it [\d.]+ m from A, sloping at (\d+)° to the beam\. What horizontal force does the pin at A carry/))) return num(n(m[1]) * Math.cos(rad(n(m[2]))), 'N');
+  // stress, yield and factor of safety
+  const STAND = /bolts (\d+) mm apart, a ([\d,]+) N machine (\d+) mm from the left bolt\), the support is an? (?:steel|aluminium) bar (\d+) mm wide and (\d+) mm deep \(h vertical; E = ([\d,]+) MPa, yield (\d+) MPa\)/;
+  if ((m = prompt.match(STAND))) {
+    const [L, P, a, b, h, , Y] = m.slice(1).map(n), s = P * a * (L - a) / L * (h / 2) / (b * h ** 3 / 12);   // σ = M·c/I under the machine
+    if (/up to yield/.test(prompt)) return num(P * Y / s, 'N');
+    if (/factor of safety/.test(prompt)) return num(Y / s, '');
+  }
+  if ((m = prompt.match(/yield (\d+) MPa\) works at a stress of (\d+) MPa/))) return num(n(m[1]) / n(m[2]), '');
+  if ((m = prompt.match(/yield (\d+) MPa\) must have a factor of safety of ([\d.]+) against yield\. What is the largest working stress/))) return num(n(m[1]) / n(m[2]), 'MPa');
+  if ((m = prompt.match(/cross-section of (\d+) mm² \(E = [\d,]+ MPa, yield (\d+) MPa\)\. At what pull does it reach yield, in kN/))) return num(n(m[1]) * n(m[2]) / 1000, 'kN');
+  if ((m = prompt.match(/has E = ([\d,]+) MPa, yield (\d+) MPa\. What is the largest strain it can take and still be elastic/))) return num(n(m[2]) / n(m[1]) * 1e6, 'µε');
+  if ((m = prompt.match(/A flat steel bar (\d+) mm wide and (\d+) mm thick is pulled along its length with ([\d,]+) kN/))) return num(n(m[3]) * 1000 / (n(m[1]) * n(m[2])), 'MPa');
+  if ((m = prompt.match(/A solid rectangular bar (\d+) mm wide and (\d+) mm deep \(h vertical\) carries a bending moment of ([\d,]+) N·m/))) {
+    const [b, h, M] = m.slice(1).map(n); return num(M * 1000 * (h / 2) / (b * h ** 3 / 12), 'MPa');
+  }
+  if ((m = prompt.match(/A (\d+) mm diameter steel bolt holds a bracket up with a pull of ([\d,]+) N/))) return num(n(m[2]) / (Math.PI * n(m[1]) ** 2 / 4), 'MPa');
+  return solveMoment(prompt, []);
+}
