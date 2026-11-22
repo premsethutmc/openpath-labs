@@ -79,7 +79,7 @@ export const GENERATORS = {
       return { prompt: `A ${D} mm bore pipe carries ${Q} L/s. Write the bore in metres and the flow in m³/s, then give the flow per unit bore Q/D in m²/s.`,
         answer: num(Q / 1000 / (D / 1000), 'm²/s', 0.02), figure: { kind: 'pipe-section', params: { D_mm: D, Q_Lps: Q } },
         misconceptions: [mis('no-lps-conversion', Q / (D / 1000)), mis('mm-not-converted', Q / 1000 / D)],
-        solution: [`D = ${D} mm = ${D / 1000} m.`, `Q = ${Q} L/s = ${Q / 1000} m³/s.`, `Q/D = ${Q / 1000} ÷ ${D / 1000} = ${sig(Q / D)} m²/s.`], key: 'formula' };
+        solution: [`D = ${D} mm = ${sig(D / 1000, 6)} m.`, `Q = ${Q} L/s = ${sig(Q / 1000, 6)} m³/s.`, `Q/D = ${sig(Q / 1000, 6)} ÷ ${sig(D / 1000, 6)} = ${sig(Q / D)} m²/s.`], key: 'formula' };
     },
   }),
   'fluids.math.circle-area': gen('fluids.math.circle-area', 'MATH.measurement.circle-area', {
@@ -92,7 +92,7 @@ export const GENERATORS = {
       const D = r.pick(BORES), A = area(D / 1000);
       return { prompt: `Find the flow area of a pipe with a ${D} mm bore, in m².`, answer: num(A, 'm²', 0.02), figure: { kind: 'pipe-section', params: { D_mm: D } },
         misconceptions: [mis('diameter-as-radius', Math.PI * (D / 1000) ** 2), mis('mm-not-converted', area(D))],
-        solution: [`D = ${D} mm = ${D / 1000} m.`, 'A = πD²/4 (D is the diameter; the radius is D/2).', `A = π × ${D / 1000}² / 4 = ${sig(A)} m².`], key: 'formula' };
+        solution: [`D = ${D} mm = ${sig(D / 1000, 6)} m.`, 'A = πD²/4 (D is the diameter; the radius is D/2).', `A = π × ${sig(D / 1000, 6)}² / 4 = ${sig(A)} m².`], key: 'formula' };
     },
     transfer: r => {
       const big = r.pick([50, 63, 80, 100]), small = r.pick([20, 25, 32].filter(x => x < big / 1.5)), n = (big / small) ** 2;
@@ -166,9 +166,9 @@ export const GENERATORS = {
         solution: ['10⁻⁶ means divide by 10 six times.', '1 × 10⁻⁶ = 0.000001.'], key: 'formula' };
     },
     procedure: r => {
-      const V = r.int(5, 30) / 10, D = r.pick([0.025, 0.032, 0.04, 0.05]), nu = r.pick([0.8, 1.0, 1.1]) * 1e-6, x = V * D / nu;
-      return { prompt: `Work out ${V} × ${D} ÷ (${nu * 1e6} × 10⁻⁶).`, answer: num(x, '', 0.02), figure: { kind: 'none', params: { V, D, nu } },
-        misconceptions: [], solution: [`${V} × ${D} = ${sig(V * D)}.`, `Dividing by ${nu * 1e6} × 10⁻⁶ multiplies by 10⁶/${nu * 1e6}.`, `= ${sig(x)} ≈ ${(x).toExponential(2)}.`], key: 'formula' };
+      const V = r.int(5, 30) / 10, D = r.pick([0.025, 0.032, 0.04, 0.05]), m = r.pick([0.8, 1.0, 1.1]), nu = m * 1e-6, x = V * D / nu;
+      return { prompt: `Work out ${V} × ${D} ÷ (${m} × 10⁻⁶).`, answer: num(x, '', 0.02), figure: { kind: 'none', params: { V, D, nu } },
+        misconceptions: [], solution: [`${V} × ${D} = ${sig(V * D)}.`, `Dividing by ${m} × 10⁻⁶ multiplies by 10⁶/${m}.`, `= ${sig(x)} ≈ ${(x).toExponential(2)}.`], key: 'formula' };
     },
     transfer: r => {
       const m = r.pick([1.2, 1.5, 1.8, 2.5, 3.2, 3.6, 4.5, 6.4]), e = r.pick([3, 4]), x = m * 10 ** e;
@@ -207,13 +207,13 @@ export const GENERATORS = {
       const D = r.pick([25, 32, 40, 50, 65]), Q = r.int(8, 50) / 10, V = Q / 1000 / area(D / 1000);
       return { prompt: `${Q} L/s flows in a ${D} mm bore pipe. Find the mean velocity.`, answer: num(V, 'm/s', 0.03), figure: { kind: 'pipe-section', params: { D_mm: D, Q_Lps: Q } },
         misconceptions: [mis('diameter-as-radius', Q / 1000 / (Math.PI * (D / 1000) ** 2)), mis('no-lps-conversion', Q / area(D / 1000))],
-        solution: [`Q = ${Q} L/s = ${Q / 1000} m³/s; D = ${D / 1000} m.`, `A = πD²/4 = ${sig(area(D / 1000))} m².`, `V = Q/A = ${sig(V)} m/s.`], key: 'formula' };
+        solution: [`Q = ${Q} L/s = ${sig(Q / 1000, 6)} m³/s; D = ${sig(D / 1000, 6)} m.`, `A = πD²/4 = ${sig(area(D / 1000))} m².`, `V = Q/A = ${sig(V)} m/s.`], key: 'formula' };
     },
     transfer: r => {
       const D = r.pick([25, 32, 40]), V = r.int(8, 20) / 10, vol = r.pick([1000, 2000, 5000]), t = vol / 1000 / (area(D / 1000) * V) / 60;
       return { prompt: `Water arrives at a ${vol} L tank through a ${D} mm pipe at ${V} m/s. How many minutes to fill it?`, answer: num(t, 'min', 0.03),
         figure: { kind: 'tank-fill', params: { D_mm: D, V, vol_L: vol } }, misconceptions: [mis('diameter-as-radius', t / 4)],
-        solution: [`Q = A·V = ${sig(area(D / 1000))} × ${V} = ${sig(area(D / 1000) * V)} m³/s.`, `Volume = ${vol / 1000} m³.`, `t = ${vol / 1000} / ${sig(area(D / 1000) * V)} s = ${sig(t)} min.`], key: 'formula' };
+        solution: [`Q = A·V = ${sig(area(D / 1000))} × ${V} = ${sig(area(D / 1000) * V)} m³/s.`, `Volume = ${sig(vol / 1000, 6)} m³.`, `t = ${sig(vol / 1000, 6)} / ${sig(area(D / 1000) * V)} s = ${sig(t)} min.`], key: 'formula' };
     },
   }),
   'fluids.continuity': gen('fluids.continuity', 'ENG.fluids.continuity', {
@@ -253,7 +253,7 @@ export const GENERATORS = {
     transfer: r => {
       const { s, e, D, L } = benchLine(r), dp = +(e.outputs['gauge:p5'].value - e.outputs['gauge:p6'].value).toFixed(1);
       const rho = e.sol.water.rho, hf = -e.sol.steps.find(st => st.index === 5 && st.kind === 'friction').dH;
-      return { prompt: `On the fluid line bench, gauges at both ends of a level ${D * 1000} mm × ${L} m main read a drop of ${dp} kPa (water at ${s.temp} °C, ρ = ${sig(rho, 4)} kg/m³). What head is lost to friction in the main?`,
+      return { prompt: `On the fluid line bench, gauges at both ends of a level ${D * 1000} mm × ${L} m main read a drop of ${dp} kPa (water at ${s.temp} °C, ρ = ${sig(rho, 4)} kg/m³, g = ${G} m/s²). What head is lost to friction in the main?`,
         answer: num(hf, 'm', 0.03), figure: { kind: 'bench-gauges', params: { D, L, temp: s.temp, dp_kPa: dp, setup: s } },
         misconceptions: [mis('pressure-as-head', dp)],
         solution: ['Level pipe, same bore: the gauge drop is all friction.', `h_f = Δp/ρg = ${dp * 1000} / (${sig(rho, 4)} × ${G}) = ${sig(hf)} m.`], key: 'engine' };
@@ -273,13 +273,13 @@ export const GENERATORS = {
       const res = pipeLoss(Q / 1000, { D: D / 1000, L: 1, material: 'pvc', K: 0 }, w);
       return { prompt: `Find the Reynolds number for ${Q} L/s of water at ${T} °C (ν = ${sig(w.nu, 3)} m²/s) in a ${D} mm bore.`, answer: num(res.Re, '', 0.03),
         figure: { kind: 'pipe-section', params: { D_mm: D, Q_Lps: Q, T } }, misconceptions: [mis('diameter-as-radius', res.Re / 4), mis('no-lps-conversion', res.Re * 1000)],
-        solution: [`V = Q/A = ${Q / 1000} / ${sig(area(D / 1000))} = ${sig(res.V)} m/s.`, `Re = VD/ν = ${sig(res.V)} × ${D / 1000} / ${sig(w.nu, 3)} = ${sig(res.Re)}.`], key: 'engine' };
+        solution: [`V = Q/A = ${sig(Q / 1000, 6)} / ${sig(area(D / 1000))} = ${sig(res.V)} m/s.`, `Re = VD/ν = ${sig(res.V)} × ${sig(D / 1000, 6)} / ${sig(w.nu, 3)} = ${sig(res.Re)}.`], key: 'engine' };
     },
     transfer: r => {
       const D = r.pick([4, 6, 8, 10]), T = r.pick(TEMPS), w = water(T), V = 2000 * w.nu / (D / 1000);
       return { prompt: `A ${D} mm capillary in a lab carries water at ${T} °C (ν = ${sig(w.nu, 3)} m²/s). Above what velocity does the flow stop being laminar (Re = 2000)?`,
         answer: num(V, 'm/s', 0.03), figure: { kind: 'pipe-section', params: { D_mm: D, T, Re: 2000 } }, misconceptions: [mis('mm-not-converted', 2000 * w.nu / D)],
-        solution: ['Re = VD/ν = 2000, so V = 2000 ν / D.', `V = 2000 × ${sig(w.nu, 3)} / ${D / 1000} = ${sig(V)} m/s.`], key: 'engine' };
+        solution: ['Re = VD/ν = 2000, so V = 2000 ν / D.', `V = 2000 × ${sig(w.nu, 3)} / ${sig(D / 1000, 6)} = ${sig(V)} m/s.`], key: 'engine' };
     },
   }),
   'fluids.roughness': gen('fluids.roughness', 'ENG.fluids.relative-roughness', {
@@ -340,12 +340,12 @@ export const GENERATORS = {
       return { prompt: `A ${D} mm pipe ${L} m long carries water at V = ${V} m/s with f = ${f}. Find the friction head loss (g = ${G}).`, answer: num(res.hf, 'm', 0.03),
         figure: { kind: 'pipe-run', params: { D_mm: D, L, Q_Lps: Q, material: m, T: 20 } },
         misconceptions: [mis('loss-linear-in-v', f * L / (D / 1000) * V / (2 * G)), mis('mm-not-converted', res.hf / 1000)],
-        solution: ['h_f = f (L/D) V²/2g.', `L/D = ${L} / ${D / 1000} = ${sig(L / (D / 1000))}; V²/2g = ${sig(V * V / (2 * G))} m.`, `h_f = ${f} × ${sig(L / (D / 1000))} × ${sig(V * V / (2 * G))} = ${sig(res.hf)} m.`], key: 'engine' };
+        solution: ['h_f = f (L/D) V²/2g.', `L/D = ${L} / ${sig(D / 1000, 6)} = ${sig(L / (D / 1000))}; V²/2g = ${sig(V * V / (2 * G))} m.`, `h_f = ${f} × ${sig(L / (D / 1000))} × ${sig(V * V / (2 * G))} = ${sig(res.hf)} m.`], key: 'engine' };
     },
     transfer: r => {
       const D = r.pick([25, 32, 40, 50]), L = r.pick([30, 50, 80, 120]), Q = r.int(10, 40) / 10, m = r.pick(MAT_KEYS), T = r.pick(TEMPS), w = water(T);
       const res = pipeLoss(Q / 1000, { D: D / 1000, L, material: m, K: 0 }, w), lam = 64 / res.Re * L / (D / 1000) * res.vh;
-      return { prompt: `A farm main: ${L} m of ${D} mm ${MATERIALS[m].name} (ε = ${sig(MATERIALS[m].eps * 1000, 3)} mm) carrying ${Q} L/s of water at ${T} °C (ν = ${sig(w.nu, 3)} m²/s). Find the friction head loss.`,
+      return { prompt: `A farm main: ${L} m of ${D} mm ${MATERIALS[m].name} (ε = ${sig(MATERIALS[m].eps * 1000, 3)} mm) carrying ${Q} L/s of water at ${T} °C (ν = ${sig(w.nu, 3)} m²/s). Find the friction head loss (g = ${G} m/s²).`,
         answer: num(res.hf, 'm', 0.06), figure: { kind: 'pipe-run', params: { D_mm: D, L, Q_Lps: Q, material: m, T } },
         misconceptions: [mis('laminar-in-turbulent', lam), mis('loss-linear-in-v', res.f * L / (D / 1000) * res.V / (2 * G))],
         solution: [`V = Q/A = ${sig(res.V)} m/s; Re = ${sig(res.Re)} (turbulent).`, `ε/D = ${sig(MATERIALS[m].eps / (D / 1000))}; Colebrook–White f = ${sig(res.f)}.`, `h_f = f (L/D) V²/2g = ${sig(res.f)} × ${sig(L / (D / 1000))} × ${sig(res.vh)} = ${sig(res.hf)} m.`], key: 'engine' };
@@ -359,14 +359,14 @@ export const GENERATORS = {
     },
     procedure: r => {
       const n = r.int(2, 6), V = r.int(10, 30) / 10, K = n * FITTINGS.elbow + FITTINGS.checkValve, h = K * V * V / (2 * G);
-      return { prompt: `A delivery line has ${n} elbows (K = ${FITTINGS.elbow} each) and one non-return valve (K = ${FITTINGS.checkValve}). The water moves at ${V} m/s. Find their total head loss.`,
+      return { prompt: `A delivery line has ${n} elbows (K = ${FITTINGS.elbow} each) and one non-return valve (K = ${FITTINGS.checkValve}). The water moves at ${V} m/s. Find their total head loss (g = ${G} m/s²).`,
         answer: num(h, 'm', 0.03), figure: { kind: 'fittings', params: { elbows: n, checkValve: 1, V } },
         misconceptions: [mis('loss-linear-in-v', K * V / (2 * G))],
         solution: [`ΣK = ${n} × ${FITTINGS.elbow} + ${FITTINGS.checkValve} = ${sig(K)}.`, `V²/2g = ${sig(V * V / (2 * G))} m.`, `h_m = ${sig(K)} × ${sig(V * V / (2 * G))} = ${sig(h)} m.`], key: 'engine' };
     },
     transfer: r => {
       const D = r.pick([25, 32, 40]), Q = r.int(10, 30) / 10, n = r.int(2, 5), V = Q / 1000 / area(D / 1000), K = n * FITTINGS.elbow + FITTINGS.footValve, h = K * V * V / (2 * G);
-      return { prompt: `A suction line of ${D} mm bore carries ${Q} L/s through a foot valve with strainer (K = ${FITTINGS.footValve}) and ${n} elbows (K = ${FITTINGS.elbow}). Find the fitting losses.`,
+      return { prompt: `A suction line of ${D} mm bore carries ${Q} L/s through a foot valve with strainer (K = ${FITTINGS.footValve}) and ${n} elbows (K = ${FITTINGS.elbow}). Find the fitting losses (g = ${G} m/s²).`,
         answer: num(h, 'm', 0.03), figure: { kind: 'fittings', params: { D_mm: D, Q_Lps: Q, elbows: n, footValve: 1 } },
         misconceptions: [mis('diameter-as-radius', h / 16)],
         solution: [`V = Q/A = ${sig(V)} m/s; V²/2g = ${sig(V * V / (2 * G))} m.`, `ΣK = ${FITTINGS.footValve} + ${n} × ${FITTINGS.elbow} = ${sig(K)}.`, `h_m = ${sig(h)} m.`], key: 'engine' };
@@ -421,13 +421,13 @@ export const GENERATORS = {
       const Q = r.int(10, 40) / 10, H = r.int(10, 35), eta = r.int(40, 75), P = 1000 * G * Q / 1000 * H / (eta / 100) / 1000;
       return { prompt: `A pump delivers ${Q} L/s against ${H} m at ${eta} % efficiency. Find the shaft power (ρ = 1000 kg/m³, g = ${G}).`, answer: num(P, 'kW', 0.02),
         figure: { kind: 'none', params: { Q, H, eta } }, misconceptions: [mis('no-lps-conversion', P * 1000), mis('efficiency-inverted', P * (eta / 100) ** 2)],
-        solution: [`Q = ${Q / 1000} m³/s.`, `ρgQH = 1000 × ${G} × ${Q / 1000} × ${H} = ${sig(1000 * G * Q / 1000 * H)} W.`, `P = ${sig(1000 * G * Q / 1000 * H)} / ${eta / 100} = ${sig(P * 1000)} W = ${sig(P)} kW.`], key: 'formula' };
+        solution: [`Q = ${sig(Q / 1000, 6)} m³/s.`, `ρgQH = 1000 × ${G} × ${sig(Q / 1000, 6)} × ${H} = ${sig(1000 * G * Q / 1000 * H)} W.`, `P = ${sig(1000 * G * Q / 1000 * H)} / ${eta / 100} = ${sig(P * 1000)} W = ${sig(P)} kW.`], key: 'formula' };
     },
     // the bench's own operating point: flow, pump head and shaft power → pump efficiency (engine)
     transfer: r => {
       const { s, e } = benchLine(r), o = e.outputs, eta = e.sol.pump.efficiency * 100, rho = e.sol.water.rho;
       const Q = o.flow.value, H = o.pumpHead.value, P = o.shaftPower.value;
-      return { prompt: `The fluid line bench runs at ${sig(Q, 4)} L/s with ${sig(H, 4)} m of pump head and ${sig(P, 4)} kW of shaft power (water at ${s.temp} °C, ρ = ${sig(rho, 4)} kg/m³). What is the pump's efficiency?`,
+      return { prompt: `The fluid line bench runs at ${sig(Q, 4)} L/s with ${sig(H, 4)} m of pump head and ${sig(P, 4)} kW of shaft power (water at ${s.temp} °C, ρ = ${sig(rho, 4)} kg/m³, g = ${G} m/s²). What is the pump's efficiency?`,
         answer: num(eta, '%', 0, 1), figure: { kind: 'bench-pump', params: { setup: s } }, misconceptions: [mis('efficiency-inverted', 10000 / eta)],
         solution: [`Water power = ρgQH = ${sig(rho, 4)} × ${G} × ${sig(Q / 1000, 4)} × ${sig(H, 4)} = ${sig(rho * G * Q / 1000 * H)} W.`, `η = water power / shaft power = ${sig(rho * G * Q / 1000 * H)} / ${sig(P * 1000)} = ${sig(eta)} %.`], key: 'engine' };
     },

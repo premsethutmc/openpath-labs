@@ -213,8 +213,11 @@ function frame(now) {
 }
 const WB = workbench('pumps', { initial: 'mission' });
 try { mode = localStorage.getItem('pumps.mode') || 'learn'; } catch {}
+// ?preset=<mission id> (how a journey's "Explore on the bench" links here): open that mission in Learn mode
+const linked = MISSIONS.findIndex(m => m.id === new URLSearchParams(location.search).get('preset'));
+if (linked >= 0) mode = 'learn';
 update();
-if (mode === 'learn') { let i = 0; try { i = +(localStorage.getItem('pumps.mission') || 0); } catch {} startMission(i); } else paintMission();
+if (mode === 'learn') { let i = linked; if (i < 0) try { i = +(localStorage.getItem('pumps.mission') || 0); } catch { i = 0; } startMission(i); } else paintMission();
 requestAnimationFrame(frame);
 window.__pumps = { get op() { return op; }, get S() { return S; }, get P() { return P; } };
 document.body.dataset.ready = 'true';

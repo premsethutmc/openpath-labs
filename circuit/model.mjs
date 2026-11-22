@@ -100,6 +100,11 @@ export const PRESETS = [
     ['addPart', 'pipe', { D: 0.032, L: 9, material: 'gi', rise: 9 }], ['addPart', 'sink', { surface: 9 }],
     ['setRequiredFlow', 3], ['toggleGauge', 'p5'], ['toggleGauge', 'p6']] },
 ];
+// A bench URL's ?preset=<id> → the preset to explore ({ id, name }), or null when absent or unknown.
+export function presetFromQuery(search) {
+  const id = new URLSearchParams(search || '').get('preset'), p = PRESETS.find(x => x.id === id);
+  return p ? { id: p.id, name: p.name } : null;
+}
 export function fromPreset(id) {
   const p = PRESETS.find(x => x.id === id); if (!p) throw new EditError('no such preset');
   const s = emptySetup();

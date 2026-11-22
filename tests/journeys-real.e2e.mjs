@@ -1,4 +1,4 @@
-// Both real journeys (support design, pipe sizing) played end to end through the one journey page on a phone viewport:
+// Journey 1 (support design) played end to end through the one journey page on a phone viewport:
 // brief → stuck → diagnose → teach → apply → check → return (bench and back) → R2 → decide → defend → summary.
 // Answers come from the item keys (the engine); predictions are deliberately off so the loop opens.
 import { test } from 'node:test';
@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { serve } from './serve.mjs';
 
-for (const id of ['support', 'pipe']) {
+// Journey 2 (pipe sizing) is played through visible controls only in tests/journey-pipe-visible.e2e.mjs.
+for (const id of ['support']) {
   test(`real journey "${id}" at 390px: whole loop, record and ledger`, async () => {
     const server = await serve(), browser = await chromium.launch();
     try {
@@ -53,25 +54,14 @@ for (const id of ['support', 'pipe']) {
           if (!benchVisited) {
             benchVisited = true;
             await app.locator('#bench').click();
-            if (id === 'support') {
-              // the real Mount bench opens the learner's own design, unlocked; change it and save a reading
-              await page.locator('body[data-stage="free"]').waitFor();
-              await page.locator('[data-mat="steel"]').click();
-              await page.locator('[data-dim="h"]').fill('50');
-              await page.locator('#tab-stand').click();
-              await page.locator('#load-on').click();
-              await page.locator('#take').click();
-              await page.locator('body[data-runs="1"]').waitFor();
-            } else {
-              // the fluid line bench opens the current project; apply the journey's first "what if" change as the learner's edit
-              await page.locator('body[data-ready="true"]').waitFor();
-              await page.evaluate(async () => {
-                const P = await import('/core/project.mjs'), spec = (await import('/content/journeys/pipe.mjs')).default;
-                const adapter = await spec.bench.adapter(), st = P.openStore('fluids-line'), p = st.current();
-                const q = spec.defend(p.setup, adapter.evaluate(p.setup).outputs)[0];
-                p.setup = { ...p.setup, ...q.change }; P.saveRun(p, adapter, 'bigger delivery pipes'); st.put(p);
-              });
-            }
+            // the real Mount bench opens the learner's own design, unlocked; change it and save a reading
+            await page.locator('body[data-stage="free"]').waitFor();
+            await page.locator('[data-mat="steel"]').click();
+            await page.locator('[data-dim="h"]').fill('50');
+            await page.locator('#tab-stand').click();
+            await page.locator('#load-on').click();
+            await page.locator('#take').click();
+            await page.locator('body[data-runs="1"]').waitFor();
             await page.goBack();
             await page.locator('body[data-phase="return"]').waitFor();
             await btn('I’ve saved a change').click();
@@ -98,7 +88,7 @@ for (const id of ['support', 'pipe']) {
       assert.match(text, /Design R1 → R2[\s\S]*Decision/);
       assert.equal(await app.locator('.badmsg').count(), 0, 'every run reproduces');
       await noOverflow();
-      const domain = id === 'support' ? 'mount-stand' : 'fluids-line';
+      const domain = 'mount-stand';
       const rec = await page.evaluate(d => ({ store: JSON.parse(localStorage.getItem(`openpath.projects.${d}`)), ledger: JSON.parse(localStorage.getItem('openpath.ledger')) }), domain);
       const proj = rec.store.projects.find(p => p.origin === `journey:${id}`);
       assert.ok(proj, 'journey project on the bench record');
