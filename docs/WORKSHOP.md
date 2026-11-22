@@ -27,14 +27,17 @@ An adapter returns `{ ok:false, reason }` for a setup its model does not support
 
 The Experiments panel works the same way: save the current structure as a run, change material, section, loads or the structure itself, save again, compare (which setup paths changed, safety factor, stress, movement, mass), fork, reopen and reproduce.
 
-## Machine design bench (`machine/`) — shafts first
+## Machine design bench (`machine/`) — shafts, standing still and running
 
-- Empty bench or preset (overhung pulley shaft, gearbox countershaft, three-bearing line shaft), one editor.
-- Shaft: material, stepped segments (length, diameter, bore), own weight on/off. Bearings: position (type or drag), optional load limit. Loads: forces anywhere, torques in and out (must balance).
-- Limits are the learner's: minimum safety factor, deflection, bearing slope, bearing load.
-- Results: reactions, bending moment and deflection along the shaft, von Mises (ductile) or maximum principal (brittle) stress, safety factor, slope at bearings; which check governs and where.
-- Generic question tools, no lesson code: **Explain** (what governs, the facts, and the computed one-step changes that help most), **What moves…** (sensitivity of any result to every input), **Sweep** (any input over a range against any result, with the best value).
-- Not modelled: fatigue and stress concentrations, loads in two planes, bearing stiffness and life, shear deflection, critical speed, axial loads.
+- Empty bench or preset (overhung pulley shaft, gearbox countershaft, three-bearing line shaft, fan shaft near its critical speed, gear shaft with a sharp shoulder), one editor.
+- Shaft: material, stepped segments (length, diameter, bore), own weight on/off, surface finish and reliability for fatigue, stress raisers (position, Kt in bending, Kts in torsion — supplied by the learner; the kinds offer Shigley Table 7-1 first estimates). Bearings: position (type or drag), optional load limit, optional dynamic load rating C and ball/roller. Loads: forces anywhere (each may carry a rotating mass in kg and an eccentricity in µm), torques in and out (must balance).
+- Speed: operating speed in rpm (default 1450; empty = static check only) and damping ratio (default 0.02, a teaching estimate).
+- Limits are the learner's: minimum safety factor, deflection, bearing slope, bearing load, minimum fatigue safety factor, required bearing life (h), speed below a % of critical, vibration (µm whirl).
+- Results: reactions, bending moment and deflection along the shaft, von Mises (ductile) or maximum principal (brittle) stress, safety factor, slope at bearings; with a speed also fatigue safety factor (DE-Goodman, Marin factors, Kf = Kt), endurance limit, L10 life per bearing (radial load only), first critical speed (Rayleigh, with Dunkerley as a check), % of critical, unbalance whirl (single-mode Jeffcott estimate, labelled as such) and a speed-response plot; which check governs and where.
+- What cannot be assessed says why and gives no number: fatigue of grey cast iron, a diameter outside the size-factor fit, a rotor with no mass, vibration with no unbalance, any rotating check without a speed.
+- Generic question tools, no lesson code: **Explain** (what governs, the facts with the computed equation, and the computed one-step changes that help most), **What moves…** (sensitivity of any result to every input, including operating speed, attached masses, Kt and surface finish), **Sweep** (any input over a range against any result, with the best and the worst value — a speed sweep of the whirl shows the resonance peak at the critical speed).
+- Setups saved before stage 2 have no speed: they evaluate exactly as before and their runs still reproduce (fixture test).
+- Not modelled: loads in two planes, axial loads, bearing stiffness and damping, shear deflection, gyroscopic effects and higher modes, variable-amplitude loading, first-cycle yield with Kt.
 
 ## Workshop lathe and fit bench (`workshop/`) on the shared record
 

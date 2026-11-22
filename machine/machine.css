@@ -2,7 +2,7 @@
 .objects{display:flex;gap:6px;padding:8px max(3vw,12px);overflow-x:auto;background:#0d151b;border-bottom:1px solid var(--line);scrollbar-width:none}
 .objects button{flex:none;min-height:38px;font-size:.84rem}
 .objects .buildbtn{border-style:dashed;border-color:var(--act);color:var(--act)}
-#shaft,#plots{display:block;width:100%;height:auto;background:#0d151b;touch-action:none}
+#shaft,#plots,#speedplot{display:block;width:100%;height:auto;background:#0d151b;touch-action:none}
 .plots{margin-top:8px}
 #shaft .steel{fill:#6f7d89}#shaft .aluminium{fill:#9fadb8}#shaft .castIron{fill:#4f5459}
 #shaft .seg{stroke:#e6eef3;stroke-width:1}#shaft .bore{fill:#0d151b;stroke:#4a5f6c;stroke-dasharray:3 2}
@@ -32,3 +32,9 @@
 details.topic{border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:8px}
 details.topic summary{min-height:44px;display:flex;align-items:center;font-weight:700;cursor:pointer}
 details.topic code{display:block;font:500 .8rem var(--mono);white-space:pre-wrap;background:#0d151b;border-radius:8px;padding:8px;margin:6px 0}
+#shaft .raiser line{stroke:#ff7a6b;stroke-width:1.5;stroke-dasharray:3 2}#shaft .lbl.kt{fill:#ff9d91}#shaft .disc{fill:#f0b42955;stroke:#f0b429}
+#speedplot .ax{stroke:#4a5f6c}#speedplot .q{fill:none;stroke:#4fc3f7;stroke-width:2}#speedplot .crit{stroke:var(--bad);stroke-dasharray:4 3}#speedplot .op{stroke:#f0b429}
+#speedplot .opdot{fill:#f0b429}#speedplot .lbl{font:600 10px var(--mono);fill:#8fa3b0}#speedplot .op{fill:#f0b429}#speedplot tspan.op{fill:#f0b429}#speedplot .critl{fill:#ff7a6b}
+.checks li.na{color:var(--muted);border-style:dashed}
+.rows li.two{grid-template-columns:auto repeat(2,minmax(0,1fr)) auto}
+.rows select{min-height:40px;border-radius:8px;border:1px solid #2c3e4a;background:#0b1117;color:var(--ink);font:600 .82rem var(--mono);padding:0 4px;width:100%;min-width:0}

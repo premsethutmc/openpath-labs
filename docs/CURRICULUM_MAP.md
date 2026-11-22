@@ -1,6 +1,6 @@
 # Mechanical engineering curriculum map
 
-*Blueprint for OpenPath Labs. Map updated 22 Nov 2026 (main after PRs #2–#12); no open drafts.*
+*Blueprint for OpenPath Labs. Map updated 22 Nov 2026 (main after PRs #2–#12; draft: shaft dynamics, `feat/shaft-dynamics`).*
 
 ## Goal
 
@@ -18,21 +18,21 @@ Learning support (hints, equations, none) never changes the controls or the phys
 
 Anna University B.E. Mechanical Engineering, Regulations 2021, grouped into twelve branches. **Live** = on main and published; **draft** = open PR.
 
-Five branches are well supported (engineering mechanics, strength of materials, fluids and pumps, engines, metrology), five are started (manufacturing, machine design, materials, thermodynamics, theory of machines), and two (heat transfer, mechatronics) have almost nothing. The biggest core gaps are heat transfer, vibration and fatigue.
+Five branches are well supported (engineering mechanics, strength of materials, fluids and pumps, engines, metrology), five are started (manufacturing, machine design, materials, thermodynamics, theory of machines), and two (heat transfer, mechatronics) have almost nothing. The biggest core gaps are heat transfer and vibration beyond a single shaft (shaft fatigue, bearing life and critical speed are in draft on the shaft bench).
 
 | Branch (R2021 courses) | Students should be able to | What we have now | Missing |
 |---|---|---|---|
 | **Engineering mechanics** (ME3351) | Free-body diagrams; equilibrium, trusses, friction, centroids; particle and rigid-body motion | **Live:** Force Playground, 2D frame/truss solver (`playground/`, `engines/solids/frame.mjs`, `analyze.mjs`) | Friction, rigid-body dynamics, impact |
 | **Strength of materials** (CE3491) | Stress, strain, deflection in beams, shafts, columns, cylinders, springs; combined stress; failure | **Live:** bending, axial, buckling, thermal stress, safety factor; 5 materials, 5 sections (`core/materials.mjs`, `core/sections.mjs`); mount lab with dial and strain gauges (`mount/`); torsion, combined stress, hollow sections and indeterminate shafts (`machine/`) | Shear stress, Mohr's circle, thin/thick cylinders, springs |
-| **Materials and metallurgy** (ME3392, PH3251) | Choose a material; read phase diagrams; plan heat treatment; tensile, hardness, impact tests | **Live:** typical properties for 5 materials; 3 materials with sourced densities (`workshop/`) | Tensile bench, heat treatment, phase diagrams, hardness, impact, fatigue data |
+| **Materials and metallurgy** (ME3392, PH3251) | Choose a material; read phase diagrams; plan heat treatment; tensile, hardness, impact tests | **Live:** typical properties for 5 materials; 3 materials with sourced densities (`workshop/`) | Tensile bench, heat treatment, phase diagrams, hardness, impact, S–N curves (shaft bench has endurance data for steel and 6061-T6 only) |
 | **Manufacturing** (ME3393, ME3493) | Choose how to make a part; set parameters; plan operations; predict cost, time, quality | **Live:** workshop lathe — face, turn, drill, bore, revisions, labelled simulated offsets, every cut checked on its as-cut geometry (`workshop/`) | Cutting forces and tool life, milling, casting, forming, welding, CNC, process planning and cost |
 | **Metrology and measurements** (ME3592) | Pick an instrument; state uncertainty; apply limits, fits, GD&T; pass / fail / inconclusive | **Live:** readings with resolution and maximum error, ISO 286 fits, "can't confirm" (`workshop/`); dial and strain gauges (`mount/`); pressure gauges placed by the learner (`circuit/`); pump gauges | Roundness and runout, surface roughness, gauge R&R, calibration |
 | **Engineering thermodynamics** (ME3391) | Energy and entropy balances; property tables; power and refrigeration cycles | **Live:** single-zone engine cycle with knock (`engines/thermofluids/engine.mjs`, `combustion.mjs`) | Property engine (steam, refrigerants), Rankine, Brayton, refrigeration cycles |
 | **Fluid mechanics and machinery; hydraulics and pneumatics** (CE3391, ME3492) | Size pipes and pumps; losses and cavitation; pump curves; hydraulic circuits | **Live:** Pump House, Piston Pump (`engines/hydraulics/`); fluid line bench — learner-built series lines, gauges, pressure budgets, orifice meter (`circuit/`); pump set drive check (`pumpset/`); fault lab (`pumps/fault.html`); 2D flow tunnel (`engines/fluids/lbm.mjs`) | Turbines, pipe networks, hydraulic/pneumatic circuits, non-water fluids, pump viscosity correction |
 | **Thermal engineering** (ME3451; RAC, power plant electives) | Engine testing and performance; compressors, refrigeration, steam plant | **Live:** Engine World — 1D gas-dynamics bench, oil, cold start, work-to-shaft-power, signed airflow at the intake valve (`engines/thermofluids/gasdyn.mjs`, `engine-world/`) | Air compressors, refrigeration and AC, boilers, steam and gas turbines |
 | **Heat and mass transfer** (ME3691) | Size insulation, fins, heat exchangers; predict temperatures; find the limiting resistance | Lumped engine warm-up only (`engine.mjs`); thermal expansion in the frame solver | Conduction, convection, radiation, fins, heat exchangers, transients |
-| **Theory of machines: kinematics, dynamics, vibration** (ME3491) | Linkages, cams, gear trains; balancing; flywheels; diagnose resonance | **Live:** slider-crank kinematics in Engine World (`engines/motion/crank.mjs`) | Linkages, cams, gears, balancing, flywheels, governors, all of vibration |
-| **Design of machine elements; transmission design** (ME3591, elective) | Size shafts, keys, bolts, springs, bearings, gears, belts for strength, fatigue, life | **Live:** open shaft bench — stepped/hollow shafts, bearings, forces and torques, combined stress, deflection, slope, learner's limits, sensitivity and sweep (`machine/`); shaft-to-hub fits (`workshop/`); motor sizing on a learner's own line (`pumpset/`, `circuit/`) | Fatigue and stress concentrations, two-plane loads, bearing life, gears, fasteners, belts and chains |
+| **Theory of machines: kinematics, dynamics, vibration** (ME3491) | Linkages, cams, gear trains; balancing; flywheels; diagnose resonance | **Live:** slider-crank kinematics in Engine World (`engines/motion/crank.mjs`). **Draft:** whirling of shafts — first critical speed by Rayleigh with a Dunkerley check, unbalance response of a single-mode (Jeffcott) rotor with learner-set damping, speed sweep showing the resonance peak (`engines/machine/rotor.mjs`, `machine/`) | Linkages, cams, gears, balancing (static/dynamic, reciprocating), flywheels, governors, free/forced vibration of general systems, torsional vibration, higher modes |
+| **Design of machine elements; transmission design** (ME3591, elective) | Size shafts, keys, bolts, springs, bearings, gears, belts for strength, fatigue, life | **Live:** open shaft bench — stepped/hollow shafts, bearings, forces and torques, combined stress, deflection, slope, learner's limits, sensitivity and sweep (`machine/`); shaft-to-hub fits (`workshop/`); motor sizing on a learner's own line (`pumpset/`, `circuit/`). **Draft:** operating speed, shaft fatigue (Marin factors, learner-supplied Kt/Kts, DE-Goodman; `engines/machine/fatigue.mjs`), rolling-bearing L10 life from radial reactions (`engines/machine/bearing.mjs`) | Two-plane loads, axial loads and bearing equivalent load, keys, gears, fasteners, springs, belts and chains |
 | **Mechatronics, automation, manufacturing systems** (ME3791, ME3792, GE3792) | Sensors and actuators; tune a control loop; plan a production line | Nothing yet | Sensors, actuators, control loops, PLC logic, line balancing |
 
 Cross-cutting **evidence**: every bench and lab keeps its runs on one shared project record (`core/project.mjs`, Experiments panel `core/notebook.mjs`): workshop, fluid line bench, machine design, Force Playground, mount lab, fault lab. Guided cases add only a protocol on top (`core/protocol.mjs`: prediction locked before the result, feedback before the next case). Engine World's 1D bench runs take seconds each, so its runs are not yet on the record.
@@ -47,7 +47,7 @@ The engines are separate islands: each lab owns its own state, and nothing decid
 2. **Typed quantities with provenance** — every number says whether it was entered, measured with an instrument, taken from a sourced table, or simulated by a named model with stated limits.
 3. **Benches that read and write the record** — each takes what it needs (a shaft diameter, a flow, a temperature) and adds its results. Presets and scratch builds are the same object.
 
-Reusable: frame solver, pipe and pump engine, oil properties, instrument and fit model, API. Needing new engines: heat transfer, vibration and rotor dynamics, machine elements (fatigue, bearings, gears), thermodynamic properties.
+Reusable: frame solver, pipe and pump engine, oil properties, instrument and fit model, API. Needing new engines: heat transfer, general vibration (rotor dynamics of a single shaft is in draft), machine elements (gears, fasteners, springs; shaft fatigue and bearing life are in draft), thermodynamic properties.
 
 ## Connecting project: a motor-driven pump set
 
@@ -91,7 +91,7 @@ Every bench stays usable on its own, and every engine meets the workshop's evide
 |---|---|
 | 0 · Minimal design record | **Done** — shared project record and Experiments panel on every bench and lab (PRs #8, #10, #11, #12) |
 | 1 · Drive check | **Done** — pipework decision changes the motor decision (PR #7); also on the learner-built fluid line bench (PR #8) |
-| 2 · Machine design and vibration | **Started** — static shaft design live (PR #9); fatigue, bearing life, critical speed and unbalance not yet |
+| 2 · Machine design and vibration | **Gate met in draft** — static shaft design live (PR #9); fatigue, bearing life, critical speed and unbalance response on the same open bench (`feat/shaft-dynamics`): every formula checked against a hand calculation, a thin fan shaft whirls at its critical speed and a speed sweep shows the peak there; old saved runs reproduce. Waits for review and merge; not yet linked to the pump set |
 | 3 · Heat transfer | Not started |
 | 4 · Pump set test run | Not started |
 | 5 · Widen the map | Workshop lathe and fits, mount lab, fault lab live; the rest not started |
