@@ -16,6 +16,8 @@ const peakAt = (design, mount) => { const M = loadedAt(design, mount).M.map(Math
 const describe = d => `${MATERIALS[d.material].name.split(' ')[0].toLowerCase()} ${d.shape === 'rect' ? `${d.b} × ${d.h} mm solid bar` : d.shape === 'rhs' ? `${d.b} × ${d.h} × ${d.t} mm hollow tube` : `${d.h} × ${d.b} mm I-section`}`;
 const fmt = v => Math.round(v).toLocaleString('en-IN');
 
+export const LABELS = { 'design.material': 'Material', 'design.shape': 'Section (rect solid, rhs hollow, I)', 'design.b': 'Width b (mm)', 'design.h': 'Depth h (mm)', 'design.t': 'Wall t (mm)',
+  'design.tw': 'Web tw (mm)', 'design.tf': 'Flange tf (mm)', mount: 'Machine position (mm from the left bolt)', loaded: 'Operating load', dialX: 'Dial gauge at (mm)', strainX: 'Strain gauge at (mm)' };
 export const ANCHOR_SETUP = { design: { ...ORIGINAL }, mount: SPEC.guidedMount, loaded: true, dialX: SPEC.guidedMount, strainX: SPEC.guidedMount };
 const [MOVE_A, MOVE_B] = [SPEC.guidedMount, SPEC.transferMount];   // 200 mm and 300 mm
 
@@ -45,6 +47,8 @@ export default {
     + `Under the machine the support may deflect at most ${SPEC.tolerance} mm, its stress must stay at or below yield ÷ ${SPEC.yieldFactor}, and it may weigh at most ${SPEC.massLimit} kg. `
     + `The existing support is a ${describe(ORIGINAL)}, with the machine ${SPEC.guidedMount} mm from the left bolt. Test it, then choose the material and section.`,
   anchor: { setup: ANCHOR_SETUP, revision: 'R1' },
+  // what the journey page shows beside each part of a saved setup (the page falls back to the raw key)
+  labels: LABELS,
 
   stuck: { predictions: [
     { id: 'left-bolt-200', prompt: `With the machine ${MOVE_A} mm from the left bolt, how much does the left bolt carry, in N?`, unit: 'N', tol: 0.02, truth: s => leftBolt(s.design, MOVE_A) },
