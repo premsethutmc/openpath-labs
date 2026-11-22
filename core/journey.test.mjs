@@ -179,3 +179,65 @@ test('runner files contain no journey-specific words', () => {
   for (const f of files) readFileSync(new URL(`../${f}`, import.meta.url), 'utf8').split('\n').forEach((line, i) => { if (words.test(line)) hits.push(`${f}:${i + 1}: ${line.trim().slice(0, 80)}`); });
   assert.deepEqual(hits, []);
 });
+
+// R2 must be a design that was predicted and run in the return phase. A learner who runs design A, then edits the
+// design on the bench, must not be able to save the untested edit as R2.
+test('runner: R2 is a tested design — an edit after the run is refused, and the tested setup is what gets saved', async () => {
+  const ctx = await setup();
+  let R = createRunner(spec, ctx.deps); R.start();
+  const A = R.project().setup, tA = ctx.adapter.evaluate(A).outputs;
+  R.lockStuck({ defl: `${tA.deflection.value} mm` }); R.runStuck(); R.skipToDesign();
+  R.lockReturn({ defl: String(tA.deflection.value), stress: String(tA.stress.value) }); R.runReturn();
+  const testedRun = R.state.ret.rounds[0].run;
+  // the bench saves an edited design B on the same project after the run
+  const bench = P.openStore(spec.bench.domain, ctx.storage), bp = bench.current();
+  bp.setup = { ...bp.setup, design: { material: 'steel', shape: 'rect', b: 40, h: 50 } }; bench.put(bp);
+  const B = JSON.parse(JSON.stringify(bp.setup)), runsBefore = bench.current().runs.length;
+  assert.throws(() => R.saveRevision(), JourneyError, 'an untested edit is never saved as R2');
+  assert.equal(R.state.r2, null); assert.equal(R.view().phase, 'return');
+  assert.equal(ctx.store.get(R.state.projectId).runs.length, runsBefore, 'a refusal saves nothing');
+  let v = R.view();
+  assert.equal(v.lastTested.run, testedRun); assert.equal(v.currentTested, null);
+  assert.deepEqual(v.sinceTested.map(c => c.path).sort(), ['design.h', 'design.material']);
+
+  // a reload keeps the binding; a forged record in saved state never turns B into a tested design
+  R = createRunner(spec, ctx.deps, JSON.parse(JSON.stringify(R.state)));
+  assert.equal(R.view().lastTested.run, testedRun); assert.equal(R.view().currentTested, null);
+  const forged = JSON.parse(JSON.stringify(R.state)); forged.ret.rounds[0].setup = B;
+  assert.throws(() => createRunner(spec, ctx.deps, forged).saveRevision(), JourneyError, 'tested means the run on the project record, not the saved page state');
+  assert.equal(createRunner(spec, ctx.deps, forged).view().currentTested, null);
+
+  // choice 1: save the last tested design — exactly that run's setup; the learner's current edit stays in the project
+  const S = createRunner(spec, ctx.deps, JSON.parse(JSON.stringify(R.state)));
+  S.saveTestedRevision();
+  const p = ctx.store.get(S.state.projectId), r2 = p.runs.find(r => r.id === S.state.r2);
+  assert.deepEqual(r2.setup, A); assert.deepEqual(p.setup, B, 'the current editing state is not overwritten');
+  assert.ok(P.reproduceRun(r2, ctx.adapter).ok);
+  v = S.view(); assert.equal(v.phase, 'decide'); assert.equal(v.to, S.state.r2); assert.equal(v.tested, testedRun);
+  assert.match(v.message, new RegExp(`run ${testedRun}`)); assert.match(v.message, /not part of R2/);
+  assert.equal(S.decide({ claim: 'Kept the tested design.', runs: [S.state.r2] }).ok, true);
+  // defence questions come from the R2 setup (A), not the current project setup (B)
+  const tA0 = ctx.adapter.evaluate(applyPatch(A, { design: { material: 'steel' } })).outputs.deflection.value;
+  const tB0 = ctx.adapter.evaluate(applyPatch(B, { design: { material: 'steel' } })).outputs.deflection.value;
+  assert.notEqual(tA0, tB0);
+  assert.equal(S.state.defend.questions[0].truth, tA0);
+  assert.equal(S.defendAnswers({ 0: String(tA0), 1: '1' }).ok, true);
+  const pf = S.portfolio();
+  assert.deepEqual(pf.design.to.setup, A); assert.equal(pf.design.to.run, S.state.r2); assert.equal(pf.design.to.tested, testedRun);
+  assert.equal(pf.decision.to, S.state.r2);
+
+  // choice 2: predict and run this design — a fresh round on B, then B saves as R2
+  const ctx2 = await setup();
+  const Q = createRunner(spec, ctx2.deps); Q.start();
+  Q.lockStuck({ defl: `${tA.deflection.value} mm` }); Q.runStuck(); Q.skipToDesign();
+  Q.lockReturn({ defl: '1', stress: '1' });
+  const b2 = P.openStore(spec.bench.domain, ctx2.storage), q = b2.current(); q.setup = B; b2.put(q);
+  assert.equal(Q.view().lockedStale, true);
+  Q.predictCurrent(); assert.equal(Q.state.ret.locked, null, 'a stale lock is cleared for a fresh round');
+  assert.throws(() => Q.saveRevision(), /at least once/);
+  Q.lockReturn({ defl: '1', stress: '1' }); Q.runReturn();
+  assert.deepEqual(Q.view().currentTested, Q.state.ret.rounds[0].run);
+  Q.saveRevision();
+  assert.deepEqual(ctx2.store.get(Q.state.projectId).runs.find(r => r.id === Q.state.r2).setup, B);
+  assert.equal(Q.portfolio().design.to.tested, Q.state.ret.rounds[0].run);
+});

@@ -49,6 +49,19 @@ export function createRunner(spec, deps, saved) {
   const aspectsOf = c => { const g = generatorOf(c); return g && items.has(g) ? items.generators[g].aspects : []; };
   const record = (it, item, e) => ledger.record({ journey: spec.id, competency: item.competency, item: item.id, aspect: item.aspect, provenance: it.provenance, ...e });
   const say = text => { S.message = text; };
+  const same = (a, b) => !!a && !!b && P.setupDiff(a, b).length === 0;
+  // R2 is a tested design: a round counts only if its run is on the project record with the setup the round recorded
+  // (the record, not the saved page state, is the authority, so a reload or an edited state cannot invent a test)
+  const testedRounds = p => (S.ret?.rounds || []).filter(r => { const run = p && runOf(p, r.run); return run && same(run.setup, r.setup); });
+  const lastTested = p => testedRounds(p).at(-1) ?? null;
+  const currentTested = p => (p ? testedRounds(p).filter(r => same(r.setup, p.setup)).at(-1) ?? null : null);
+  function saveR2(p, round, name) {
+    const tested = runOf(p, round.run);
+    if (!P.reproduceRun(tested, adapter).ok) throw new JourneyError(`Run ${round.run} no longer reproduces; predict and run your design again.`);
+    const run = P.saveRun(p, adapter, name, tested.setup);
+    store.put(p); S.r2 = run.id; S.r2Tested = round.run; go(spec.return.decision === false ? 'summary' : 'decide');
+    return run;
+  }
   const go = phase => { S.phase = phase; S.message = null; };
 
   // a prediction box: a bare number counts in the prediction's unit; a unit given must be one for this quantity
@@ -212,11 +225,27 @@ export function createRunner(spec, deps, saved) {
       S.ret.rounds.push({ run: run.id, setup: clone(run.setup), scored: score(spec.return.predictions, S.ret.locked.values, run.setup, run.outputs) });
       S.ret.locked = null;
     },
-    saveRevision() {
+    saveRevision() {                                  // the current design, only if it was predicted and run
       if (S.phase !== 'return') throw new JourneyError('not now');
       if (!S.ret.rounds.length) throw new JourneyError('Predict and run your design at least once before saving the revision.');
-      const p = needProject(), run = P.saveRun(p, adapter, `${S.revisionLabels[1]} · revised design`);
-      store.put(p); S.r2 = run.id; go(spec.return.decision === false ? 'summary' : 'decide');
+      const p = needProject(), round = currentTested(p), last = lastTested(p), R2 = S.revisionLabels[1];
+      if (!round) throw new JourneyError(last
+        ? `Your design has changed since run ${last.run}, and ${R2} must be a design you predicted and ran. Predict and run this design, or save the last tested design (run ${last.run}) as ${R2}.`
+        : `This design has not been predicted and run. Predict and run it before saving it as ${R2}.`);
+      saveR2(p, round, `${R2} · revised design`);
+    },
+    saveTestedRevision() {                            // the last design that was predicted and run, whatever the current edit is
+      if (S.phase !== 'return') throw new JourneyError('not now');
+      const p = needProject(), last = lastTested(p), R2 = S.revisionLabels[1];
+      if (!last) throw new JourneyError('Predict and run your design at least once before saving the revision.');
+      const edited = !same(last.setup, p.setup);
+      saveR2(p, last, `${R2} · revised design (tested in run ${last.run})`);
+      S.message = `Saved ${R2} from run ${last.run}, the last design you predicted and ran.${edited ? ` Your later edits are still in the project on the bench, but they are not part of ${R2}.` : ''}`;
+    },
+    predictCurrent() {                                // start a fresh round on the design as it stands now
+      if (S.phase !== 'return') throw new JourneyError('not now');
+      const p = needProject();
+      if (S.ret.locked && !same(S.ret.locked.setup, p.setup)) S.ret.locked = null;
     },
     decide({ claim, runs = [], rejected = [] }) {
       if (S.phase !== 'decide') throw new JourneyError('not now');
@@ -284,9 +313,11 @@ export function createRunner(spec, deps, saved) {
         const r1 = p && runOf(p, S.r1);
         return { ...base, missing: !p, bench: spec.bench.page, setup: p ? clone(p.setup) : null, r1: r1 ? clone(r1.setup) : null, changed: p && r1 ? P.setupDiff(r1.setup, p.setup) : [],
           predictions: spec.return.predictions.map(x => ({ id: x.id, prompt: x.prompt, unit: x.unit ?? '' })), locked: S.ret.locked ? { values: S.ret.locked.values } : null,
-          lockedStale: !!(S.ret.locked && p && JSON.stringify(p.setup) !== JSON.stringify(S.ret.locked.setup)), rounds: clone(S.ret.rounds) };
+          lockedStale: !!(S.ret.locked && p && JSON.stringify(p.setup) !== JSON.stringify(S.ret.locked.setup)), rounds: clone(S.ret.rounds),
+          ...(() => { const last = lastTested(p), cur = currentTested(p);
+            return { lastTested: last ? { run: last.run, setup: clone(last.setup) } : null, currentTested: cur ? cur.run : null, sinceTested: last && p ? P.setupDiff(last.setup, p.setup) : [] }; })() };
       }
-      case 'decide': return { ...base, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [] };
+      case 'decide': return { ...base, runs: p ? p.runs.map(r => ({ id: r.id, name: r.name })) : [], from: S.r1, to: S.r2, tested: S.r2Tested ?? null, changed: p ? P.setupDiff(runOf(p, S.r1).setup, runOf(p, S.r2).setup) : [] };
       case 'defend': return { ...base, questions: S.defend.questions.map(q => ({ prompt: q.prompt, unit: q.unit, label: q.label })) };
       case 'summary': return { ...base, portfolio: portfolio() };
     }
@@ -304,7 +335,7 @@ export function createRunner(spec, deps, saved) {
       journey: { id: spec.id, title: spec.title, course: spec.course ?? null, semester: spec.semester ?? null },
       project: { id: p.id, name: p.name, domain: p.domain },
       design: { from: { label: S.revisionLabels[0], run: S.r1, setup: clone(r1.setup), outputs: clone(r1.outputs), verdicts: clone(r1.verdicts) },
-        to: r2 ? { label: S.revisionLabels[1], run: S.r2, setup: clone(r2.setup), outputs: clone(r2.outputs), verdicts: clone(r2.verdicts) } : null,
+        to: r2 ? { label: S.revisionLabels[1], run: S.r2, tested: S.r2Tested ?? null, setup: clone(r2.setup), outputs: clone(r2.outputs), verdicts: clone(r2.verdicts) } : null,
         changed: r2 ? P.setupDiff(r1.setup, r2.setup) : [] },
       runs: p.runs.map(r => ({ id: r.id, name: r.name, reproduced: P.reproduceRun(r, adapter).ok })),
       decision: dec ? clone(dec) : null,
