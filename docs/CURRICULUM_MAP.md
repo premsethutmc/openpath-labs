@@ -1,6 +1,6 @@
 # Mechanical engineering curriculum map
 
-*Blueprint for OpenPath Labs — the single source of truth. Every merge adds a line to the change log at the end, with the PR, the merge commit and how to verify it. Map updated 22 Nov 2026 (main after PRs #2–#14).*
+*Blueprint for OpenPath Labs — the single source of truth. Every merge adds a line to the change log at the end, with the PR, the merge commit and how to verify it. Map updated 22 Nov 2026 (main after PRs #2–#14); four-year journey added 22 Nov 2026.*
 
 ## Goal
 
@@ -107,10 +107,116 @@ Not yet: 3D CAD or 3D finite-element stress analysis, a general multi-physics so
 
 **Decided (21 Nov 2026):** pump set first; the full curriculum stays the goal; every bench stays independently usable.
 
+## Four-year journey (planning pass, 22 Nov 2026)
+
+Planning only: no new simulator, merge or deployment. One branch, Mechanical Engineering. The branch table above stays as the subject-coverage map; this section is the student's path through the degree.
+
+### Cohort
+
+Anna University, non-autonomous affiliated colleges, **Regulations 2025 (Revised 1, 2026)**, which applies from AY 2026–27: the students entering now. 173 credits. Autonomous colleges publish their own R2025 versions, and earlier batches stay on R2021 (the table above). Course titles and semesters below come from the R2025 document. Unit-level content has been read for the first-year courses, ME25C09 and CE25C12. For the other courses only the titles have been checked; read their units before building for them.
+
+Engineering Mechanics moved from semester III (R2021) to **semester II** (ME25C02). Statics, moments and equilibrium are now first-year work.
+
+### Words used in the map
+
+- **Teaches:** OpenPath diagnoses a gap, teaches it, then checks the learner on a fresh question with no help, and records that evidence. Only the school engine (premsethutmc/openpath) does this today, and only for school mathematics.
+- **Simulates:** a Labs bench computes and records the physics. Its Protocol can lock a prediction and score it, but nothing teaches the learner or checks what they can do alone.
+- **Not covered:** nothing yet.
+
+### Eight-semester map
+
+| Sem | Courses that carry the mechanical thread | The student should be able to | Prerequisites | Lab or project where they show it | OpenPath today |
+|---|---|---|---|---|---|
+| I | MA25C01 Applied Calculus; ME25C03 Introduction to ME; ME25C01 Engineering Drawing; PH25C01 Applied Physics I; CS25C02 Python; ME25C16 Makerspace A | Sketch, dimension and project a part to BIS; model it in 2D/3D CAD; reason with force, energy and power in SI units; measure an elastic modulus; use derivatives and integrals for rates and areas | Class 11–12 trig, vectors, calculus; units; school physics | Engineering Drawing CAD project; Makerspace teardown, welding, CAD and 3D printing | **Teaches:** school calculus, vectors, trig (school engine). **Simulates:** workshop measuring and fits; stiffness and Young's modulus in the Mount lab. **Not covered:** drawing, projection, CAD, Python, welding, optics |
+| II | ME25C02 Engineering Mechanics; MA25C02 Linear Algebra; PH25C05 Applied Physics II; EE25C01 BEEE; ME25C05 Re-Engineering for Innovation | Draw free-body diagrams; take moments; find reactions; check equilibrium in 2D/3D; find centroids and second moments; handle friction; read the iron–carbon diagram | Vectors and cross product, resolving components, simultaneous linear equations, integration for area | ME25C05 lab; **first-year journey below** | **Teaches:** vectors, vector products, trig, linear equations (school level). **Simulates:** Force Playground (reactions, bending), 2D frame/truss solver, Mount lab, thermal bench conduction. **Not covered:** friction, centroids and second moment *taught* (the Mount lab computes I but does not teach it), electrical, phase diagrams |
+| III | ME25C07 Applied Engineering Mechanics; CE25C11 Strength of Materials (with lab); ME25301 Engineering Thermodynamics; ME25C08 Metallurgy and Materials Science; MA25C09 Computational DEs | Stress, strain, bending, torsion, deflection, buckling, cylinders; energy balances; choose a material and heat treatment | Statics (sem II); calculus; ODEs | SOM lab tests (tension, torsion, deflection, hardness) | **Simulates:** bending, axial, buckling, thermal stress, safety factor (Force Playground, Mount lab); shaft torsion (machine bench); engine cycle. **Not covered:** property tables, entropy, cycles beyond the engine; materials testing; phase diagrams |
+| IV | ME25C09 Kinematics and Dynamics of Machines (lab); CE25C12 Fluid Mechanics and Machinery (lab); ME25401 Thermal Engineering I; ME25402 Manufacturing Processes I (lab); ME25C10 Standards; CS25C16 Applied Data Science | Analyse linkages, cams and gear trains; balance; find critical speeds; size pipes and pumps; read pump and turbine curves; choose and set up a process | SOM; dynamics; Bernoulli | Labs: four-bar, cams, gear trains, gyroscope, free and torsional vibration, critical speed; metacentric height, venturi, pipe friction, Pelton wheel, centrifugal and reciprocating pumps | **Simulates:** pipe friction, pumps, cavitation (Pump House, fluid line bench, piston pump, drive check); critical speed (shaft bench); slider-crank (Engine World); lathe (workshop). **Not covered:** four-bar, cams, gear trains, gyroscope, turbines, metacentric height, casting, forming, welding |
+| V | Design of Machine Elements; Manufacturing Processes II; Thermal Engineering II; Measurements and Instrumentation; PE-I; Capstone Design Project I (honours) | Size shafts, keys, fasteners, springs and bearings for strength, fatigue and life; choose an instrument and state its uncertainty | SOM, materials, fits | Capstone Design Project I; instrumentation lab | **Simulates:** shaft static, fatigue, bearing life, unbalance (machine bench); instrument uncertainty and fits (workshop). **Not covered:** keys, bolts, springs, welds, gears; compressors, refrigeration; sensors |
+| VI | Design of Transmission Systems; Heat and Mass Transfer (lab); FEM Applications (lab); Power Generation Technologies; Computer Aided Modelling Lab; CDP II | Design gears, belts and chains; size insulation, fins and exchangers; set up and check an FE model; model parts in CAD | Machine elements; ODEs; linear algebra | Heat transfer lab; FEM lab; CAD modelling lab; CDP II | **Simulates:** conduction, convection, fins, transients (thermal bench); 2D frame stiffness method (`engines/solids/frame.mjs`); Engine World. **Not covered:** transmissions, heat exchangers, mass transfer, continuum FEM, CAD, power plants |
+| VII | Mechatronics and Automation (lab); Engineering Entrepreneurship Development; Project Management; Climate Change and Sustainability; PE-IV, V; industrial training; CDP III | Choose sensors and actuators; tune a control loop; plan, cost and run a project | Electrical basics; dynamics | Mechatronics lab; CDP III | **Not covered:** control, sensors, PLC. Stage 4, the pump set test run, could serve as a cross-subject capstone rig |
+| VIII | Project Work / Internship cum Project (8) | Take a real problem to a defended design with evidence | Everything above | The project itself | **Simulates:** benches as virtual test rigs; the project record as the evidence base. **Not covered:** CAD hand-off |
+
+What the map shows: nothing in the degree is **taught** by OpenPath today. Labs simulates parts of semesters II–VI well. The school engine teaches the school mathematics underneath semesters I–II. The first journey is the place where the two meet.
+
+### One learning loop for all four years
+
+1. **Anchor.** Start from the learner's own work, saved as a revision on the project record: a design, a measurement or a course task. The anchor is never thrown away.
+2. **Find the block.** A locked prediction misses, a verdict the learner can't explain, or "I'm stuck". A short diagnostic separates a concept gap, a procedure gap, a recall gap, a missing prerequisite and a known misconception. A wrong answer alone is never taken as proof of a missing prerequisite.
+3. **Teach the prerequisite.** Where possible, teach on a bench the learner can move, not on text. Gaps in school mathematics go to the school engine.
+4. **Apply.** Fresh items from the engine (different numbers, so answers can't be copied), then a near twin of the learner's design, never the design itself.
+5. **Check independence.** A fresh unaided question. Record it as "solved independently after help", apart from the help that came before. A later delayed check is stronger evidence; it is never called mastery.
+6. **Return and defend.** Back to the anchor. The learner predicts, runs, revises, and writes a decision: what changed, why, which runs show it, and what was rejected. Then they answer two or three "what if" questions built from their own numbers and checked by the engine, with no AI.
+
+The same loop runs every year; only the anchor and the prerequisite chain get deeper. Example: in semester V a shaft fatigue failure traces back through stress concentration and torsion (III), to moments (II), to vectors (school).
+
+**Portfolio entry** = design revision + reproducible runs + the decision and its defence + the prerequisite trail (what blocked the learner, what was taught, the unaided evidence). Designs, measurements and decisions, not videos watched.
+
+### Portability and room for CAD (not built now)
+
+- The record is already a plain JSON file (`core/project.mjs` serialize/deserialize, Experiments panel export/import). To keep it portable: publish its schema with a version, add decision entries, and make a portfolio export (JSON, plus a readable page, plus CSV of runs).
+- Keep part geometry as **named parameters with units** (material, section type, b, h, t, span, hole positions), never as pixels or meshes. Parametric CAD, Pro/E and Creo included, models parts as dimensioned features with parameters and relations. A named-parameter part can later map to a CAD part through parameter tables or a neutral format such as STEP. Which bridge to use is decided when CAD integration starts.
+- Every number keeps its provenance (entered, measured, sourced, simulated), so a design that goes into CAD and comes back keeps its evidence.
+
+### First-year journey: "The support that holds" (semester II, ME25C02)
+
+Uses only what exists, apart from the gaps listed after it.
+
+| Step | What the student does | What we use (exists) |
+|---|---|---|
+| 0 Anchor | Brief from the Mount lab: carry a 2,500 N machine on a support bolted 600 mm apart, within a 50 × 80 mm envelope: deflection at the mount ≤ 0.15 mm, stress ≤ yield ÷ 2, mass ≤ 2.5 kg. The student picks material and section; the design is saved as **revision R1** | `mount/` (model.mjs `SPEC`, `check`, `stand`, `verdict`); `core/project.mjs` |
+| 1 Stuck | Protocol asks the student to predict the bolt reactions and where the bending is largest when the machine moves from 200 to 300 mm. The prediction misses, or the student can't explain the verdict | `core/protocol.mjs` (predict, lock, score) |
+| 2 Find the block | Diagnostic on **moment of a force about a point**. If that fails, check what it rests on: perpendicular distance and resolving components (trig), cross product, two equations in two unknowns | School engine: `packages/learning/src/diagnostic.ts` (diagnostic@1), `misconception-evidence.ts`; school competencies `MATH.trigonometry.functions`, `MATH.vectors.products`, `MATH.algebra.linear-equations` |
+| 3 Teach | Maths gaps go to the school engine's modules. The moment itself is taught on the Force Playground: drag a load along the wall shelf, see the reaction and the bending at the wall change, and take ΣM = 0 by hand while the bench checks it | School engine `intervention.ts` (Explore → Strategy → Chapter → Practise → Verify, recovery); `playground/` shelf preset; `engines/solids/frame.mjs` as the answer key |
+| 4 Apply | Fresh parametric beams (different span, load and position) solved unaided; transfer to the jib crane preset | `playground/presets.mjs` (crane); frame solver |
+| 5 Check | One fresh unaided item, recorded as "solved independently after help" | School engine evidence policy (`evidence.ts`, `records.ts`: assisted vs unaided provenance) |
+| 6 Return and defend | Back to R1: predict the reactions and the peak bending moment for *their* section, lock, run the test stand (dial and strain gauge), compare, revise to **R2**, write the decision, and answer engine-checked "what if" questions (machine moved 100 mm, aluminium swapped for steel) | `mount/` test stand; `core/project.mjs` `saveRun`, `compareRuns`, `forkProject`, reproduce badge |
+| Later | A delayed check on moments surfaces weeks later; the R1 → R2 entry stays in the portfolio | School engine `plan.ts` (due delayed checks) |
+
+**Where the lab fits:** it is the anchor, the return and the evidence (steps 0, 1 and 6), and a place to explore (step 3). It is not the teacher. Diagnosis, teaching order and evidence come from the school engine's loop.
+
+### Gaps that actually block this journey
+
+1. **No engineering prerequisite graph.** There are no competencies for moment of a force, couple, free-body diagram, support reactions, equilibrium, bending moment from loads or second moment of area, and no edges from them to the school maths ids. About 10–15 nodes. The school engine's graph takes its mandatory edges only from the mathematics package (`graph.ts`), so it needs a second, domain-neutral content source.
+2. **No items for those competencies.** The journey needs fresh parametric questions with deterministic answers (the frame solver can be the key) and diagnostic items tagged with misconceptions: slant distance used instead of perpendicular distance, a missing reaction, sign errors, a moment taken about the wrong point.
+3. **No shared learner or evidence link.** The Labs record lives in the browser per bench. School-engine evidence lives in OpenPath accounts. Neither knows the other's learner. The journey needs one learner id and Labs writing assisted and unaided evidence events into the same ledger.
+4. **The engines can't be combined as built.** The school engine is TypeScript packages; Labs is no-build ES modules. Recommended: compile the domain-neutral pieces (diagnostic, evidence policy, recovery) to one vendored ES module bundle, with the engineering graph and items as Labs content. Don't call a server for each step.
+5. **No return-and-defend step.** The record holds runs, not decisions. It needs a decision entry (claim, linked runs, alternatives rejected) and "what if" questions generated from the learner's own design and checked by the engine.
+6. **The moment is not visible as a moment.** The Force Playground shows reactions and the bending diagram, but no lever arm, perpendicular distance or ΣM about a chosen point. Teaching step 3 needs this view; it is a view on an existing engine, not a new simulator.
+
+Not blocking this journey, but on the path: a versioned public schema and portfolio export (portability); drawing, projection and CAD (all of semester I); unit-level reading of the semester III–VIII syllabi.
+
+### Product shape and the first proof (decided 22 Nov 2026)
+
+OpenPath does the assembly a bright student could do with AI (a tutorial, a simulator, a project), does it once, checks that it works, and makes it available to every student and professor.
+
+- **Curriculum = where to enter:** a semester, a concept the student is stuck on, or a design they want to try. The prerequisite graph says what matters and where to go next.
+- **Journey = the unit of product:** a problem, an editable starting setup on a bench, what to observe, predictions to lock, how to help when the student is stuck (the loop above), a fresh problem to check learning, and "what if" questions to defend a design. A professor opens **Journey N**, runs it live, pauses for predictions, and sends the same starting setup to the class (a shareable project file or link, no server). Students then take it in their own direction.
+- **Deck = a view of the journey:** slides generated on demand (20-minute demo or full class) from the journey's verified text, bench snapshots and engine results, then editable by the professor. A template does the generating, with no AI. AI may later reword the presentation, but it never changes the physics, the numbers or the objective. Checking a deck means checking its journey once.
+- **Cost at scale:** AI helps author and adapt material. Routine simulation, checking and progression run in tested code, so most learning actions are not token calls.
+
+**First proof: two Mechanical topics in one system.**
+
+| Journey | Topic | Bench (exists) | Prerequisite chain |
+|---|---|---|---|
+| 1 | Support design: moments, reactions, bending (sem II, ME25C02) | Mount lab + Force Playground | moment → perpendicular distance, components, cross product, two equations (school engine) |
+| 2 | Pipe sizing: friction losses and the pump operating point (sem IV, CE25C12, which includes a pipe-friction lab) | Fluid line bench + drive check | head loss → Darcy–Weisbach, Reynolds number, energy equation → unit conversion, ratios |
+
+The two journeys use different engines on purpose: solids and hydraulics.
+
+Acceptance tests:
+1. A journey is a data file (a spec): anchor bench and setup, observations, predictions, items, help, defence questions. One shared runner plays any journey. **Journey 2 adds a spec and content only, with zero changes to the runner, the deck generator or the app shell** (checked by diff).
+2. A professor can open either journey, run the demo, and get a deck. Every number on a slide is reproduced from an engine run in the test suite.
+3. A student can open the same journey, get stuck, be sent to a prerequisite, pass a fresh unaided check, and return to their own saved design, revise it and defend it. The revision and the evidence land on the project record.
+4. A shared starting setup opens identically on another device (same project file, same results).
+
+Blocking for test 3: gaps 1–6 above. Tests 1, 2 and 4 need only gaps 2 and 6, plus the journey spec, the runner and the deck generator.
+
 ## Sources
 
 - Anna University B.E. Mechanical Engineering, Regulations 2021, curriculum and syllabi (non-autonomous affiliated colleges), as published by [K.G. Institute of Technology](https://www.kgkite.ac.in/wp-content/uploads/2023/12/B.E.Mechanical-Engineering-R2021-Syllabus.pdf).
-- Shared doc version: https://claude.ai/artifact/1PY9sJa947eweL8eCmvK4Z
+- Anna University B.E. Mechanical Engineering, Regulations 2025 (Revised 1, 2026, from AY 2026–27), non-autonomous affiliated institutions: [cac.annauniv.edu](https://cac.annauniv.edu/aidetails/afug_2025_fu%20-%20revision/Mech/B.E.%20Mechanical%20Engineering.pdf) — the cohort for the four-year journey.
+- School engine read at premsethutmc/openpath main 62b17d3f (`packages/learning/src`, `content/mathematics/curriculum.v1.json`).
+- Shared doc version (no longer updated): https://claude.ai/artifact/1PY9sJa947eweL8eCmvK4Z
 
 ## Change log (verify any line with `git show <commit>` and the tests named)
 
@@ -129,4 +235,4 @@ Run all tests: `node --test --test-concurrency=1 tests/*.test.mjs engines/**/*.t
 | 2026-11-22 | #13 | c3ca460 | Stage 3 started: thermal bench | engines/thermal/thermal.test.mjs, thermal/model.test.mjs, tests/thermal.e2e.mjs |
 
 Totals at c3ca460: 155 unit tests and 37 browser tests passing.
-
+| 2026-11-22 | #15 (draft) | — not merged | Planning only: R2025 eight-semester map, cross-year learning loop, first-year journey, blocking gaps; product shape (journey, deck) and two-topic proof spec. No code | Docs only; tests unchanged |
