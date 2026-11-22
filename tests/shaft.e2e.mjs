@@ -46,6 +46,8 @@ test('Engine World 390px, Learn mode: guided 34 → 24 cm lesson — scrub, chai
     await state('first');
     assert.equal(await page.locator('#x-pv .xloop').count(), 2);
     assert.equal(await page.locator('#x-flow .xflow').count(), 2, 'airflow for A and B on the same axes');
+    // shared experiment journal (core/experiment.mjs): prediction locked before the run, both runs saved with units
+    assert.deepEqual(await page.evaluate(() => { const j = window.__shaft.journal(); const r = j.run(j.runNames().find(n => n.startsWith('first B'))); return [j.prediction('pair:first'), j.predictions.get('pair:first').locked, j.runNames().length, r.inputs.runner.value, r.inputs.runner.unit, r.outputs.torque.unit]; }), ['Down', true, 2, 24, 'cm', 'N·m']);
     let t = await exp.innerText();
     assert.match(t, /Air in through the valve\s+369\.2 mg\s+315\.4 mg/);
     assert.match(t, /Net air kept per cycle\s+353\.4 mg\s+291\.0 mg/);

@@ -121,3 +121,19 @@ value fitted, and only at the torque point. Everything else is geometry, textboo
 | Solver outputs after recording the flow | unchanged (baseline test) |
 
 Guided lesson (34 → 24 cm), cylinder 1 per cycle: at 4500 rpm forward 369.2 → 315.4 mg, pushed back 15.9 → 24.5 mg (mostly during valve overlap), net 353.4 → 291.0 mg; at 6000 rpm forward 325.1 → 366.4 mg, net 317.2 → 357.1 mg. In both cases the change is mainly in forward flow, not in backflow before the valve closes.
+
+## Pump House fault lab (simulated fixture)
+
+Fixture: Pump House model pump and pipe models, cooling-loop water at 32 °C, basin 4 m above the pump. The fault is an added loss R·Q² in either the inlet strainer or the discharge section; R is the same for both, chosen so that flow falls to a set fraction of healthy. Elevations are above the pump centreline; static lift = return-header elevation − basin elevation (basin 4 m): guided header 12 m → static lift 8 m, 2900 rpm, 72 % flow; unseen: header 6 m → 2 m, 2900 rpm, 85 %; header 12 m → 8 m, 2600 rpm, 80 %; header 16 m → 12 m, 3100 rpm, 78 %. Differential-pressure taps are on the same pipe at equal elevation and diameter, so Δp = ρg × that section's loss. **Simulated, not manufacturer or field data.**
+
+| Check | Result |
+|---|---|
+| Flow, head, power, efficiency identical for both faults (all 4 conditions) | to 1e-12 |
+| Faulted section Δp vs clean-at-today's-flow value | > 5× in every case; the clean section equals healthy × (Q/Q₀)² to 1e-9 |
+| Right repair | restores healthy flow (1e-12) |
+| Wrong repair / new identical pump | flow and faulted Δp unchanged |
+| NPSH margin | ≥ 2 m in every case (guided strainer fault 2.3 m) |
+| Unseen cases vs guided case | different lift or speed; fouled Δp differs by > 15 %, flow by > 5 % |
+| Pump House stock operating point | unchanged (bit-identical) |
+| Displayed static lift vs solver static head (header − basin) | identical in all four cases (8, 2, 8, 12 m) |
+| Interface before a gauge is placed | identical DOM, data attributes and journal for both faults |

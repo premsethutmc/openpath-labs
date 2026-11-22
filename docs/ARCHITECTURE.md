@@ -69,3 +69,12 @@ tests/                browser tests
 
 ## Workbench layout (all labs)
 `core/workbench.css` + `core/workbench.mjs`: every lab is one screen — the live instrument (machine or field) stays visible, four key readings sit under it, and a dock switches between modules (Mission/Guide, controls, charts, model notes). Exactly one module is open at a time; Learn mode locks the control modules a mission does not need. Visual language: dark engineering-instrument style, monospace readings with units, one meaning per colour scale, no cartoon art.
+
+## Experiment journal (shared by labs)
+`core/experiment.mjs` holds the parts of an experiment that do not depend on the physics, and nothing else:
+- `Journal.predict / lock / score` — a prediction is recorded, locked when the run starts, and scored against the result;
+- `Journal.saveRun / run` — named runs with inputs and outputs, each quantity carrying a unit, frozen once saved;
+- `compareRuns`, `changedInputs` — quantity-by-quantity comparison (units must agree) and a check that a comparison changes only what it claims to;
+- `Journal.giveFeedback / canAdvance`, `checkAnswers` — feedback on every answer before the next case unlocks.
+
+Used by Engine World's Work → power experiment (predictions locked before each bench run; every run saved with speed, runner length and units) and by the Pump House fault lab (hypothesis locked when the gauge is placed; healthy, faulted and repaired states saved; repairs compared with the healthy run; the unseen case unlocks only after feedback). Physics, tap positions, faults and wording stay in each lab.
