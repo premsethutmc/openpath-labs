@@ -230,3 +230,9 @@ test('journey: defence questions are valid patched setups, answered by adapter.e
   const s = setupsFor(ORIGINAL)[1], q = J.defend(s, {})[0];
   assert.deepEqual(READING_ADAPTER.evaluate({ ...s, ...q.change }), evaluateReading({ ...s, ...q.change }));
 });
+
+test('journey: every part of a saved setup has a label the page can show (anchor and every section shape)', () => {
+  const flat = (o, pre = '') => (o && typeof o === 'object' ? Object.entries(o).flatMap(([k, v]) => flat(v, pre ? `${pre}.${k}` : k)) : [pre]);
+  const shapes = [ANCHOR_SETUP, { ...ANCHOR_SETUP, design: { material: 'steel', shape: 'rhs', b: 40, h: 50, t: 3 } }, { ...ANCHOR_SETUP, design: { material: 'steel', shape: 'I', b: 40, h: 60, tw: 3, tf: 4 } }];
+  for (const s of shapes) for (const k of flat(s)) assert.ok(typeof J.labels[k] === 'string' && J.labels[k].length, `label for ${k}`);
+});

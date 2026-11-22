@@ -35,7 +35,9 @@ const S = {
 function takeReading() {
   const st = stand(S.design, { mount: S.mount, loaded: S.loaded }), dd = st.at(S.dialX), ss = st.at(S.strainX);
   if (S.loaded && standLocked()) return;   // unseen case: no loaded results before the prediction and design are locked
-  const r = { name: `${S.stage === 'free' ? 'Reading ' : 'R'}${S.runs.length + 1} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
+  // free bench: number on from the readings already on the project, so a second visit never repeats a name
+  const k = S.stage === 'free' ? nb.project().runs.filter(x => /^Reading \d+ · /.test(x.name)).length + 1 : S.runs.length + 1;
+  const r = { name: `${S.stage === 'free' ? 'Reading ' : 'R'}${k} · ${designLabel(S.design)} · ${S.loaded ? 'loaded' : 'unloaded'} · mount ${S.mount} mm`, design: clone(S.design), mount: S.mount, loaded: S.loaded,
     attempt: S.stage === 'transfer' || S.stage === 'finished' ? S.transfer.attempt : 0, afterLock: (S.stage === 'transfer' || S.stage === 'finished') && S.transfer.locked,
     dialX: S.dialX, strainX: S.strainX, deflection: dd.deflection, strain: ss.strain * 1e6, stress: ss.strain * MATERIALS[S.design.material].E, mass: st.mass };
   // every reading goes onto the shared experiment record and is recomputed from its setup when reopened
@@ -173,7 +175,12 @@ function mission() {
       <div class="row"><button type="button" class="primary" id="to-defend" ${tried.length ? '' : 'disabled'}>I have a design to defend</button></div>`;
   } else if (S.stage === 'defend') h += defendHTML();
   else if (S.stage === 'transfer' || S.stage === 'finished') h += transferHTML();
-  if (S.stage === 'free') h = `<div class="mhead"><span>Your design</span></div><h2>Open bench</h2><p>You opened this support from a journey. Change the design, load the stand, read the gauges at the machine position and save the reading in <b>Experiments</b>. Then go back to the journey.</p>${limitsTable(S.mount)}`;
+  if (S.stage === 'free') {
+    // the project remembers which journey made it (origin "journey:<id>"), so the learner has a visible way back
+    const j = /^journey:([\w-]+)$/.exec(nb.project().origin ?? '')?.[1];
+    h = `<div class="mhead"><span>Your design</span></div><h2>Open bench</h2><p>You opened this support from a journey. Change the design in <b>Design</b>, load the stand and read both gauges at the machine position (${S.mount} mm) in <b>Test stand</b>; every reading is saved with its design. Then go back to the journey.</p>${limitsTable(S.mount)}
+      ${j ? `<div class="row"><a class="button primary" id="back-journey" href="../journeys/journey.html?j=${encodeURIComponent(j)}">Back to the journey</a></div>` : ''}`;
+  }
   el.innerHTML = h; wireMission();
 }
 

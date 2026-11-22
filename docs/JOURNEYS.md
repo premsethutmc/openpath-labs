@@ -89,7 +89,7 @@ export default {
 
 ## Bench pages
 
-A journey's `bench.page` opens the learner's own design: the fluid line bench opens the current project; the Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand).
+A journey's `bench.page` opens the learner's own design: the fluid line bench opens the current project; the Mount lab needs `?project=current` (free design, no guided mission, latest saved reading's design on the stand); its mission shows a “Back to the journey” link built from the project's `journey:<id>` origin). `tests/journey-support-visible.e2e.mjs` plays Journey 1 through visible controls only, with two different valid designs.
 
 ## Acceptance (the whole proof)
 
