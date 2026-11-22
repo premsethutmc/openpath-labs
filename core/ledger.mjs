@@ -103,10 +103,10 @@ export function checkResponse(item, response) {
 // ---------- derived status (pure) ----------
 const HELP = new Set(['hint', 'shown_solution', 'assisted_response']);
 // statusOf(events, competency) → { status, unaided: { right, total }, assisted: { right, total }, help, delayed }
-//   not-seen                no resolved event          not-yet   answered alone, never right, no help
-//   helped                  help received and no fresh unaided right answer since the latest help
-//   independent-after-help  a fresh unaided right answer after the latest help
-//   independent             right unaided, never helped on this competency
+//   not-seen                no resolved event          not-yet   answered alone, no help, latest answer wrong
+//   helped                  help received, and the latest fresh unaided answer since the latest help (if any) is wrong
+//   independent-after-help  the latest fresh unaided answer after the latest help is right
+//   independent             latest unaided answer right, never helped on this competency
 // delayed: the latest retention check ('none' | 'passed' | 'failed'); it strengthens the evidence and is never "mastered".
 export function statusOf(events, competency) {
   const mine = events.filter(e => e.competency === competency && e.result !== 'unresolved');
@@ -118,8 +118,8 @@ export function statusOf(events, competency) {
     help: mine.filter(e => HELP.has(e.kind)).length, delayed: ret ? (ret.result === 'correct' ? 'passed' : 'failed') : 'none' };
   let status;
   if (!mine.length) status = 'not-seen';
-  else if (lastHelp >= 0) status = mine.slice(lastHelp + 1).some(e => e.kind === 'evidence' && e.result === 'correct') ? 'independent-after-help' : 'helped';
-  else status = out.unaided.right ? 'independent' : 'not-yet';
+  else if (lastHelp >= 0) status = mine.slice(lastHelp + 1).filter(e => e.kind === 'evidence').at(-1)?.result === 'correct' ? 'independent-after-help' : 'helped';
+  else status = unaided.at(-1)?.result === 'correct' ? 'independent' : 'not-yet';
   return { status, ...out };
 }
 
